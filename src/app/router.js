@@ -7,6 +7,7 @@ import MarketsPage from "./markets/MarketsPage";
 import MarketDetailPage from "./markets/MarketDetailPage";
 import AccountPage from "./account/AccountPage";
 import AdminDashboard from "./admin/AdminDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 export const router = createBrowserRouter([
     {
         path: "/",
@@ -25,16 +26,26 @@ export const router = createBrowserRouter([
                 element: _jsx(LiveTimingPage, {})
             },
             {
-                path: "control/:sessionId",
-                element: _jsx(RaceControlPage, {})
-            },
-            {
                 path: "account",
                 element: _jsx(AccountPage, {})
             },
             {
-                path: "admin",
-                element: _jsx(AdminDashboard, {})
+                element: _jsx(ProtectedRoute, { requiredRoles: ["race_control", "super_admin"] }),
+                children: [
+                    {
+                        path: "control/:sessionId",
+                        element: _jsx(RaceControlPage, {})
+                    }
+                ]
+            },
+            {
+                element: _jsx(ProtectedRoute, { requiredRoles: ["betting_admin", "super_admin"] }),
+                children: [
+                    {
+                        path: "admin",
+                        element: _jsx(AdminDashboard, {})
+                    }
+                ]
             }
         ]
     }

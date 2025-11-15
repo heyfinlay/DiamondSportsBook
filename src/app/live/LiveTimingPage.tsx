@@ -27,9 +27,10 @@ const LiveTimingPage = () => {
   const driversQuery = useQuery({
     queryKey: ["live-standings", sessionId],
     queryFn: () => fetchDriverStandings(sessionId!),
-    enabled: !!sessionId,
-    refetchInterval: 3_000
+    enabled: !!sessionId
   });
+
+  const isLoading = sessionQuery.isLoading || driversQuery.isLoading;
 
   return (
     <div className="space-y-6">
@@ -39,7 +40,7 @@ const LiveTimingPage = () => {
             Session
           </p>
           <h1 className="text-2xl font-semibold">
-            {sessionQuery.data?.name ?? sessionId ?? "—"}
+            {sessionQuery.data?.name ?? (isLoading ? "Loading…" : sessionId)}
           </h1>
           <p className="text-sm text-white/60">
             {sessionQuery.data?.track_name ?? "Track TBD"}
@@ -50,7 +51,7 @@ const LiveTimingPage = () => {
             Track Status
           </p>
           <p className="text-lg font-semibold capitalize">
-            {sessionQuery.data?.track_status ?? "green"}
+            {sessionQuery.data?.track_status ?? (isLoading ? "…" : "green")}
           </p>
         </div>
         <div className="rounded-2xl border border-white/10 px-6 py-3 text-right">
@@ -58,7 +59,7 @@ const LiveTimingPage = () => {
             Phase
           </p>
           <p className="text-lg font-semibold capitalize">
-            {sessionQuery.data?.phase ?? "setup"}
+            {sessionQuery.data?.phase ?? (isLoading ? "…" : "setup")}
           </p>
         </div>
       </div>
@@ -78,13 +79,6 @@ const LiveTimingPage = () => {
             </tr>
           </thead>
           <tbody>
-            {driversQuery.isLoading && (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-white/60">
-                  Loading standings…
-                </td>
-              </tr>
-            )}
             {driversQuery.data?.map((driver, idx) => (
               <tr
                 key={driver.driver_id}

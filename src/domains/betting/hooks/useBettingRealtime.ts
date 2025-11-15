@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import { subscribeToChannel } from "@lib/realtime";
 import { supabase } from "@lib/supabaseClient";
 import { useBettingStore } from "../store/bettingStore";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useBettingRealtime = (marketId?: string) => {
   const setOutcomes = useBettingStore((state) => state.setOutcomes);
   const upsertMarket = useBettingStore((state) => state.upsertMarket);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!marketId) return;
@@ -28,10 +30,16 @@ export const useBettingRealtime = (marketId?: string) => {
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "outcomes", filter: `market_id=eq.${marketId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["market-detail", marketId] });
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "wagers", filter: `market_id=eq.${marketId}` },
-        (payload) => {
-          const { data } = payload.new as any;
-          console.info("New wager event", data);
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["wager-history", marketId] });
         }
       )
       .subscribe();
@@ -39,5 +47,5 @@ export const useBettingRealtime = (marketId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [marketId, setOutcomes, upsertMarket]);
+  }, [marketId, setOutcomes, upsertMarket, queryClient]);
 };

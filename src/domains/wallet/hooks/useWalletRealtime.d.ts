@@ -1,1 +1,1 @@
-export declare const useWalletRealtime: (walletAccountId?: string) => void;
+export declare const useWalletRealtime: (userId?: string) => void;

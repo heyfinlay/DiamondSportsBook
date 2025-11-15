@@ -1,9 +1,11 @@
 import { useWalletBalance } from "@domains/wallet/hooks/useWalletBalance";
+import { useWalletRealtime } from "@domains/wallet/hooks/useWalletRealtime";
 import { useSession } from "@lib/auth/SessionProvider";
 
 const WalletSummary = () => {
   const { user, loading } = useSession();
   const { data, isLoading } = useWalletBalance(user?.id);
+  useWalletRealtime(user?.id ?? undefined);
 
   if (!user && !loading) {
     return (

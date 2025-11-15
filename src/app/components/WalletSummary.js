@@ -1,9 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useWalletBalance } from "@domains/wallet/hooks/useWalletBalance";
+import { useWalletRealtime } from "@domains/wallet/hooks/useWalletRealtime";
 import { useSession } from "@lib/auth/SessionProvider";
 const WalletSummary = () => {
     const { user, loading } = useSession();
     const { data, isLoading } = useWalletBalance(user?.id);
+    useWalletRealtime(user?.id ?? undefined);
     if (!user && !loading) {
         return (_jsx("div", { className: "rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-right text-sm text-white/70", children: "Guest Mode" }));
     }

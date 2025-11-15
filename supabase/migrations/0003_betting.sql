@@ -1,5 +1,8 @@
 -- Betting Domain Schema
 
+drop type if exists public.market_status cascade;
+drop type if exists public.wager_status cascade;
+
 create type public.market_status as enum ('draft', 'open', 'suspended', 'closed', 'settled');
 create type public.wager_status as enum ('pending', 'accepted', 'void', 'won', 'lost', 'refunded');
 
@@ -17,6 +20,7 @@ create table public.markets (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
   name text not null,
+  description text,
   status public.market_status not null default 'draft',
   total_pool numeric(14,2) not null default 0,
   min_stake numeric(14,2) not null default 10,
@@ -89,12 +93,14 @@ create table public.quote_telemetry (
 
 alter table public.events enable row level security;
 alter table public.markets enable row level security;
-alter table public.wagers enable row level security;
 alter table public.outcomes enable row level security;
+alter table public.wagers enable row level security;
+alter table public.pending_settlements enable row level security;
 
 create policy "Markets readable to all" on public.markets for select using (true);
 create policy "Outcomes readable to all" on public.outcomes for select using (true);
 create policy "Wagers read own" on public.wagers for select using (auth.uid() = user_id);
+create policy "Events readable to all" on public.events for select using (true);
 
 -- Helpers
 create or replace function public.parimutuel_preview(
@@ -177,6 +183,11 @@ begin
     outcome_row.pool,
     p_stake,
     (select takeout from public.events where id = market_row.event_id)
+  ) || jsonb_build_object(
+    'market_id', market_row.id,
+    'outcome_id', outcome_row.id,
+    'market_name', market_row.name,
+    'outcome_label', outcome_row.label
   );
 end;
 $$;

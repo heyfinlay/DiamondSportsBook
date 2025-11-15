@@ -1,38 +1,41 @@
 import { useEffect } from "react";
-import { subscribeToChannel } from "@lib/realtime";
 import { supabase } from "@lib/supabaseClient";
-import { useWalletStore } from "../store/walletStore";
-export const useWalletRealtime = (walletAccountId) => {
-    const setBalance = useWalletStore((state) => state.setBalance);
-    const setTransactions = useWalletStore((state) => state.setTransactions);
+import { useQueryClient } from "@tanstack/react-query";
+export const useWalletRealtime = (userId) => {
+    const queryClient = useQueryClient();
     useEffect(() => {
-        if (!walletAccountId)
+        if (!userId)
             return;
-        const channel = subscribeToChannel(`wallet-${walletAccountId}`, {
-            config: { broadcast: { ack: true } }
-        })
-            .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `account_id=eq.${walletAccountId}` }, async () => {
+        let activeChannel = null;
+        let cancelled = false;
+        const setup = async () => {
             const { data, error } = await supabase
-                .from("wallet_transactions_view")
-                .select("*")
-                .eq("account_id", walletAccountId)
-                .order("created_at", { ascending: false })
-                .limit(50);
+                .from("wallet_accounts")
+                .select("id")
+                .eq("user_id", userId)
+                .maybeSingle();
             if (error) {
                 console.error(error);
                 return;
             }
-            setTransactions(data?.map((row) => ({
-                id: row.id,
-                amount: row.amount,
-                kind: row.kind,
-                createdAt: row.created_at
-            })) ?? []);
-            setBalance(data?.reduce((total, row) => total + row.amount, 0) ?? 0);
-        })
-            .subscribe();
-        return () => {
-            supabase.removeChannel(channel);
+            const accountId = data?.id;
+            if (!accountId || cancelled)
+                return;
+            activeChannel = supabase
+                .channel(`wallet-${accountId}`)
+                .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `account_id=eq.${accountId}` }, () => {
+                queryClient.invalidateQueries({ queryKey: ["wallet-balance", userId] });
+                queryClient.invalidateQueries({ queryKey: ["wallet-transactions", userId] });
+                queryClient.invalidateQueries({ queryKey: ["admin-wallet-audit"] });
+            })
+                .subscribe();
         };
-    }, [walletAccountId, setBalance, setTransactions]);
+        setup();
+        return () => {
+            cancelled = true;
+            if (activeChannel) {
+                supabase.removeChannel(activeChannel);
+            }
+        };
+    }, [queryClient, userId]);
 };

@@ -1,15 +1,26 @@
 import { Outlet, NavLink } from "react-router-dom";
 import WalletSummary from "./WalletSummary";
 import { cn } from "@lib/utils/cn";
+import { useProfile } from "@domains/identity/hooks/useProfile";
 
 const navItems = [
   { to: "/", label: "Markets" },
   { to: "/live/demo", label: "Live Timing" },
-  { to: "/control/demo", label: "Race Control" },
   { to: "/account", label: "Account" }
 ];
 
 const RootLayout = () => {
+  const profileQuery = useProfile();
+  const role = profileQuery.data?.role ?? "spectator";
+  const canControl = role === "race_control" || role === "super_admin";
+  const canAdmin = role === "betting_admin" || role === "super_admin";
+
+  const filteredNav = [
+    ...navItems,
+    ...(canControl ? [{ to: "/control/demo", label: "Race Control" }] : []),
+    ...(canAdmin ? [{ to: "/admin", label: "Admin" }] : [])
+  ];
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
       <header className="border-b border-white/10 bg-black/60 backdrop-blur">
@@ -17,8 +28,8 @@ const RootLayout = () => {
           <div className="text-lg font-semibold tracking-wide">
             DBGP <span className="text-brand">v2</span>
           </div>
-          <nav className="flex items-center gap-3 text-sm font-medium">
-            {navItems.map((item) => (
+          <nav className="flex flex-wrap items-center gap-3 text-sm font-medium">
+            {filteredNav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

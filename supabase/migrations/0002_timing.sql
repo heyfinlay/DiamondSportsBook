@@ -1,5 +1,9 @@
 -- Timing Domain Schema
 
+drop type if exists public.session_phase cascade;
+drop type if exists public.track_status cascade;
+drop type if exists public.driver_status cascade;
+
 create type public.session_phase as enum ('setup', 'warmup', 'grid', 'race', 'finished');
 create type public.track_status as enum ('green', 'yellow', 'safety_car', 'red');
 create type public.driver_status as enum ('pending', 'running', 'pit', 'dnf', 'dsq');

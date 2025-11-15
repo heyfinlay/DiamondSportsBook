@@ -1,0 +1,13 @@
+  return (
+    data?.map((wager) => ({
+      id: wager.id,
+      stake: Number(wager.stake),
+      status: wager.status,
+      effective_odds: Number(wager.effective_odds),
+      created_at: wager.created_at,
+      outcome_label: Array.isArray(wager.outcome)
+        ? wager.outcome[0]?.label ?? "Unknown"
+        : (wager.outcome as { label?: string } | null)?.label ?? "Unknown"
+    })) ?? []
+  );
+};
