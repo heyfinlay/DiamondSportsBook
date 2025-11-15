@@ -1,7 +1,17 @@
 import { useWalletStore } from "@domains/wallet/store/walletStore";
+import { useSession } from "@lib/auth/SessionProvider";
 
 const AccountPage = () => {
   const transactions = useWalletStore((state) => state.transactions);
+  const { user, loading } = useSession();
+
+  if (!user && !loading) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
+        Sign in to manage your wallet.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

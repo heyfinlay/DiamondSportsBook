@@ -1,7 +1,12 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useWalletStore } from "@domains/wallet/store/walletStore";
+import { useSession } from "@lib/auth/SessionProvider";
 const AccountPage = () => {
     const transactions = useWalletStore((state) => state.transactions);
+    const { user, loading } = useSession();
+    if (!user && !loading) {
+        return (_jsx("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70", children: "Sign in to manage your wallet." }));
+    }
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("header", { children: [_jsx("p", { className: "text-sm uppercase tracking-[0.3em] text-white/60", children: "Wallet" }), _jsx("h1", { className: "text-3xl font-semibold", children: "Account" })] }), _jsxs("div", { className: "grid gap-4 md:grid-cols-2", children: [_jsxs("button", { className: "rounded-3xl border border-white/10 bg-brand/10 px-6 py-5 text-left text-white", children: [_jsx("h3", { className: "text-xl font-semibold", children: "Deposit" }), _jsx("p", { className: "text-sm text-white/70", children: "Request admin-approved credit" })] }), _jsxs("button", { className: "rounded-3xl border border-white/10 bg-white/5 px-6 py-5 text-left text-white", children: [_jsx("h3", { className: "text-xl font-semibold", children: "Withdraw" }), _jsx("p", { className: "text-sm text-white/70", children: "Submit withdrawal for review" })] })] }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsx("h2", { className: "text-xl font-semibold", children: "Recent Transactions" }), _jsxs("div", { className: "mt-4 space-y-3", children: [transactions.map((tx) => (_jsxs("div", { className: "flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-semibold capitalize", children: tx.kind }), _jsx("p", { className: "text-xs text-white/60", children: new Date(tx.createdAt).toLocaleString() })] }), _jsxs("p", { className: "text-lg font-semibold", children: [tx.amount > 0 ? "+" : "", "\u0189", tx.amount.toFixed(2)] })] }, tx.id))), transactions.length === 0 && (_jsx("p", { className: "text-sm text-white/60", children: "No transactions yet \u2014 they will appear here in realtime once the wallet domain is wired up." }))] })] })] }));
 };
 export default AccountPage;

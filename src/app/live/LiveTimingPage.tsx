@@ -1,13 +1,35 @@
 import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import {
+  fetchDriverStandings,
+  fetchSessionDetail
+} from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
-import { useTimingStore } from "@domains/timing/store/timingStore";
 
 const LiveTimingPage = () => {
   const { sessionId } = useParams();
   useTimingRealtime(sessionId);
-  const drivers = useTimingStore((state) => state.drivers);
-  const trackStatus = useTimingStore((state) => state.trackStatus);
-  const phase = useTimingStore((state) => state.phase);
+
+  if (!sessionId) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
+        Provide a session ID in the URL to view live timing.
+      </div>
+    );
+  }
+
+  const sessionQuery = useQuery({
+    queryKey: ["live-session", sessionId],
+    queryFn: () => fetchSessionDetail(sessionId!),
+    enabled: !!sessionId
+  });
+
+  const driversQuery = useQuery({
+    queryKey: ["live-standings", sessionId],
+    queryFn: () => fetchDriverStandings(sessionId!),
+    enabled: !!sessionId,
+    refetchInterval: 3_000
+  });
 
   return (
     <div className="space-y-6">
@@ -16,19 +38,28 @@ const LiveTimingPage = () => {
           <p className="text-sm uppercase tracking-widest text-white/60">
             Session
           </p>
-          <h1 className="text-2xl font-semibold">{sessionId ?? "—"}</h1>
+          <h1 className="text-2xl font-semibold">
+            {sessionQuery.data?.name ?? sessionId ?? "—"}
+          </h1>
+          <p className="text-sm text-white/60">
+            {sessionQuery.data?.track_name ?? "Track TBD"}
+          </p>
         </div>
-        <div className="rounded-2xl border border-white/10 px-6 py-3">
+        <div className="rounded-2xl border border-white/10 px-6 py-3 text-right">
           <p className="text-xs uppercase tracking-widest text-white/60">
             Track Status
           </p>
-          <p className="text-lg font-semibold capitalize">{trackStatus}</p>
+          <p className="text-lg font-semibold capitalize">
+            {sessionQuery.data?.track_status ?? "green"}
+          </p>
         </div>
-        <div className="rounded-2xl border border-white/10 px-6 py-3">
+        <div className="rounded-2xl border border-white/10 px-6 py-3 text-right">
           <p className="text-xs uppercase tracking-widest text-white/60">
             Phase
           </p>
-          <p className="text-lg font-semibold capitalize">{phase}</p>
+          <p className="text-lg font-semibold capitalize">
+            {sessionQuery.data?.phase ?? "setup"}
+          </p>
         </div>
       </div>
 
@@ -47,25 +78,34 @@ const LiveTimingPage = () => {
             </tr>
           </thead>
           <tbody>
-            {drivers.map((driver, idx) => (
+            {driversQuery.isLoading && (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-white/60">
+                  Loading standings…
+                </td>
+              </tr>
+            )}
+            {driversQuery.data?.map((driver, idx) => (
               <tr
-                key={driver.id}
+                key={driver.driver_id}
                 className="border-t border-white/5 hover:bg-white/5"
               >
-                <td className="px-4 py-3">{idx + 1}</td>
+                <td className="px-4 py-3">{driver.position ?? idx + 1}</td>
                 <td className="px-4 py-3 font-medium">
-                  #{driver.carNumber} {driver.name}
+                  #{driver.car_number} {driver.driver_name}
                 </td>
-                <td className="px-4 py-3 text-white/70">{driver.team}</td>
-                <td className="px-4 py-3 text-right">{driver.laps}</td>
+                <td className="px-4 py-3 text-white/70">{driver.team_name}</td>
+                <td className="px-4 py-3 text-right">{driver.laps_completed}</td>
                 <td className="px-4 py-3 text-right">
-                  {driver.lastLapMs ? formatLap(driver.lastLapMs) : "—"}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  {driver.bestLapMs ? formatLap(driver.bestLapMs) : "—"}
+                  {driver.last_lap_ms ? formatLap(driver.last_lap_ms) : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {driver.gapToLeaderMs ? `+${formatLap(driver.gapToLeaderMs)}` : "Leader"}
+                  {driver.best_lap_ms ? formatLap(driver.best_lap_ms) : "—"}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {driver.gap_to_leader_ms
+                    ? `+${formatLap(driver.gap_to_leader_ms)}`
+                    : "Leader"}
                 </td>
                 <td className="px-4 py-3 text-right capitalize">
                   {driver.status}

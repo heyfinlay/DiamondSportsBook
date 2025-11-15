@@ -1,62 +1,45 @@
 import { useEffect } from "react";
-import { subscribeToChannel } from "@lib/realtime";
 import { supabase } from "@lib/supabaseClient";
-import { useTimingStore } from "../store/timingStore";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useTimingRealtime = (sessionId?: string) => {
-  const setSessionMeta = useTimingStore((state) => state.setSessionMeta);
-  const upsertDrivers = useTimingStore((state) => state.upsertDrivers);
-  const pushLapEvent = useTimingStore((state) => state.pushLapEvent);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!sessionId) return;
 
-    const channel = subscribeToChannel(
-      `session-${sessionId}`,
-      { config: { broadcast: { ack: true } } }
-    )
+    const channel = supabase
+      .channel(`timing-${sessionId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "session_state", filter: `session_id=eq.${sessionId}` },
-        (payload) => {
-          const newRow = payload.new as any;
-          setSessionMeta({
-            sessionId,
-            phase: newRow.phase,
-            raceTimeMs: newRow.race_time_ms
-          });
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
+          queryClient.invalidateQueries({ queryKey: ["live-session", sessionId] });
         }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "live_driver_standings", filter: `session_id=eq.${sessionId}` },
-        (payload) => {
-          const rows = Array.isArray(payload.new) ? payload.new : [payload.new];
-          upsertDrivers(
-            rows.map((row: any) => ({
-              id: row.driver_id,
-              name: row.driver_name,
-              team: row.team_name,
-              carNumber: row.car_number,
-              laps: row.laps_completed,
-              lastLapMs: row.last_lap_ms,
-              bestLapMs: row.best_lap_ms,
-              gapToLeaderMs: row.gap_to_leader_ms,
-              status: row.status
-            }))
-          );
+        { event: "*", schema: "public", table: "drivers", filter: `session_id=eq.${sessionId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
+          queryClient.invalidateQueries({ queryKey: ["live-standings", sessionId] });
         }
       )
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "laps", filter: `session_id=eq.${sessionId}` },
-        (payload) => {
-          pushLapEvent({
-            id: payload.new.id,
-            driverId: payload.new.driver_id,
-            lapNumber: payload.new.lap_number,
-            lapMs: payload.new.lap_ms
-          });
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
+          queryClient.invalidateQueries({ queryKey: ["live-standings", sessionId] });
+          queryClient.invalidateQueries({ queryKey: ["timing-events", sessionId] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "race_events", filter: `session_id=eq.${sessionId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["timing-events", sessionId] });
         }
       )
       .subscribe();
@@ -64,5 +47,5 @@ export const useTimingRealtime = (sessionId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId, setSessionMeta, upsertDrivers, pushLapEvent]);
+  }, [queryClient, sessionId]);
 };
