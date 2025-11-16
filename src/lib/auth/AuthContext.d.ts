@@ -1,6 +1,5 @@
-import { type ReactNode } from "react";
-import type { Session, User, AuthError } from "@supabase/supabase-js";
-interface SessionContextValue {
+import { User, Session, AuthError } from '@supabase/supabase-js';
+interface AuthContextType {
     user: User | null;
     session: Session | null;
     loading: boolean;
@@ -14,8 +13,8 @@ interface SessionContextValue {
         error: AuthError | null;
     }>;
 }
-export declare const SessionProvider: ({ children }: {
-    children: ReactNode;
-}) => import("react/jsx-runtime").JSX.Element;
-export declare const useSession: () => SessionContextValue;
+export declare function AuthProvider({ children }: {
+    children: React.ReactNode;
+}): import("react/jsx-runtime").JSX.Element;
+export declare function useAuth(): AuthContextType;
 export {};
