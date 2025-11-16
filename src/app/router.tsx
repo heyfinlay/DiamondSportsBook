@@ -7,8 +7,13 @@ import MarketDetailPage from "./markets/MarketDetailPage";
 import AccountPage from "./account/AccountPage";
 import AdminDashboard from "./admin/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { LoginPage } from "./auth/LoginPage";
 
 export const router: ReturnType<typeof createBrowserRouter> = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />
+  },
   {
     path: "/",
     element: <RootLayout />,

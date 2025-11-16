@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useSession } from "@lib/auth/SessionProvider";
-import { useProfile } from "@domains/identity/hooks/useProfile";
+import { usePermissions } from "@lib/auth/usePermissions";
 
 interface ProtectedRouteProps {
   requiredRoles?: string[];
@@ -8,22 +8,20 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ requiredRoles }: ProtectedRouteProps) => {
   const { user, loading } = useSession();
-  const profileQuery = useProfile();
+  const { hasAnyRole, loading: permissionsLoading } = usePermissions();
 
-  if (loading || profileQuery.isLoading) {
+  if (loading || permissionsLoading) {
     return <div className="text-white/70">Checking permissions…</div>;
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  if (
-    requiredRoles &&
-    requiredRoles.length > 0 &&
-    !requiredRoles.includes(profileQuery.data?.role ?? "spectator")
-  ) {
-    return <Navigate to="/" replace />;
+  if (requiredRoles && requiredRoles.length > 0) {
+    if (!hasAnyRole(...requiredRoles)) {
+      return <Navigate to="/login" replace />;
+    }
   }
 
   return <Outlet />;

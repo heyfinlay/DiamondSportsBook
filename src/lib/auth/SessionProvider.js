@@ -4,7 +4,10 @@ import { supabase } from "@lib/supabaseClient";
 const SessionContext = createContext({
     user: null,
     session: null,
-    loading: true
+    loading: true,
+    signIn: async () => ({ error: null }),
+    signUp: async () => ({ error: null }),
+    signOut: async () => ({ error: null })
 });
 export const SessionProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -25,7 +28,25 @@ export const SessionProvider = ({ children }) => {
             subscription.unsubscribe();
         };
     }, []);
-    const value = useMemo(() => ({ user, session, loading }), [user, session, loading]);
+    const signIn = async (email, password) => {
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+        return { error };
+    };
+    const signUp = async (email, password) => {
+        const { error } = await supabase.auth.signUp({
+            email,
+            password
+        });
+        return { error };
+    };
+    const signOut = async () => {
+        const { error } = await supabase.auth.signOut();
+        return { error };
+    };
+    const value = useMemo(() => ({ user, session, loading, signIn, signUp, signOut }), [user, session, loading]);
     return (_jsx(SessionContext.Provider, { value: value, children: children }));
 };
 export const useSession = () => useContext(SessionContext);

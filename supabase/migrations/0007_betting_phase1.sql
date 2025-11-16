@@ -6,9 +6,15 @@ grant select, insert, update on public.markets to authenticated;
 grant select, insert, update on public.outcomes to authenticated;
 
 -- Policy: wagers insert requires authenticated user (wallet RPC already checks permissions)
-create policy "Wagers insert authenticated" on public.wagers
-  for insert
-  with check (auth.uid() = user_id);
+do $$
+begin
+  create policy "Wagers insert authenticated" on public.wagers
+    for insert
+    with check (auth.uid() = user_id);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 -- RPC to create event + markets
 create or replace function public.betting_create_event_and_markets(
