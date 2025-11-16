@@ -256,10 +256,3 @@ begin
   where id = p_withdrawal_id;
 end;
 $$;
-
-grant execute on function public.wallet_credit(uuid, numeric, jsonb) to authenticated;
-grant execute on function public.wallet_debit(uuid, numeric, jsonb) to authenticated;
-grant execute on function public.wallet_request_deposit(numeric) to authenticated;
-grant execute on function public.wallet_request_withdrawal(numeric) to authenticated;
-grant execute on function public.wallet_approve_withdrawal(uuid) to authenticated;
-grant execute on function public.wallet_reject_withdrawal(uuid) to authenticated;

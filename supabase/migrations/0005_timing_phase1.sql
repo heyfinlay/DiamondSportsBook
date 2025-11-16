@@ -9,47 +9,119 @@ alter table if exists public.race_events enable row level security;
 alter table if exists public.session_members enable row level security;
 
 -- Basic read policies (spectators can read timing data)
-create policy if not exists "Sessions readable" on public.sessions
-  for select using (true);
+do $$
+begin
+  create policy "Sessions readable" on public.sessions
+    for select using (true);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Session state readable" on public.session_state
-  for select using (true);
+do $$
+begin
+  create policy "Session state readable" on public.session_state
+    for select using (true);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Drivers readable" on public.drivers
-  for select using (true);
+do $$
+begin
+  create policy "Drivers readable" on public.drivers
+    for select using (true);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Laps readable" on public.laps
-  for select using (true);
+do $$
+begin
+  create policy "Laps readable" on public.laps
+    for select using (true);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Race events readable" on public.race_events
-  for select using (true);
+do $$
+begin
+  create policy "Race events readable" on public.race_events
+    for select using (true);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 -- Mutations require race control / marshal permissions
-create policy if not exists "Sessions managed by race control" on public.sessions
-  for all using (public.has_permission('race_control'));
+do $$
+begin
+  create policy "Sessions managed by race control" on public.sessions
+    for all using (public.has_permission('race_control'));
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Session state managed by race control" on public.session_state
-  for all using (public.has_permission('race_control'));
+do $$
+begin
+  create policy "Session state managed by race control" on public.session_state
+    for all using (public.has_permission('race_control'));
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Drivers managed by race control" on public.drivers
-  for all using (public.has_permission('race_control'));
+do $$
+begin
+  create policy "Drivers managed by race control" on public.drivers
+    for all using (public.has_permission('race_control'));
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Race events managed by race control" on public.race_events
-  for all using (
-    public.has_permission('race_control') or public.has_permission('marshal')
-  );
+do $$
+begin
+  create policy "Race events managed by race control" on public.race_events
+    for all using (
+      public.has_permission('race_control') or public.has_permission('marshal')
+    );
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Laps insert via marshal/race control" on public.laps
-  for insert using (
-    public.has_permission('marshal') or public.has_permission('race_control')
-  );
+do $$
+begin
+  create policy "Laps insert via marshal/race control" on public.laps
+    for insert with check (
+      public.has_permission('marshal') or public.has_permission('race_control')
+    );
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 -- Session members only editable by race control
-create policy if not exists "Session members readable" on public.session_members
-  for select using (true);
+do $$
+begin
+  create policy "Session members readable" on public.session_members
+    for select using (true);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Session members managed" on public.session_members
-  for all using (public.has_permission('race_control'));
+do $$
+begin
+  create policy "Session members managed" on public.session_members
+    for all using (public.has_permission('race_control'));
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 -- RPC: timing_create_session
 create or replace function public.timing_create_session(
@@ -103,8 +175,6 @@ begin
 end;
 $$;
 
-grant execute on function public.timing_create_session(text, text, integer, jsonb) to authenticated;
-
 -- RPC: timing_initialize_race
 create or replace function public.timing_initialize_race(p_session_id uuid)
 returns public.session_state
@@ -151,8 +221,6 @@ begin
 end;
 $$;
 
-grant execute on function public.timing_initialize_race(uuid) to authenticated;
-
 -- Replace timing_log_lap_atomic with canonical verb name
 drop function if exists public.timing_log_lap_atomic(uuid, integer, integer);
 
@@ -198,5 +266,3 @@ begin
   return lap_record;
 end;
 $$;
-
-grant execute on function public.timing_log_lap(uuid, integer, integer) to authenticated;

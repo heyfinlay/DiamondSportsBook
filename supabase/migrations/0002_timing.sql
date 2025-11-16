@@ -153,8 +153,6 @@ begin
 end;
 $$;
 
-grant execute on function public.timing_update_session_state(uuid, public.session_phase, public.track_status, bigint) to authenticated;
-
 create or replace function public.timing_log_lap_atomic(
   p_driver_id uuid,
   p_lap_number integer,
@@ -197,5 +195,3 @@ begin
   return lap_record;
 end;
 $$;
-
-grant execute on function public.timing_log_lap_atomic(uuid, integer, integer) to authenticated;

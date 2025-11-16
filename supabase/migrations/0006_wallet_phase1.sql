@@ -1,37 +1,61 @@
 -- Phase 2 Wallet Policies & RPCs
 
 -- Allow wallet owners and betting admins to view their deposits/withdrawals
-create policy if not exists "Deposits readable" on public.deposits
-  for select using (
-    exists (
-      select 1 from public.wallet_accounts wa
-      where wa.id = deposits.account_id
-        and (wa.user_id = auth.uid() or public.has_permission('betting_admin'))
-    )
-  );
+do $$
+begin
+  create policy "Deposits readable" on public.deposits
+    for select using (
+      exists (
+        select 1 from public.wallet_accounts wa
+        where wa.id = deposits.account_id
+          and (wa.user_id = auth.uid() or public.has_permission('betting_admin'))
+      )
+    );
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Withdrawals readable" on public.withdrawals
-  for select using (
-    exists (
-      select 1 from public.wallet_accounts wa
-      where wa.id = withdrawals.account_id
-        and (wa.user_id = auth.uid() or public.has_permission('betting_admin'))
-    )
-  );
+do $$
+begin
+  create policy "Withdrawals readable" on public.withdrawals
+    for select using (
+      exists (
+        select 1 from public.wallet_accounts wa
+        where wa.id = withdrawals.account_id
+          and (wa.user_id = auth.uid() or public.has_permission('betting_admin'))
+      )
+    );
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 -- Admins can view wallet accounts/transactions for oversight
-create policy if not exists "Wallet accounts readable by admin" on public.wallet_accounts
-  for select using (public.has_permission('betting_admin') or auth.uid() = user_id);
+do $$
+begin
+  create policy "Wallet accounts readable by admin" on public.wallet_accounts
+    for select using (public.has_permission('betting_admin') or auth.uid() = user_id);
+exception
+  when duplicate_object then null;
+end;
+$$;
 
-create policy if not exists "Wallet transactions readable by admin" on public.wallet_transactions
-  for select using (
-    public.has_permission('betting_admin')
-    or exists (
-      select 1 from public.wallet_accounts wa
-      where wa.id = wallet_transactions.account_id
-        and wa.user_id = auth.uid()
-    )
-  );
+do $$
+begin
+  create policy "Wallet transactions readable by admin" on public.wallet_transactions
+    for select using (
+      public.has_permission('betting_admin')
+      or exists (
+        select 1 from public.wallet_accounts wa
+        where wa.id = wallet_transactions.account_id
+          and wa.user_id = auth.uid()
+      )
+    );
+exception
+  when duplicate_object then null;
+end;
+$$;
 
 -- Wallet balances view convenience
 grant select on public.wallet_balances to authenticated;
@@ -83,5 +107,3 @@ begin
   where id = p_deposit_id;
 end;
 $$;
-
-grant execute on function public.wallet_approve_deposit(uuid) to authenticated;

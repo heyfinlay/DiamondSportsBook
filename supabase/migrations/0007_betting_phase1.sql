@@ -72,8 +72,6 @@ begin
 end;
 $$;
 
-grant execute on function public.betting_create_event_and_markets(text, uuid, numeric, jsonb) to authenticated;
-
 -- Simple status change RPCs
 create or replace function public.betting_open_market(p_market_id uuid)
 returns public.markets
@@ -110,7 +108,3 @@ as $$
   where id = p_market_id
   returning *;
 $$;
-
-grant execute on function public.betting_open_market(uuid) to authenticated;
-grant execute on function public.betting_close_market(uuid) to authenticated;
-grant execute on function public.betting_suspend_market(uuid) to authenticated;

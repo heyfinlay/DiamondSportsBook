@@ -1,10 +1,20 @@
--- Betting Domain Schema
+-- Ensure enums exist so fresh databases can apply this migration.
+do $$
+begin
+  if exists (select 1 from pg_type where typname = 'market_status') then
+    drop type public.market_status cascade;
+  end if;
+  create type public.market_status as enum ('draft', 'open', 'suspended', 'closed', 'settled');
+end $$;
 
-drop type if exists public.market_status cascade;
-drop type if exists public.wager_status cascade;
+do $$
+begin
+  if exists (select 1 from pg_type where typname = 'wager_status') then
+    drop type public.wager_status cascade;
+  end if;
+  create type public.wager_status as enum ('pending', 'accepted', 'won', 'lost');
+end $$;
 
-create type public.market_status as enum ('draft', 'open', 'suspended', 'closed', 'settled');
-create type public.wager_status as enum ('pending', 'accepted', 'void', 'won', 'lost', 'refunded');
 
 create table public.events (
   id uuid primary key default gen_random_uuid(),
@@ -192,8 +202,6 @@ begin
 end;
 $$;
 
-grant execute on function public.betting_preview_wager(uuid, uuid, numeric) to authenticated;
-
 create or replace function public.betting_place_wager(
   p_market_id uuid,
   p_outcome_id uuid,
@@ -257,8 +265,6 @@ begin
 end;
 $$;
 
-grant execute on function public.betting_place_wager(uuid, uuid, numeric, text) to authenticated;
-
 create or replace function public.betting_settle_market(
   p_market_id uuid,
   p_winning_outcome uuid
@@ -308,5 +314,3 @@ begin
   update public.markets set status = 'settled' where id = p_market_id;
 end;
 $$;
-
-grant execute on function public.betting_settle_market(uuid, uuid) to authenticated;
