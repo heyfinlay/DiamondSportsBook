@@ -12,7 +12,7 @@ export function LoginPage() {
     const { signIn, signUp } = useSession();
     const navigate = useNavigate();
     const location = useLocation();
-    const from = location.state?.from?.pathname || '/control';
+    const from = location.state?.from?.pathname || '/';
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
