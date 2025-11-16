@@ -9,8 +9,8 @@ declare const sessionStateSchema: z.ZodObject<{
     race_time_ms: z.ZodNumber;
     session_id: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    name?: string;
     id?: string;
+    name?: string;
     track_name?: string;
     laps_target?: number;
     phase?: string;
@@ -18,8 +18,8 @@ declare const sessionStateSchema: z.ZodObject<{
     race_time_ms?: number;
     session_id?: string;
 }, {
-    name?: string;
     id?: string;
+    name?: string;
     track_name?: string;
     laps_target?: number;
     phase?: string;
@@ -86,9 +86,98 @@ declare const raceEventSchema: z.ZodObject<{
     created_at?: string;
 }>;
 export type RaceEvent = z.infer<typeof raceEventSchema>;
-export declare const fetchSessionDetail: (sessionId: string) => Promise<{
-    name?: string;
+declare const penaltySchema: z.ZodObject<{
+    id: z.ZodString;
+    session_id: z.ZodString;
+    driver_id: z.ZodNullable<z.ZodString>;
+    reason: z.ZodString;
+    seconds: z.ZodNumber;
+    issued_at: z.ZodString;
+    driver: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        display_name: z.ZodString;
+        car_number: z.ZodNullable<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    }, {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    }>>>;
+}, "strip", z.ZodTypeAny, {
     id?: string;
+    session_id?: string;
+    driver_id?: string;
+    reason?: string;
+    seconds?: number;
+    issued_at?: string;
+    driver?: {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    };
+}, {
+    id?: string;
+    session_id?: string;
+    driver_id?: string;
+    reason?: string;
+    seconds?: number;
+    issued_at?: string;
+    driver?: {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    };
+}>;
+export type PenaltyLog = z.infer<typeof penaltySchema>;
+declare const pitEventLogSchema: z.ZodObject<{
+    id: z.ZodString;
+    session_id: z.ZodString;
+    driver_id: z.ZodString;
+    duration_ms: z.ZodNullable<z.ZodNumber>;
+    started_at: z.ZodString;
+    driver: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        display_name: z.ZodString;
+        car_number: z.ZodNullable<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    }, {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    }>>>;
+}, "strip", z.ZodTypeAny, {
+    id?: string;
+    session_id?: string;
+    driver_id?: string;
+    driver?: {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    };
+    duration_ms?: number;
+    started_at?: string;
+}, {
+    id?: string;
+    session_id?: string;
+    driver_id?: string;
+    driver?: {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    };
+    duration_ms?: number;
+    started_at?: string;
+}>;
+export type PitEventLog = z.infer<typeof pitEventLogSchema>;
+export declare const fetchSessionDetail: (sessionId: string) => Promise<{
+    id?: string;
+    name?: string;
     track_name?: string;
     laps_target?: number;
     phase?: string;
@@ -136,4 +225,43 @@ export interface LogLapPayload {
     lapMs: number;
 }
 export declare const logLap: (payload: LogLapPayload) => Promise<void>;
+export declare const invalidateLastLap: (driverId: string) => Promise<void>;
+export interface LogPenaltyPayload {
+    sessionId: string;
+    driverId?: string | null;
+    reason: string;
+    seconds: number;
+}
+export declare const logPenalty: (payload: LogPenaltyPayload) => Promise<void>;
+export interface LogPitEventPayload {
+    driverId: string;
+    durationMs?: number | null;
+}
+export declare const logPitEvent: (payload: LogPitEventPayload) => Promise<void>;
+export declare const deleteSessionDeep: (sessionId: string) => Promise<void>;
+export declare const fetchPenalties: (sessionId: string) => Promise<{
+    id?: string;
+    session_id?: string;
+    driver_id?: string;
+    reason?: string;
+    seconds?: number;
+    issued_at?: string;
+    driver?: {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    };
+}[]>;
+export declare const fetchPitEvents: (sessionId: string) => Promise<{
+    id?: string;
+    session_id?: string;
+    driver_id?: string;
+    driver?: {
+        id?: string;
+        car_number?: number;
+        display_name?: string;
+    };
+    duration_ms?: number;
+    started_at?: string;
+}[]>;
 export {};

@@ -4,6 +4,10 @@ grant execute on function public.timing_update_session_state(uuid, public.sessio
 grant execute on function public.timing_create_session(text, text, integer, jsonb) to authenticated;
 grant execute on function public.timing_initialize_race(uuid) to authenticated;
 grant execute on function public.timing_log_lap(uuid, integer, integer) to authenticated;
+grant execute on function public.timing_invalidate_last_lap(uuid) to authenticated;
+grant execute on function public.timing_log_penalty(uuid, uuid, text, integer) to authenticated;
+grant execute on function public.timing_log_pit_event(uuid, integer) to authenticated;
+grant execute on function public.timing_delete_session_deep(uuid) to authenticated;
 
 grant execute on function public.betting_preview_wager(uuid, uuid, numeric) to authenticated;
 grant execute on function public.betting_place_wager(uuid, uuid, numeric, text) to authenticated;
@@ -18,5 +22,5 @@ grant execute on function public.wallet_debit(uuid, numeric, jsonb) to authentic
 grant execute on function public.wallet_request_deposit(numeric) to authenticated;
 grant execute on function public.wallet_request_withdrawal(numeric) to authenticated;
 grant execute on function public.wallet_approve_withdrawal(uuid) to authenticated;
-grant execute on function public.wallet_reject_withdrawal(uuid) to authenticated;
+grant execute on function public.wallet_reject_withdrawal(uuid, text) to authenticated;
 grant execute on function public.wallet_approve_deposit(uuid) to authenticated;

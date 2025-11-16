@@ -2,6 +2,8 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchDriverStandings,
+  fetchPenalties,
+  fetchPitEvents,
   fetchSessionDetail
 } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
@@ -27,6 +29,18 @@ const LiveTimingPage = () => {
   const driversQuery = useQuery({
     queryKey: ["live-standings", sessionId],
     queryFn: () => fetchDriverStandings(sessionId!),
+    enabled: !!sessionId
+  });
+
+  const penaltiesQuery = useQuery({
+    queryKey: ["live-penalties", sessionId],
+    queryFn: () => fetchPenalties(sessionId!),
+    enabled: !!sessionId
+  });
+
+  const pitEventsQuery = useQuery({
+    queryKey: ["live-pit-events", sessionId],
+    queryFn: () => fetchPitEvents(sessionId!),
     enabled: !!sessionId
   });
 
@@ -109,6 +123,78 @@ const LiveTimingPage = () => {
           </tbody>
         </table>
       </div>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-white/10 bg-black/30 p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Penalties</h2>
+            {penaltiesQuery.isLoading && (
+              <span className="text-xs uppercase tracking-[0.3em] text-white/40">
+                Updating…
+              </span>
+            )}
+          </div>
+          <div className="mt-4 space-y-3">
+            {penaltiesQuery.data?.map((penalty) => (
+              <article
+                key={penalty.id}
+                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold">
+                    {penalty.driver?.display_name
+                      ? `#${penalty.driver.car_number ?? "?"} ${penalty.driver.display_name}`
+                      : "Session Penalty"}
+                  </p>
+                  <p className="text-xs text-white/50">
+                    {formatEventTime(penalty.issued_at)}
+                  </p>
+                </div>
+                <p className="text-sm text-white/70">
+                  {penalty.seconds}s · {penalty.reason}
+                </p>
+              </article>
+            ))}
+            {penaltiesQuery.data && penaltiesQuery.data.length === 0 && (
+              <p className="text-sm text-white/60">No penalties yet.</p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-3xl border border-white/10 bg-black/30 p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Pit Events</h2>
+            {pitEventsQuery.isLoading && (
+              <span className="text-xs uppercase tracking-[0.3em] text-white/40">
+                Updating…
+              </span>
+            )}
+          </div>
+          <div className="mt-4 space-y-3">
+            {pitEventsQuery.data?.map((pit) => (
+              <article
+                key={pit.id}
+                className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold">
+                    #{pit.driver?.car_number ?? "?"}{" "}
+                    {pit.driver?.display_name ?? "Unknown Driver"}
+                  </p>
+                  <p className="text-xs text-white/50">
+                    {formatEventTime(pit.started_at)}
+                  </p>
+                </div>
+                <p className="text-sm text-white/70">
+                  {pit.duration_ms ? formatDuration(pit.duration_ms) : "Duration pending"}
+                </p>
+              </article>
+            ))}
+            {pitEventsQuery.data && pitEventsQuery.data.length === 0 && (
+              <p className="text-sm text-white/60">No pit activity yet.</p>
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
@@ -120,6 +206,14 @@ const formatLap = (ms: number) => {
   return `${minutes}:${seconds.toString().padStart(2, "0")}.${millis
     .toString()
     .padStart(3, "0")}`;
+};
+
+const formatEventTime = (timestamp: string) => {
+  return new Date(timestamp).toLocaleTimeString();
+};
+
+const formatDuration = (ms: number) => {
+  return `${(ms / 1000).toFixed(1)}s`;
 };
 
 export default LiveTimingPage;

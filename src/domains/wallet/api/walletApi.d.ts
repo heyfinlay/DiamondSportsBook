@@ -55,3 +55,38 @@ export declare const fetchPendingWithdrawals: () => Promise<{
 }[]>;
 export declare const approveDeposit: (depositId: string) => Promise<void>;
 export declare const approveWithdrawal: (withdrawalId: string) => Promise<void>;
+export declare const rejectWithdrawal: (withdrawalId: string, reason?: string) => Promise<void>;
+export interface UserDepositRequest {
+    id: string;
+    amount: number;
+    status: string;
+    requested_at: string;
+    approved_at: string | null;
+    approved_by: string | null;
+}
+export declare const fetchUserDeposits: (userId: string, limit?: number) => Promise<{
+    id: any;
+    amount: number;
+    status: string;
+    requested_at: string;
+    approved_at: string | null;
+    approved_by: string | null;
+}[]>;
+export interface UserWithdrawalRequest {
+    id: string;
+    amount: number;
+    status: string;
+    requested_at: string;
+    processed_at: string | null;
+    admin_note: string | null;
+    processed_by: string | null;
+}
+export declare const fetchUserWithdrawals: (userId: string, limit?: number) => Promise<{
+    id: any;
+    amount: number;
+    status: string;
+    requested_at: string;
+    processed_at: string | null;
+    admin_note: string | null;
+    processed_by: string | null;
+}[]>;

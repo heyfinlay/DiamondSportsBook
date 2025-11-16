@@ -1,12 +1,16 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   createSession,
+  deleteSessionDeep,
   fetchDriverStandings,
   fetchSessionDetail,
   fetchRaceEvents,
   initializeRace,
+  invalidateLastLap,
   logLap,
+  logPenalty,
+  logPitEvent,
   type DriverStanding,
   type RaceEvent
 } from "@domains/timing/api/timingApi";
@@ -53,8 +57,36 @@ const RaceControlPage = () => {
     driversText: ""
   });
   const [lapError, setLapError] = useState<string | null>(null);
+  const [controlMessage, setControlMessage] = useState<string | null>(null);
+  const [controlMessageTone, setControlMessageTone] = useState<"success" | "error">(
+    "success"
+  );
+  const [invalidateDriverId, setInvalidateDriverId] = useState("");
+  const [penaltyForm, setPenaltyForm] = useState({
+    driverId: "",
+    seconds: "5",
+    reason: ""
+  });
+  const [pitForm, setPitForm] = useState({
+    driverId: "",
+    durationMs: ""
+  });
 
   useTimingRealtime(sessionId);
+
+  const clearControlMessage = () => setControlMessage(null);
+  const setControlStatus = (message: string, tone: "success" | "error" = "success") => {
+    setControlMessageTone(tone);
+    setControlMessage(message);
+  };
+
+  const refreshTimingData = () => {
+    if (!sessionId) return;
+    queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
+    queryClient.invalidateQueries({ queryKey: ["timing-events", sessionId] });
+    queryClient.invalidateQueries({ queryKey: ["live-penalties", sessionId] });
+    queryClient.invalidateQueries({ queryKey: ["live-pit-events", sessionId] });
+  };
 
   const sessionQuery = useQuery({
     queryKey: ["timing-session", sessionId],
@@ -100,6 +132,57 @@ const RaceControlPage = () => {
     }
   });
 
+  const invalidateLapMutation = useMutation({
+    mutationFn: (driverId: string) => invalidateLastLap(driverId),
+    onMutate: () => clearControlMessage(),
+    onSuccess: () => {
+      setControlStatus("Last lap invalidated.");
+      refreshTimingData();
+    },
+    onError: (error: Error) => {
+      setControlStatus(error.message, "error");
+    }
+  });
+
+  const logPenaltyMutation = useMutation({
+    mutationFn: logPenalty,
+    onMutate: () => clearControlMessage(),
+    onSuccess: () => {
+      setControlStatus("Penalty recorded.");
+      refreshTimingData();
+      setPenaltyForm((prev) => ({ ...prev, reason: "" }));
+    },
+    onError: (error: Error) => {
+      setControlStatus(error.message, "error");
+    }
+  });
+
+  const logPitEventMutation = useMutation({
+    mutationFn: logPitEvent,
+    onMutate: () => clearControlMessage(),
+    onSuccess: () => {
+      setControlStatus("Pit event logged.");
+      refreshTimingData();
+      setPitForm((prev) => ({ ...prev, durationMs: "" }));
+    },
+    onError: (error: Error) => setControlStatus(error.message, "error")
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: deleteSessionDeep,
+    onMutate: () => clearControlMessage(),
+    onSuccess: () => {
+      setControlStatus("Session deleted.");
+      if (sessionId) {
+        queryClient.removeQueries({ queryKey: ["timing-session", sessionId] });
+        queryClient.removeQueries({ queryKey: ["timing-drivers", sessionId] });
+        queryClient.removeQueries({ queryKey: ["timing-events", sessionId] });
+      }
+      navigate("/control");
+    },
+    onError: (error: Error) => setControlStatus(error.message, "error")
+  });
+
   const handleCreateSession = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const drivers = parseDrivers(formState.driversText);
@@ -131,6 +214,108 @@ const RaceControlPage = () => {
     });
   };
 
+  const handleInvalidateLap = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!invalidateDriverId) {
+      setControlStatus("Select a driver to invalidate.", "error");
+      return;
+    }
+    invalidateLapMutation.mutate(invalidateDriverId);
+  };
+
+  const handleLogPenaltySubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!sessionId) return;
+    const seconds = Number(penaltyForm.seconds);
+    if (!penaltyForm.reason.trim()) {
+      setControlStatus("Provide a penalty reason.", "error");
+      return;
+    }
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      setControlStatus("Penalty seconds must be greater than zero.", "error");
+      return;
+    }
+    logPenaltyMutation.mutate({
+      sessionId,
+      driverId: penaltyForm.driverId || null,
+      reason: penaltyForm.reason.trim(),
+      seconds
+    });
+  };
+
+  const handleLogPitSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!pitForm.driverId) {
+      setControlStatus("Select a driver for the pit event.", "error");
+      return;
+    }
+    const duration = pitForm.durationMs ? Number(pitForm.durationMs) : null;
+    if (pitForm.durationMs && (Number.isNaN(duration) || duration <= 0)) {
+      setControlStatus("Enter a valid pit duration in ms.", "error");
+      return;
+    }
+    logPitEventMutation.mutate({
+      driverId: pitForm.driverId,
+      durationMs: duration
+    });
+  };
+
+  const handleDeleteSession = () => {
+    if (!sessionId) return;
+    const confirmed = window.confirm(
+      "Delete this session and all timing data? This cannot be undone."
+    );
+    if (!confirmed) return;
+    deleteSessionMutation.mutate(sessionId);
+  };
+
+  const promptPitForDriver = (driver: DriverStanding) => {
+    const durationInput = window.prompt(
+      `Pit duration (ms) for ${driver.driver_name}`,
+      "25000"
+    );
+    if (!durationInput) return;
+    const durationMs = Number(durationInput);
+    if (!Number.isFinite(durationMs) || durationMs <= 0) {
+      setControlStatus("Enter a valid pit duration.", "error");
+      return;
+    }
+    logPitEventMutation.mutate({
+      driverId: driver.driver_id,
+      durationMs
+    });
+  };
+
+  const promptPenaltyForDriver = (driver: DriverStanding) => {
+    if (!sessionId) return;
+    const secondsInput = window.prompt(
+      `Penalty seconds for ${driver.driver_name}`,
+      "5"
+    );
+    if (!secondsInput) return;
+    const seconds = Number(secondsInput);
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      setControlStatus("Penalty seconds must be greater than zero.", "error");
+      return;
+    }
+    const reason = window.prompt("Penalty reason", "Track limits");
+    if (!reason) return;
+    logPenaltyMutation.mutate({
+      sessionId,
+      driverId: driver.driver_id,
+      seconds,
+      reason: reason.trim()
+    });
+  };
+
+  const handleQuickInvalidate = (driver: DriverStanding) => {
+    const confirmInvalidate = window.confirm(
+      `Invalidate last lap for ${driver.driver_name}?`
+    );
+    if (!confirmInvalidate) return;
+    invalidateLapMutation.mutate(driver.driver_id);
+  };
+
   if (!sessionId) {
     return (
       <CreateSessionForm
@@ -141,6 +326,71 @@ const RaceControlPage = () => {
       />
     );
   }
+
+  const drivers = driversQuery.data ?? [];
+
+  const driverHotkeys = useMemo(() => {
+    const map = new Map<string, DriverStanding>();
+    drivers.forEach((driver) => {
+      const label = getHotkeyLabel(driver).toUpperCase();
+      map.set(label, driver);
+    });
+    return map;
+  }, [drivers]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const handler = (event: KeyboardEvent) => {
+      if (!drivers.length) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+
+      const key = event.key.toUpperCase();
+      const driver = driverHotkeys.get(key);
+      if (!driver) return;
+
+      if (event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        handleQuickInvalidate(driver);
+        return;
+      }
+
+      if (event.altKey) {
+        event.preventDefault();
+        promptPitForDriver(driver);
+        return;
+      }
+
+      if (event.shiftKey) {
+        event.preventDefault();
+        promptPenaltyForDriver(driver);
+        return;
+      }
+
+      event.preventDefault();
+      handleLogLap(driver);
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [
+    drivers,
+    driverHotkeys,
+    handleLogLap,
+    handleQuickInvalidate,
+    promptPitForDriver,
+    promptPenaltyForDriver,
+    sessionId
+  ]);
 
   return (
     <div className="space-y-8">
@@ -163,6 +413,9 @@ const RaceControlPage = () => {
               <p className="text-sm text-white/60">
                 Click “Log Lap” to record manual times.
               </p>
+              <p className="text-xs text-white/40">
+                Hotkeys: letter=lap, Shift+letter=penalty, Alt+letter=pit, Ctrl+letter=invalidate.
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 px-4 py-2">
               Session: {sessionId}
@@ -184,7 +437,7 @@ const RaceControlPage = () => {
               {lapError && (
                 <p className="text-sm font-semibold text-red-400">{lapError}</p>
               )}
-              {driversQuery.data?.map((driver) => (
+              {drivers.map((driver) => (
                 <div
                   key={driver.driver_id}
                   className="grid grid-cols-6 items-center gap-3 rounded-2xl border border-white/5 bg-white/5 px-3 py-2 text-sm"
@@ -200,15 +453,192 @@ const RaceControlPage = () => {
                     <p className="text-[11px] uppercase tracking-[0.3em] text-white/40">
                       Hotkey: {getHotkeyLabel(driver)}
                     </p>
-                    <button
-                      className="rounded-full bg-brand/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-brand"
-                      onClick={() => handleLogLap(driver)}
-                    >
-                      Log Lap
-                    </button>
+                    <div className="space-y-1">
+                      <button
+                        className="rounded-full bg-brand/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-brand"
+                        onClick={() => handleLogLap(driver)}
+                      >
+                        Log Lap
+                      </button>
+                      <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.3em]">
+                        <button
+                          type="button"
+                          className="rounded-full border border-white/20 px-2 py-1 text-white/70 hover:border-white/50"
+                          onClick={() => promptPitForDriver(driver)}
+                        >
+                          Pit
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-full border border-white/20 px-2 py-1 text-white/70 hover:border-white/50"
+                          onClick={() => promptPenaltyForDriver(driver)}
+                        >
+                          Penalty
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-full border border-white/20 px-2 py-1 text-white/70 hover:border-white/50"
+                          onClick={() => handleQuickInvalidate(driver)}
+                        >
+                          Invalidate
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Race Actions</h3>
+                <p className="text-sm text-white/60">
+                  Everything here writes to the timing log per the manifesto.
+                </p>
+              </div>
+              {controlMessage && (
+                <p
+                  className={`text-sm font-semibold ${
+                    controlMessageTone === "success" ? "text-emerald-300" : "text-red-400"
+                  }`}
+                >
+                  {controlMessage}
+                </p>
+              )}
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <form
+                className="rounded-2xl border border-white/5 bg-black/40 p-4"
+                onSubmit={handleInvalidateLap}
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-white/60">
+                  Invalidate Last Lap
+                </p>
+                <select
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
+                  value={invalidateDriverId}
+                  onChange={(event) => setInvalidateDriverId(event.target.value)}
+                >
+                  <option value="">Select driver</option>
+                  {drivers.map((driver) => (
+                    <option key={driver.driver_id} value={driver.driver_id}>
+                      #{driver.car_number} {driver.driver_name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="mt-3 w-full rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+                  disabled={invalidateLapMutation.isPending}
+                >
+                  {invalidateLapMutation.isPending ? "Invalidating…" : "Invalidate Lap"}
+                </button>
+              </form>
+              <form
+                className="rounded-2xl border border-white/5 bg-black/40 p-4"
+                onSubmit={handleLogPenaltySubmit}
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-white/60">
+                  Log Penalty
+                </p>
+                <select
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
+                  value={penaltyForm.driverId}
+                  onChange={(event) =>
+                    setPenaltyForm((prev) => ({ ...prev, driverId: event.target.value }))
+                  }
+                >
+                  <option value="">Apply to session</option>
+                  {drivers.map((driver) => (
+                    <option key={driver.driver_id} value={driver.driver_id}>
+                      #{driver.car_number} {driver.driver_name}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-24 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
+                    value={penaltyForm.seconds}
+                    onChange={(event) =>
+                      setPenaltyForm((prev) => ({ ...prev, seconds: event.target.value }))
+                    }
+                  />
+                  <input
+                    type="text"
+                    className="flex-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
+                    placeholder="Reason"
+                    value={penaltyForm.reason}
+                    onChange={(event) =>
+                      setPenaltyForm((prev) => ({ ...prev, reason: event.target.value }))
+                    }
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="mt-3 w-full rounded-2xl bg-brand px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+                  disabled={logPenaltyMutation.isPending}
+                >
+                  {logPenaltyMutation.isPending ? "Logging…" : "Record Penalty"}
+                </button>
+              </form>
+              <form
+                className="rounded-2xl border border-white/5 bg-black/40 p-4"
+                onSubmit={handleLogPitSubmit}
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-white/60">
+                  Log Pit Event
+                </p>
+                <select
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
+                  value={pitForm.driverId}
+                  onChange={(event) =>
+                    setPitForm((prev) => ({ ...prev, driverId: event.target.value }))
+                  }
+                >
+                  <option value="">Select driver</option>
+                  {drivers.map((driver) => (
+                    <option key={driver.driver_id} value={driver.driver_id}>
+                      #{driver.car_number} {driver.driver_name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
+                  placeholder="Duration (ms)"
+                  value={pitForm.durationMs}
+                  onChange={(event) =>
+                    setPitForm((prev) => ({ ...prev, durationMs: event.target.value }))
+                  }
+                />
+                <button
+                  type="submit"
+                  className="mt-3 w-full rounded-2xl bg-white/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+                  disabled={logPitEventMutation.isPending}
+                >
+                  {logPitEventMutation.isPending ? "Logging…" : "Record Pit"}
+                </button>
+              </form>
+              <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-red-300">
+                  Dangerous
+                </p>
+                <p className="mt-1 text-sm text-white/70">
+                  Super admins only. Permanently deletes this session.
+                </p>
+                <button
+                  type="button"
+                  className="mt-4 w-full rounded-2xl border border-red-500/30 bg-red-500/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-200 disabled:opacity-40"
+                  onClick={handleDeleteSession}
+                  disabled={deleteSessionMutation.isPending}
+                >
+                  {deleteSessionMutation.isPending ? "Deleting…" : "Delete Session"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -223,7 +653,7 @@ const RaceControlPage = () => {
               <EventCard
                 key={event.id}
                 event={event}
-                drivers={driversQuery.data ?? []}
+                drivers={drivers}
               />
             ))}
             {eventsQuery.data && eventsQuery.data.length === 0 && (
@@ -401,6 +831,11 @@ const formatLap = (ms: number) => {
     .padStart(3, "0")}`;
 };
 
+const formatDurationSeconds = (ms?: number | null) => {
+  if (!ms || ms <= 0) return null;
+  return `${(ms / 1000).toFixed(1)}s`;
+};
+
 const getHotkeyLabel = (driver: DriverStanding) => {
   const index = (driver.position ?? 1) - 1;
   return HOTKEYS[index] ?? `#${index + 1}`;
@@ -437,6 +872,33 @@ const formatEventDescription = (
     return driver
       ? `${driver.driver_name} logged lap ${lapNumber} at ${formatLap(lapMs)}`
       : `Driver ${event.payload.driver_id} logged lap ${lapNumber}`;
+  }
+
+  if (event.kind === "lap_invalidated") {
+    const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
+    const lapNumber = event.payload.lap_number;
+    return driver
+      ? `${driver.driver_name}'s lap ${lapNumber} invalidated.`
+      : `Lap ${lapNumber} invalidated for driver ${event.payload.driver_id ?? "unknown"}.`;
+  }
+
+  if (event.kind === "penalty_logged") {
+    const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
+    const seconds = event.payload.seconds;
+    const reason = event.payload.reason;
+    if (driver) {
+      return `${driver.driver_name} assessed ${seconds}s penalty (${reason}).`;
+    }
+    return `${seconds}s penalty issued: ${reason}`;
+  }
+
+  if (event.kind === "pit_event_logged") {
+    const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
+    const durationText = formatDurationSeconds(event.payload.duration_ms);
+    const base = driver
+      ? `${driver.driver_name} pit stop`
+      : `Driver ${event.payload.driver_id ?? "unknown"} pit stop`;
+    return durationText ? `${base} (${durationText}).` : `${base} logged.`;
   }
 
   if (event.kind === "race_initialized") {

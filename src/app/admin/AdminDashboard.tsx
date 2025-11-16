@@ -4,7 +4,8 @@ import {
   approveWithdrawal,
   fetchPendingDeposits,
   fetchPendingWithdrawals,
-  fetchAllWalletTransactions
+  fetchAllWalletTransactions,
+  rejectWithdrawal
 } from "@domains/wallet/api/walletApi";
 import { useSession } from "@lib/auth/SessionProvider";
 
@@ -37,6 +38,15 @@ const AdminDashboard = () => {
 
   const approveWithdrawalMutation = useMutation({
     mutationFn: approveWithdrawal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-pending-withdrawals"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
+    }
+  });
+
+  const rejectWithdrawalMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      rejectWithdrawal(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-withdrawals"] });
       queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
@@ -117,13 +127,33 @@ const AdminDashboard = () => {
                   {new Date(withdrawal.requested_at).toLocaleString()}
                 </p>
               </div>
-              <button
-                className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"
-                onClick={() => approveWithdrawalMutation.mutate(withdrawal.id)}
-                disabled={approveWithdrawalMutation.isPending}
-              >
-                Approve
-              </button>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"
+                  onClick={() => approveWithdrawalMutation.mutate(withdrawal.id)}
+                  disabled={approveWithdrawalMutation.isPending}
+                >
+                  Approve
+                </button>
+                <button
+                  className="rounded-full border border-red-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-300 disabled:opacity-50"
+                  onClick={() => {
+                    const confirmed = window.confirm(
+                      "Reject withdrawal and refund the wallet balance?"
+                    );
+                    if (!confirmed) return;
+                    const reason =
+                      window.prompt("Reason for rejection?", "Manual review") ?? "";
+                    rejectWithdrawalMutation.mutate({
+                      id: withdrawal.id,
+                      reason: reason.trim()
+                    });
+                  }}
+                  disabled={rejectWithdrawalMutation.isPending}
+                >
+                  Reject
+                </button>
+              </div>
             </article>
           ))}
           {withdrawalsQuery.data && withdrawalsQuery.data.length === 0 && (

@@ -156,6 +156,82 @@ export const approveWithdrawal = async (withdrawalId: string) => {
   if (error) throw error;
 };
 
+export const rejectWithdrawal = async (withdrawalId: string, reason?: string) => {
+  const { error } = await supabase.rpc("wallet_reject_withdrawal", {
+    p_withdrawal_id: withdrawalId,
+    p_reason: reason ?? null
+  });
+  if (error) throw error;
+};
+
+export interface UserDepositRequest {
+  id: string;
+  amount: number;
+  status: string;
+  requested_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+}
+
+export const fetchUserDeposits = async (userId: string, limit = 20) => {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("deposits")
+    .select(
+      "id, amount, status, requested_at, approved_at, approved_by, wallet_accounts!inner(user_id)"
+    )
+    .eq("wallet_accounts.user_id", userId)
+    .order("requested_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (
+    data?.map((row) => ({
+      id: row.id,
+      amount: Number(row.amount),
+      status: row.status as string,
+      requested_at: row.requested_at as string,
+      approved_at: row.approved_at as string | null,
+      approved_by: row.approved_by as string | null
+    })) ?? []
+  );
+};
+
+export interface UserWithdrawalRequest {
+  id: string;
+  amount: number;
+  status: string;
+  requested_at: string;
+  processed_at: string | null;
+  admin_note: string | null;
+  processed_by: string | null;
+}
+
+export const fetchUserWithdrawals = async (userId: string, limit = 20) => {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("withdrawals")
+    .select(
+      "id, amount, status, requested_at, processed_at, processed_by, admin_note, wallet_accounts!inner(user_id)"
+    )
+    .eq("wallet_accounts.user_id", userId)
+    .order("requested_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (
+    data?.map((row) => ({
+      id: row.id,
+      amount: Number(row.amount),
+      status: row.status as string,
+      requested_at: row.requested_at as string,
+      processed_at: row.processed_at as string | null,
+      admin_note: row.admin_note as string | null,
+      processed_by: row.processed_by as string | null
+    })) ?? []
+  );
+};
+
 const extractUserId = (value: any): string => {
   if (!value) return "unknown";
   if (Array.isArray(value)) {

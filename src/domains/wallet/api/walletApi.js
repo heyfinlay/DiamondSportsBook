@@ -111,6 +111,55 @@ export const approveWithdrawal = async (withdrawalId) => {
     if (error)
         throw error;
 };
+export const rejectWithdrawal = async (withdrawalId, reason) => {
+    const { error } = await supabase.rpc("wallet_reject_withdrawal", {
+        p_withdrawal_id: withdrawalId,
+        p_reason: reason ?? null
+    });
+    if (error)
+        throw error;
+};
+export const fetchUserDeposits = async (userId, limit = 20) => {
+    if (!userId)
+        return [];
+    const { data, error } = await supabase
+        .from("deposits")
+        .select("id, amount, status, requested_at, approved_at, approved_by, wallet_accounts!inner(user_id)")
+        .eq("wallet_accounts.user_id", userId)
+        .order("requested_at", { ascending: false })
+        .limit(limit);
+    if (error)
+        throw error;
+    return (data?.map((row) => ({
+        id: row.id,
+        amount: Number(row.amount),
+        status: row.status,
+        requested_at: row.requested_at,
+        approved_at: row.approved_at,
+        approved_by: row.approved_by
+    })) ?? []);
+};
+export const fetchUserWithdrawals = async (userId, limit = 20) => {
+    if (!userId)
+        return [];
+    const { data, error } = await supabase
+        .from("withdrawals")
+        .select("id, amount, status, requested_at, processed_at, processed_by, admin_note, wallet_accounts!inner(user_id)")
+        .eq("wallet_accounts.user_id", userId)
+        .order("requested_at", { ascending: false })
+        .limit(limit);
+    if (error)
+        throw error;
+    return (data?.map((row) => ({
+        id: row.id,
+        amount: Number(row.amount),
+        status: row.status,
+        requested_at: row.requested_at,
+        processed_at: row.processed_at,
+        admin_note: row.admin_note,
+        processed_by: row.processed_by
+    })) ?? []);
+};
 const extractUserId = (value) => {
     if (!value)
         return "unknown";

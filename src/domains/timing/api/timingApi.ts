@@ -40,6 +40,38 @@ const raceEventSchema = z.object({
 
 export type RaceEvent = z.infer<typeof raceEventSchema>;
 
+const linkedDriverSchema = z
+  .object({
+    id: z.string(),
+    display_name: z.string(),
+    car_number: z.number().nullable()
+  })
+  .nullable()
+  .optional();
+
+const penaltySchema = z.object({
+  id: z.string(),
+  session_id: z.string(),
+  driver_id: z.string().nullable(),
+  reason: z.string(),
+  seconds: z.number(),
+  issued_at: z.string(),
+  driver: linkedDriverSchema
+});
+
+export type PenaltyLog = z.infer<typeof penaltySchema>;
+
+const pitEventLogSchema = z.object({
+  id: z.string(),
+  session_id: z.string(),
+  driver_id: z.string(),
+  duration_ms: z.number().nullable(),
+  started_at: z.string(),
+  driver: linkedDriverSchema
+});
+
+export type PitEventLog = z.infer<typeof pitEventLogSchema>;
+
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
     .from("sessions")
@@ -132,4 +164,76 @@ export const logLap = async (payload: LogLapPayload) => {
   });
 
   if (error) throw error;
+};
+
+export const invalidateLastLap = async (driverId: string) => {
+  const { error } = await supabase.rpc("timing_invalidate_last_lap", {
+    p_driver_id: driverId
+  });
+
+  if (error) throw error;
+};
+
+export interface LogPenaltyPayload {
+  sessionId: string;
+  driverId?: string | null;
+  reason: string;
+  seconds: number;
+}
+
+export const logPenalty = async (payload: LogPenaltyPayload) => {
+  const { error } = await supabase.rpc("timing_log_penalty", {
+    p_session_id: payload.sessionId,
+    p_driver_id: payload.driverId ?? null,
+    p_reason: payload.reason,
+    p_seconds: payload.seconds
+  });
+
+  if (error) throw error;
+};
+
+export interface LogPitEventPayload {
+  driverId: string;
+  durationMs?: number | null;
+}
+
+export const logPitEvent = async (payload: LogPitEventPayload) => {
+  const { error } = await supabase.rpc("timing_log_pit_event", {
+    p_driver_id: payload.driverId,
+    p_duration_ms: payload.durationMs ?? null
+  });
+
+  if (error) throw error;
+};
+
+export const deleteSessionDeep = async (sessionId: string) => {
+  const { error } = await supabase.rpc("timing_delete_session_deep", {
+    p_session_id: sessionId
+  });
+
+  if (error) throw error;
+};
+
+export const fetchPenalties = async (sessionId: string) => {
+  const { data, error } = await supabase
+    .from("penalties")
+    .select("id, session_id, driver_id, reason, seconds, issued_at, driver:drivers(id, display_name, car_number)")
+    .eq("session_id", sessionId)
+    .order("issued_at", { ascending: false })
+    .limit(20);
+
+  if (error) throw error;
+  return z.array(penaltySchema).parse(data ?? []);
+};
+
+export const fetchPitEvents = async (sessionId: string) => {
+  const { data, error } = await supabase
+    .from("pit_events")
+    .select("id, session_id, driver_id, duration_ms, started_at, driver:drivers(id, display_name, car_number)")
+    .eq("session_id", sessionId)
+    .order("started_at", { ascending: false })
+    .limit(20);
+
+  if (error) throw error;
+  return z.array(pitEventLogSchema).parse(data ?? []);
 };

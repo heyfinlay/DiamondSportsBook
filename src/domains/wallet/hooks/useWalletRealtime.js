@@ -21,13 +21,18 @@ export const useWalletRealtime = (userId) => {
             const accountId = data?.id;
             if (!accountId || cancelled)
                 return;
-            activeChannel = supabase
-                .channel(`wallet-${accountId}`)
-                .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `account_id=eq.${accountId}` }, () => {
+            const invalidateUserQueries = () => {
                 queryClient.invalidateQueries({ queryKey: ["wallet-balance", userId] });
                 queryClient.invalidateQueries({ queryKey: ["wallet-transactions", userId] });
                 queryClient.invalidateQueries({ queryKey: ["admin-wallet-audit"] });
-            })
+                queryClient.invalidateQueries({ queryKey: ["user-deposits", userId] });
+                queryClient.invalidateQueries({ queryKey: ["user-withdrawals", userId] });
+            };
+            activeChannel = supabase
+                .channel(`wallet-${accountId}`)
+                .on("postgres_changes", { event: "*", schema: "public", table: "wallet_transactions", filter: `account_id=eq.${accountId}` }, invalidateUserQueries)
+                .on("postgres_changes", { event: "*", schema: "public", table: "deposits", filter: `account_id=eq.${accountId}` }, invalidateUserQueries)
+                .on("postgres_changes", { event: "*", schema: "public", table: "withdrawals", filter: `account_id=eq.${accountId}` }, invalidateUserQueries)
                 .subscribe();
         };
         setup();
