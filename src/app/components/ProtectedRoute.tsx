@@ -15,7 +15,7 @@ const ProtectedRoute = ({ requiredRoles }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (
@@ -23,7 +23,7 @@ const ProtectedRoute = ({ requiredRoles }: ProtectedRouteProps) => {
     requiredRoles.length > 0 &&
     !requiredRoles.includes(profileQuery.data?.role ?? "spectator")
   ) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

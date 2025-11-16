@@ -222,7 +222,14 @@ end;
 $$;
 
 -- Replace timing_log_lap_atomic with canonical verb name
-drop function if exists public.timing_log_lap_atomic(uuid, integer, integer);
+do $$
+begin
+  drop function if exists public.timing_log_lap_atomic(uuid, integer, integer);
+  drop function if exists public.timing_log_lap(uuid, integer, integer);
+exception
+  when others then null;
+end;
+$$;
 
 create or replace function public.timing_log_lap(
   p_driver_id uuid,
