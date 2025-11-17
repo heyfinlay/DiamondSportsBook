@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@lib/supabase/client";
+import { supabase } from "@lib/supabaseClient";
 
 interface DriverConfig {
   number: number;
