@@ -38,8 +38,8 @@ export type DriverStanding = z.infer<typeof driverStandingSchema>;
 const linkedDriverSchema = z
   .object({
     id: z.string(),
-    display_name: z.string(),
-    car_number: z.number().nullable()
+    name: z.string(),
+    number: z.number().nullable()
   })
   .nullable()
   .optional();
@@ -211,7 +211,7 @@ export const deleteSessionDeep = async (sessionId: string) => {
 export const fetchPenalties = async (sessionId: string) => {
   const { data, error } = await supabase
     .from("penalties")
-    .select("id, session_id, driver_id, reason, seconds, issued_at, driver:drivers(id, display_name, car_number)")
+    .select("id, session_id, driver_id, reason, seconds, issued_at, driver:timing_drivers(id, name, number)")
     .eq("session_id", sessionId)
     .order("issued_at", { ascending: false })
     .limit(20);
@@ -223,7 +223,7 @@ export const fetchPenalties = async (sessionId: string) => {
 export const fetchPitEvents = async (sessionId: string) => {
   const { data, error } = await supabase
     .from("pit_events")
-    .select("id, session_id, driver_id, duration_ms, started_at, driver:drivers(id, display_name, car_number)")
+    .select("id, session_id, driver_id, duration_ms, started_at, driver:timing_drivers(id, name, number)")
     .eq("session_id", sessionId)
     .order("started_at", { ascending: false })
     .limit(20);

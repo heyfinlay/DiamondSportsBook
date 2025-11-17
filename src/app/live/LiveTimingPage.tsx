@@ -144,8 +144,8 @@ const LiveTimingPage = () => {
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold">
-                    {penalty.driver?.display_name
-                      ? `#${penalty.driver.car_number ?? "?"} ${penalty.driver.display_name}`
+                    {penalty.driver?.name
+                      ? `#${penalty.driver.number ?? "?"} ${penalty.driver.name}`
                       : "Session Penalty"}
                   </p>
                   <p className="text-xs text-white/50">
@@ -171,7 +171,7 @@ const LiveTimingPage = () => {
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold">
-                    #{pit.driver?.car_number ?? "?"} {pit.driver?.display_name ?? "Unknown Driver"}
+                    #{pit.driver?.number ?? "?"} {pit.driver?.name ?? "Unknown Driver"}
                   </p>
                   <p className="text-xs text-white/50">
                     {formatEventTime(pit.started_at)}

@@ -29,7 +29,7 @@ const RaceControlPage = () => {
         driversText: ""
     });
     const [penaltyForm, setPenaltyForm] = useState({ driverId: "", seconds: "5", reason: "" });
-    const [pitForm, setPitForm] = useState({ driverId: "", durationMs: "" });
+    const [pitForm, setPitForm] = useState({ driverId: "" });
     const [invalidateDriverId, setInvalidateDriverId] = useState("");
     const driverHotkeysRef = useRef(new Map());
     useTimingRealtime(sessionId);
@@ -106,7 +106,7 @@ const RaceControlPage = () => {
         onSuccess: () => {
             toast({ variant: "success", title: "Pit event logged" });
             refreshTimingData();
-            setPitForm((prev) => ({ ...prev, durationMs: "" }));
+            setPitForm({ driverId: "" });
         },
         onError: (error) => {
             recordError(error.message);
@@ -219,12 +219,15 @@ const RaceControlPage = () => {
                     const confirmed = window.confirm("Delete this session and all timing data?");
                     if (confirmed)
                         deleteSessionMutation.mutate(sessionId);
-                }, disableStart: initializeRaceMutation.isPending, flagLoading: flagMutation.isPending }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [_jsx(DriverCaptureGrid, { drivers: drivers, driverMap: driverMap, hotkeysRef: driverHotkeysRef.current, onLap: (driverId) => logLapMutation.mutate({ driverId }), onPit: (driverId) => setPitForm((prev) => ({ ...prev, driverId })), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onInvalidate: (driverId) => invalidateLapMutation.mutate(driverId), onRetire: (driverId) => driverStatusMutation.mutate({ driverId, status: "retired" }) }), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, onSubmit: (payload) => logPenaltyMutation.mutate({
+                }, disableStart: initializeRaceMutation.isPending, flagLoading: flagMutation.isPending }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [_jsx(DriverCaptureGrid, { drivers: drivers, driverMap: driverMap, hotkeysRef: driverHotkeysRef.current, onLap: (driverId) => logLapMutation.mutate({ driverId }), onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onInvalidate: (driverId) => invalidateLapMutation.mutate(driverId), onRetire: (driverId) => driverStatusMutation.mutate({ driverId, status: "retired" }) }), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, onSubmit: (payload) => logPenaltyMutation.mutate({
                                         sessionId,
                                         driverId: payload.driverId || null,
                                         reason: payload.reason,
                                         seconds: payload.seconds
-                                    }) }) }), _jsx(ControlCard, { title: "Pit Event", children: _jsx(PitForm, { drivers: drivers, formState: pitForm, onChange: setPitForm, notify: toast, submitting: logPitEventMutation.isPending, onSubmit: (payload) => logPitEventMutation.mutate(payload) }) }), _jsx(ControlCard, { title: "Invalidate Last Lap", children: _jsxs("form", { className: "space-y-3", onSubmit: (event) => {
+                                    }) }) }), _jsx(ControlCard, { title: "Pit Event", children: _jsx(PitForm, { drivers: drivers, formState: pitForm, onChange: setPitForm, notify: toast, submitting: logPitEventMutation.isPending, onSubmit: (payload) => logPitEventMutation.mutate({
+                                        driverId: payload.driverId,
+                                        durationMs: null
+                                    }) }) }), _jsx(ControlCard, { title: "Invalidate Last Lap", children: _jsxs("form", { className: "space-y-3", onSubmit: (event) => {
                                         event.preventDefault();
                                         if (!invalidateDriverId) {
                                             toast({ variant: "error", title: "Select a driver" });
@@ -260,15 +263,12 @@ const PenaltyForm = ({ drivers, formState, onChange, notify, submitting, onSubmi
     }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ ...formState, driverId: event.target.value }), children: [_jsx("option", { value: "", children: "Session-level penalty" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("input", { type: "number", min: "1", className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Seconds", value: formState.seconds, onChange: (event) => onChange({ ...formState, seconds: event.target.value }) }), _jsx("input", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Reason", value: formState.reason, onChange: (event) => onChange({ ...formState, reason: event.target.value }) }), _jsx("button", { type: "submit", className: "w-full rounded-2xl bg-white/80 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: submitting, children: submitting ? "Recording…" : "Log Penalty" })] }));
 const PitForm = ({ drivers, formState, onChange, notify, submitting, onSubmit }) => (_jsxs("form", { className: "space-y-3", onSubmit: (event) => {
         event.preventDefault();
-        if (!formState.driverId)
-            return;
-        const duration = formState.durationMs ? Number(formState.durationMs) : null;
-        if (formState.durationMs && (!Number.isFinite(duration) || duration <= 0)) {
-            notify({ variant: "error", title: "Invalid duration" });
+        if (!formState.driverId) {
+            notify({ variant: "error", title: "Select a driver" });
             return;
         }
-        onSubmit({ driverId: formState.driverId, durationMs: duration });
-    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ ...formState, driverId: event.target.value }), children: [_jsx("option", { value: "", children: "Select driver" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("input", { type: "number", min: "0", className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Duration (ms)", value: formState.durationMs, onChange: (event) => onChange({ ...formState, durationMs: event.target.value }) }), _jsx("button", { type: "submit", className: "w-full rounded-2xl border border-white/30 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40", disabled: submitting, children: submitting ? "Logging…" : "Log Pit Event" })] }));
+        onSubmit({ driverId: formState.driverId });
+    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ driverId: event.target.value }), children: [_jsx("option", { value: "", children: "Select driver" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("button", { type: "submit", className: "w-full rounded-2xl border border-white/30 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40", disabled: submitting, children: submitting ? "Logging…" : "Log Pit Event" })] }));
 const ControlLog = ({ events, drivers, loading }) => (_jsxs("div", { className: "max-h-[420px] space-y-3 overflow-y-auto pr-1", children: [loading && _jsx("p", { className: "text-sm text-white/60", children: "Loading log\u2026" }), events.map((event) => (_jsxs("article", { className: "rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white", children: [_jsx("p", { className: "text-[11px] uppercase tracking-[0.3em] text-white/40", children: new Date(event.created_at).toLocaleTimeString() }), _jsx("p", { className: "font-semibold", children: formatControlEvent(event, drivers) })] }, event.id))), !events.length && !loading && (_jsx("p", { className: "text-sm text-white/60", children: "No control actions yet." }))] }));
 const ControlCard = ({ title, children }) => (_jsxs("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-4", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: title }), _jsx("div", { className: "mt-3", children: children })] }));
 const Stat = ({ label, value }) => (_jsxs("div", { className: "rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-white", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: label }), _jsx("p", { className: "text-sm font-semibold", children: value })] }));

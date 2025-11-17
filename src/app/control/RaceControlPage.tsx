@@ -51,7 +51,7 @@ const RaceControlPage = () => {
     driversText: ""
   });
   const [penaltyForm, setPenaltyForm] = useState({ driverId: "", seconds: "5", reason: "" });
-  const [pitForm, setPitForm] = useState({ driverId: "", durationMs: "" });
+  const [pitForm, setPitForm] = useState({ driverId: "" });
   const [invalidateDriverId, setInvalidateDriverId] = useState("");
   const driverHotkeysRef = useRef<Map<string, string>>(new Map());
 
@@ -139,7 +139,7 @@ const RaceControlPage = () => {
     onSuccess: () => {
       toast({ variant: "success", title: "Pit event logged" });
       refreshTimingData();
-      setPitForm((prev) => ({ ...prev, durationMs: "" }));
+      setPitForm({ driverId: "" });
     },
     onError: (error: Error) => {
       recordError(error.message);
@@ -301,7 +301,7 @@ const RaceControlPage = () => {
           driverMap={driverMap}
           hotkeysRef={driverHotkeysRef.current}
           onLap={(driverId) => logLapMutation.mutate({ driverId })}
-          onPit={(driverId) => setPitForm((prev) => ({ ...prev, driverId }))}
+          onPit={(driverId) => setPitForm({ driverId })}
           onPenalty={(driverId) => setPenaltyForm((prev) => ({ ...prev, driverId }))}
           onInvalidate={(driverId) => invalidateLapMutation.mutate(driverId)}
           onRetire={(driverId) => driverStatusMutation.mutate({ driverId, status: "retired" })}
@@ -333,7 +333,12 @@ const RaceControlPage = () => {
               onChange={setPitForm}
               notify={toast}
               submitting={logPitEventMutation.isPending}
-              onSubmit={(payload) => logPitEventMutation.mutate(payload)}
+              onSubmit={(payload) =>
+                logPitEventMutation.mutate({
+                  driverId: payload.driverId,
+                  durationMs: null
+                })
+              }
             />
           </ControlCard>
 
@@ -672,29 +677,27 @@ const PitForm = ({
   onSubmit
 }: {
   drivers: DriverStanding[];
-  formState: { driverId: string; durationMs: string };
-  onChange: (state: { driverId: string; durationMs: string }) => void;
+  formState: { driverId: string };
+  onChange: (state: { driverId: string }) => void;
   notify: (options: { title: string; description?: string; variant?: "success" | "error" | "default" }) => void;
   submitting: boolean;
-  onSubmit: (payload: { driverId: string; durationMs: number | null }) => void;
+  onSubmit: (payload: { driverId: string }) => void;
 }) => (
   <form
     className="space-y-3"
     onSubmit={(event) => {
       event.preventDefault();
-      if (!formState.driverId) return;
-      const duration = formState.durationMs ? Number(formState.durationMs) : null;
-      if (formState.durationMs && (!Number.isFinite(duration!) || duration! <= 0)) {
-        notify({ variant: "error", title: "Invalid duration" });
+      if (!formState.driverId) {
+        notify({ variant: "error", title: "Select a driver" });
         return;
       }
-      onSubmit({ driverId: formState.driverId, durationMs: duration });
+      onSubmit({ driverId: formState.driverId });
     }}
   >
     <select
       className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm"
       value={formState.driverId}
-      onChange={(event) => onChange({ ...formState, driverId: event.target.value })}
+      onChange={(event) => onChange({ driverId: event.target.value })}
     >
       <option value="">Select driver</option>
       {drivers.map((driver) => (
@@ -703,14 +706,6 @@ const PitForm = ({
         </option>
       ))}
     </select>
-    <input
-      type="number"
-      min="0"
-      className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm"
-      placeholder="Duration (ms)"
-      value={formState.durationMs}
-      onChange={(event) => onChange({ ...formState, durationMs: event.target.value })}
-    />
     <button
       type="submit"
       className="w-full rounded-2xl border border-white/30 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40"
