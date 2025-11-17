@@ -6,11 +6,39 @@ export interface MarketSummary {
   description: string | null;
   status: string;
   total_pool: number;
+  min_stake?: number;
+  max_stake?: number;
+  close_time?: string | null;
   event: {
     id: string;
     title: string;
     takeout: number;
   };
+}
+
+export interface EventWithMarkets {
+  id: string;
+  title: string;
+  venue: string | null;
+  starts_at: string | null;
+  status: string;
+  takeout: number;
+  markets: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    status: string;
+    type: string;
+    total_pool: number;
+    min_stake: number;
+    max_stake: number;
+    close_time: string | null;
+    outcomes: Array<{
+      id: string;
+      label: string;
+      pool: number;
+    }>;
+  }>;
 }
 
 export const fetchMarkets = async () => {
@@ -32,6 +60,70 @@ export const fetchMarkets = async () => {
         title: extractSingle(market.event)?.title,
         takeout: Number(extractSingle(market.event)?.takeout ?? 0)
       }
+    })) ?? []
+  );
+};
+
+export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id,
+      title,
+      venue,
+      starts_at,
+      status,
+      takeout,
+      markets:markets(
+        id,
+        name,
+        description,
+        status,
+        type,
+        total_pool,
+        min_stake,
+        max_stake,
+        close_time,
+        outcomes:outcomes(
+          id,
+          label,
+          pool
+        )
+      )
+    `
+    )
+    .order("starts_at", { ascending: true })
+    .order("created_at", { foreignTable: "markets", ascending: true });
+
+  if (error) throw error;
+
+  return (
+    data?.map((event) => ({
+      id: event.id,
+      title: event.title,
+      venue: event.venue ?? null,
+      starts_at: event.starts_at ?? null,
+      status: event.status,
+      takeout: Number(event.takeout ?? 0),
+      markets:
+        (event.markets as EventWithMarkets["markets"])?.map((market) => ({
+          id: market.id,
+          name: market.name,
+          description: market.description ?? null,
+          status: market.status,
+          type: market.type,
+          total_pool: Number(market.total_pool ?? 0),
+          min_stake: Number(market.min_stake ?? 0),
+          max_stake: Number(market.max_stake ?? 0),
+          close_time: market.close_time ?? null,
+          outcomes:
+            market.outcomes?.map((outcome) => ({
+              id: outcome.id,
+              label: outcome.label,
+              pool: Number(outcome.pool ?? 0)
+            })) ?? []
+        })) ?? []
     })) ?? []
   );
 };
