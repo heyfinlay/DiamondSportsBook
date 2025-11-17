@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   approveDeposit,
   approveWithdrawal,
@@ -63,13 +64,21 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <header>
-        <p className="text-sm uppercase tracking-[0.3em] text-white/60">Admin</p>
-        <h1 className="text-3xl font-semibold">Control Center</h1>
-        <p className="text-sm text-white/60">
-          Manage pending deposits & withdrawals. Actions require betting_admin
-          permissions enforced via RLS.
-        </p>
+      <header className="flex items-start justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-[0.3em] text-white/60">Admin</p>
+          <h1 className="text-3xl font-semibold">Control Center</h1>
+          <p className="text-sm text-white/60">
+            Manage pending deposits & withdrawals. Actions require betting_admin
+            permissions enforced via RLS.
+          </p>
+        </div>
+        <Link
+          to="/admin/session-setup"
+          className="inline-block rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-widest text-black hover:bg-brand/90"
+        >
+          + Create Session
+        </Link>
       </header>
 
       <section className="rounded-3xl border border-white/10 bg-black/40 p-6">

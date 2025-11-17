@@ -6,6 +6,7 @@ import MarketsPage from "./markets/MarketsPage";
 import MarketDetailPage from "./markets/MarketDetailPage";
 import AccountPage from "./account/AccountPage";
 import AdminDashboard from "./admin/AdminDashboard";
+import SessionSetupPage from "./admin/SessionSetupPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 
@@ -44,11 +45,15 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
         ]
       },
       {
-        element: <ProtectedRoute requiredRoles={["betting_admin", "super_admin"]} />,
+        element: <ProtectedRoute requiredRoles={["betting_admin", "super_admin", "race_control"]} />,
         children: [
           {
             path: "admin",
             element: <AdminDashboard />
+          },
+          {
+            path: "admin/session-setup",
+            element: <SessionSetupPage />
           }
         ]
       }
