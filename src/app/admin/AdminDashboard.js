@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { approveDeposit, approveWithdrawal, fetchPendingDeposits, fetchPendingWithdrawals, fetchAllWalletTransactions, rejectWithdrawal } from "@domains/wallet/api/walletApi";
 import { useSession } from "@lib/auth/SessionProvider";
+import { useToast } from "@app/components/ToastProvider";
 const AdminDashboard = () => {
     const queryClient = useQueryClient();
     const { user } = useSession();
+    const { toast } = useToast();
     const depositsQuery = useQuery({
         queryKey: ["admin-pending-deposits"],
         queryFn: fetchPendingDeposits
@@ -21,22 +23,58 @@ const AdminDashboard = () => {
     const approveDepositMutation = useMutation({
         mutationFn: approveDeposit,
         onSuccess: () => {
+            toast({
+                variant: "success",
+                title: "Deposit approved",
+                description: "User wallet has been credited."
+            });
             queryClient.invalidateQueries({ queryKey: ["admin-pending-deposits"] });
             queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
+        },
+        onError: (error) => {
+            toast({
+                variant: "error",
+                title: "Unable to approve deposit",
+                description: error.message
+            });
         }
     });
     const approveWithdrawalMutation = useMutation({
         mutationFn: approveWithdrawal,
         onSuccess: () => {
+            toast({
+                variant: "success",
+                title: "Withdrawal approved",
+                description: "Funds marked as processed."
+            });
             queryClient.invalidateQueries({ queryKey: ["admin-pending-withdrawals"] });
             queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
+        },
+        onError: (error) => {
+            toast({
+                variant: "error",
+                title: "Unable to approve withdrawal",
+                description: error.message
+            });
         }
     });
     const rejectWithdrawalMutation = useMutation({
         mutationFn: ({ id, reason }) => rejectWithdrawal(id, reason),
         onSuccess: () => {
+            toast({
+                variant: "success",
+                title: "Withdrawal rejected",
+                description: "User has been notified and funds were returned."
+            });
             queryClient.invalidateQueries({ queryKey: ["admin-pending-withdrawals"] });
             queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
+        },
+        onError: (error) => {
+            toast({
+                variant: "error",
+                title: "Unable to reject withdrawal",
+                description: error.message
+            });
         }
     });
     if (!user) {

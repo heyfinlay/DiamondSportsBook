@@ -134,6 +134,47 @@ export const placeWager = async (marketId, outcomeId, stake, idempotencyKey) => 
         throw error;
     return data;
 };
+export const fetchUserWagers = async (userId, limit = 20) => {
+    if (!userId)
+        return [];
+    const { data, error } = await supabase
+        .from("wagers")
+        .select(`
+      id,
+      stake,
+      status,
+      effective_odds,
+      created_at,
+      outcome:outcomes(label),
+      market:markets(
+        name,
+        type,
+        event:events(title)
+      )
+    `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+    if (error)
+        throw error;
+    return (data?.map((row) => {
+        const outcome = Array.isArray(row.outcome) ? row.outcome[0] : row.outcome;
+        const market = Array.isArray(row.market) ? row.market[0] : row.market;
+        const event = market?.event;
+        const normalizedEvent = Array.isArray(event) ? event[0] : event;
+        return {
+            id: row.id,
+            stake: Number(row.stake ?? 0),
+            status: row.status,
+            effective_odds: Number(row.effective_odds ?? 0),
+            created_at: row.created_at,
+            outcome_label: outcome?.label ?? "Unknown outcome",
+            market_name: market?.name ?? "Unknown market",
+            market_type: market?.type ?? "",
+            event_title: normalizedEvent?.title ?? "Event TBD"
+        };
+    }) ?? []);
+};
 const extractSingle = (value) => {
     if (!value)
         return null;

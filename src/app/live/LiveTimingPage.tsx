@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Flag, Activity, Timer } from "lucide-react";
 import {
   fetchDriverStandings,
   fetchPenalties,
@@ -7,6 +9,7 @@ import {
   fetchSessionDetail
 } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
+import { buildLeaderboard, formatLapTime } from "@domains/timing/utils/leaderboard";
 
 const LiveTimingPage = () => {
   const { sessionId } = useParams();
@@ -45,38 +48,44 @@ const LiveTimingPage = () => {
   });
 
   const isLoading = sessionQuery.isLoading || driversQuery.isLoading;
+  const leaderboard = useMemo(
+    () => buildLeaderboard(driversQuery.data ?? []),
+    [driversQuery.data]
+  );
+  const totalDrivers = leaderboard.length;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-sm uppercase tracking-widest text-white/60">
-            Session
-          </p>
-          <h1 className="text-2xl font-semibold">
-            {sessionQuery.data?.name ?? (isLoading ? "Loading…" : sessionId)}
-          </h1>
-          <p className="text-sm text-white/60">
-            {sessionQuery.data?.track_name ?? "Track TBD"}
-          </p>
+      <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#070C16] to-black/60 p-6 shadow-xl shadow-black/40">
+        <div className="flex flex-wrap items-center justify-between gap-6">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Live timing</p>
+            <h1 className="text-4xl font-semibold tracking-tight text-white">
+              {sessionQuery.data?.name ?? (isLoading ? "Loading…" : sessionId)}
+            </h1>
+            <p className="text-sm text-white/70">
+              {sessionQuery.data?.track_name ?? "Track TBD"}
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <HeroStat
+              label="Track Status"
+              value={sessionQuery.data?.track_status ?? (isLoading ? "…" : "green")}
+              icon={<Flag className="h-4 w-4" />}
+            />
+            <HeroStat
+              label="Phase"
+              value={sessionQuery.data?.phase ?? (isLoading ? "…" : "setup")}
+              icon={<Activity className="h-4 w-4" />}
+            />
+            <HeroStat
+              label="Drivers"
+              value={isLoading ? "…" : totalDrivers.toString()}
+              icon={<Timer className="h-4 w-4" />}
+            />
+          </div>
         </div>
-        <div className="rounded-2xl border border-white/10 px-6 py-3 text-right">
-          <p className="text-xs uppercase tracking-widest text-white/60">
-            Track Status
-          </p>
-          <p className="text-lg font-semibold capitalize">
-            {sessionQuery.data?.track_status ?? (isLoading ? "…" : "green")}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-white/10 px-6 py-3 text-right">
-          <p className="text-xs uppercase tracking-widest text-white/60">
-            Phase
-          </p>
-          <p className="text-lg font-semibold capitalize">
-            {sessionQuery.data?.phase ?? (isLoading ? "…" : "setup")}
-          </p>
-        </div>
-      </div>
+      </section>
 
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/40 shadow-2xl shadow-black/30">
         <table className="w-full border-collapse text-sm">
@@ -93,27 +102,25 @@ const LiveTimingPage = () => {
             </tr>
           </thead>
           <tbody>
-            {driversQuery.data?.map((driver, idx) => (
+            {leaderboard.map((driver) => (
               <tr
                 key={driver.driver_id}
                 className="border-t border-white/5 hover:bg-white/5"
               >
-                <td className="px-4 py-3">{driver.position ?? idx + 1}</td>
+                <td className="px-4 py-3">{driver.position}</td>
                 <td className="px-4 py-3 font-medium">
                   #{driver.car_number} {driver.driver_name}
                 </td>
                 <td className="px-4 py-3 text-white/70">{driver.team_name}</td>
                 <td className="px-4 py-3 text-right">{driver.laps_completed}</td>
                 <td className="px-4 py-3 text-right">
-                  {driver.last_lap_ms ? formatLap(driver.last_lap_ms) : "—"}
+                  {driver.displayLastLap}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {driver.best_lap_ms ? formatLap(driver.best_lap_ms) : "—"}
+                  {driver.displayBestLap}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {driver.gap_to_leader_ms
-                    ? `+${formatLap(driver.gap_to_leader_ms)}`
-                    : "Leader"}
+                  {driver.displayGap}
                 </td>
                 <td className="px-4 py-3 text-right capitalize">
                   {driver.status}
@@ -125,17 +132,12 @@ const LiveTimingPage = () => {
       </div>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-white/10 bg-black/30 p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Penalties</h2>
-            {penaltiesQuery.isLoading && (
-              <span className="text-xs uppercase tracking-[0.3em] text-white/40">
-                Updating…
-              </span>
-            )}
-          </div>
-          <div className="mt-4 space-y-3">
-            {penaltiesQuery.data?.map((penalty) => (
+        <FeedCard
+          title="Penalties"
+          isLoading={penaltiesQuery.isLoading}
+          emptyCopy="No penalties yet."
+          items={
+            penaltiesQuery.data?.map((penalty) => (
               <article
                 key={penalty.id}
                 className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
@@ -154,66 +156,87 @@ const LiveTimingPage = () => {
                   {penalty.seconds}s · {penalty.reason}
                 </p>
               </article>
-            ))}
-            {penaltiesQuery.data && penaltiesQuery.data.length === 0 && (
-              <p className="text-sm text-white/60">No penalties yet.</p>
-            )}
-          </div>
-        </div>
-        <div className="rounded-3xl border border-white/10 bg-black/30 p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Pit Events</h2>
-            {pitEventsQuery.isLoading && (
-              <span className="text-xs uppercase tracking-[0.3em] text-white/40">
-                Updating…
-              </span>
-            )}
-          </div>
-          <div className="mt-4 space-y-3">
-            {pitEventsQuery.data?.map((pit) => (
+            )) ?? []
+          }
+        />
+        <FeedCard
+          title="Pit Lane"
+          isLoading={pitEventsQuery.isLoading}
+          emptyCopy="No pit activity yet."
+          items={
+            pitEventsQuery.data?.map((pit) => (
               <article
                 key={pit.id}
                 className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold">
-                    #{pit.driver?.car_number ?? "?"}{" "}
-                    {pit.driver?.display_name ?? "Unknown Driver"}
+                    #{pit.driver?.car_number ?? "?"} {pit.driver?.display_name ?? "Unknown Driver"}
                   </p>
                   <p className="text-xs text-white/50">
                     {formatEventTime(pit.started_at)}
                   </p>
                 </div>
                 <p className="text-sm text-white/70">
-                  {pit.duration_ms ? formatDuration(pit.duration_ms) : "Duration pending"}
+                  {pit.duration_ms ? `${(pit.duration_ms / 1000).toFixed(1)}s stop` : "Duration pending"}
                 </p>
               </article>
-            ))}
-            {pitEventsQuery.data && pitEventsQuery.data.length === 0 && (
-              <p className="text-sm text-white/60">No pit activity yet.</p>
-            )}
-          </div>
-        </div>
+            )) ?? []
+          }
+        />
       </section>
     </div>
   );
-};
-
-const formatLap = (ms: number) => {
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
-  const millis = ms % 1000;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}.${millis
-    .toString()
-    .padStart(3, "0")}`;
 };
 
 const formatEventTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString();
 };
 
-const formatDuration = (ms: number) => {
-  return `${(ms / 1000).toFixed(1)}s`;
-};
+const HeroStat = ({
+  label,
+  value,
+  icon
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+}) => (
+  <div className="flex items-center gap-3 rounded-2xl border border-white/20 bg-black/30 px-5 py-3">
+    <div className="rounded-full border border-white/20 p-2 text-white">{icon}</div>
+    <div>
+      <p className="text-[0.6rem] uppercase tracking-[0.35em] text-white/50">{label}</p>
+      <p className="text-lg font-semibold capitalize text-white">{value}</p>
+    </div>
+  </div>
+);
+
+const FeedCard = ({
+  title,
+  items,
+  isLoading,
+  emptyCopy
+}: {
+  title: string;
+  items: React.ReactNode[];
+  isLoading: boolean;
+  emptyCopy: string;
+}) => (
+  <div className="rounded-3xl border border-white/10 bg-black/30 p-5">
+    <div className="flex items-center justify-between">
+      <h2 className="text-xl font-semibold text-white">{title}</h2>
+      {isLoading && (
+        <span className="text-xs uppercase tracking-[0.3em] text-white/40">Updating…</span>
+      )}
+    </div>
+    <div className="mt-4 space-y-3">
+      {items.length ? (
+        items
+      ) : (
+        <p className="text-sm text-white/60">{emptyCopy}</p>
+      )}
+    </div>
+  </div>
+);
 
 export default LiveTimingPage;
