@@ -4,6 +4,7 @@ declare const sessionStateSchema: z.ZodObject<{
     name: z.ZodString;
     track_name: z.ZodString;
     laps_target: z.ZodNullable<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodString>;
     phase: z.ZodString;
     track_status: z.ZodString;
     race_time_ms: z.ZodNumber;
@@ -18,6 +19,7 @@ declare const sessionStateSchema: z.ZodObject<{
     name?: string;
     track_name?: string;
     laps_target?: number;
+    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -32,6 +34,7 @@ declare const sessionStateSchema: z.ZodObject<{
     name?: string;
     track_name?: string;
     laps_target?: number;
+    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -90,16 +93,16 @@ declare const penaltySchema: z.ZodObject<{
     issued_at: z.ZodString;
     driver: z.ZodOptional<z.ZodNullable<z.ZodObject<{
         id: z.ZodString;
-        display_name: z.ZodString;
-        car_number: z.ZodNullable<z.ZodNumber>;
+        name: z.ZodString;
+        number: z.ZodNullable<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     }, {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     }>>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
@@ -109,9 +112,9 @@ declare const penaltySchema: z.ZodObject<{
     seconds?: number;
     issued_at?: string;
     driver?: {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     };
 }, {
     id?: string;
@@ -121,9 +124,9 @@ declare const penaltySchema: z.ZodObject<{
     seconds?: number;
     issued_at?: string;
     driver?: {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     };
 }>;
 export type PenaltyLog = z.infer<typeof penaltySchema>;
@@ -135,25 +138,25 @@ declare const pitEventLogSchema: z.ZodObject<{
     started_at: z.ZodString;
     driver: z.ZodOptional<z.ZodNullable<z.ZodObject<{
         id: z.ZodString;
-        display_name: z.ZodString;
-        car_number: z.ZodNullable<z.ZodNumber>;
+        name: z.ZodString;
+        number: z.ZodNullable<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     }, {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     }>>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
     session_id?: string;
     driver_id?: string;
     driver?: {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     };
     duration_ms?: number;
     started_at?: string;
@@ -162,9 +165,9 @@ declare const pitEventLogSchema: z.ZodObject<{
     session_id?: string;
     driver_id?: string;
     driver?: {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     };
     duration_ms?: number;
     started_at?: string;
@@ -181,23 +184,151 @@ declare const controlEventSchema: z.ZodObject<{
     id?: string;
     session_id?: string;
     type?: string;
-    payload?: Record<string, any>;
     created_at?: string;
+    payload?: Record<string, any>;
     created_by?: string;
 }, {
     id?: string;
     session_id?: string;
     type?: string;
-    payload?: Record<string, any>;
     created_at?: string;
+    payload?: Record<string, any>;
     created_by?: string;
 }>;
 export type ControlEvent = z.infer<typeof controlEventSchema>;
+declare const sessionSummarySchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    track_name: z.ZodNullable<z.ZodString>;
+    laps_target: z.ZodNullable<z.ZodNumber>;
+    mode: z.ZodNullable<z.ZodString>;
+    status: z.ZodString;
+    starts_at: z.ZodNullable<z.ZodString>;
+    created_at: z.ZodString;
+    session_state: z.ZodNullable<z.ZodObject<{
+        session_id: z.ZodString;
+        procedure_phase: z.ZodString;
+        flag_status: z.ZodString;
+        race_time_ms: z.ZodNumber;
+        is_timing: z.ZodOptional<z.ZodBoolean>;
+        is_paused: z.ZodOptional<z.ZodBoolean>;
+    }, "strip", z.ZodTypeAny, {
+        race_time_ms?: number;
+        is_timing?: boolean;
+        is_paused?: boolean;
+        session_id?: string;
+        procedure_phase?: string;
+        flag_status?: string;
+    }, {
+        race_time_ms?: number;
+        is_timing?: boolean;
+        is_paused?: boolean;
+        session_id?: string;
+        procedure_phase?: string;
+        flag_status?: string;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    id?: string;
+    name?: string;
+    track_name?: string;
+    laps_target?: number;
+    status?: string;
+    mode?: string;
+    starts_at?: string;
+    created_at?: string;
+    session_state?: {
+        race_time_ms?: number;
+        is_timing?: boolean;
+        is_paused?: boolean;
+        session_id?: string;
+        procedure_phase?: string;
+        flag_status?: string;
+    };
+}, {
+    id?: string;
+    name?: string;
+    track_name?: string;
+    laps_target?: number;
+    status?: string;
+    mode?: string;
+    starts_at?: string;
+    created_at?: string;
+    session_state?: {
+        race_time_ms?: number;
+        is_timing?: boolean;
+        is_paused?: boolean;
+        session_id?: string;
+        procedure_phase?: string;
+        flag_status?: string;
+    };
+}>;
+export type TimingSessionSummary = z.infer<typeof sessionSummarySchema>;
+declare const timingResultSchema: z.ZodObject<{
+    id: z.ZodString;
+    session_id: z.ZodString;
+    driver_id: z.ZodString;
+    position: z.ZodNumber;
+    laps: z.ZodNumber;
+    total_time_ms: z.ZodNullable<z.ZodNumber>;
+    gap_ms: z.ZodNullable<z.ZodNumber>;
+    gap_laps: z.ZodNullable<z.ZodNumber>;
+    status: z.ZodString;
+    driver: z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        number: z.ZodNullable<z.ZodNumber>;
+        team_name: z.ZodNullable<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        number?: number;
+        id?: string;
+        name?: string;
+        team_name?: string;
+    }, {
+        number?: number;
+        id?: string;
+        name?: string;
+        team_name?: string;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    id?: string;
+    status?: string;
+    session_id?: string;
+    laps?: number;
+    driver_id?: string;
+    total_time_ms?: number;
+    position?: number;
+    driver?: {
+        number?: number;
+        id?: string;
+        name?: string;
+        team_name?: string;
+    };
+    gap_ms?: number;
+    gap_laps?: number;
+}, {
+    id?: string;
+    status?: string;
+    session_id?: string;
+    laps?: number;
+    driver_id?: string;
+    total_time_ms?: number;
+    position?: number;
+    driver?: {
+        number?: number;
+        id?: string;
+        name?: string;
+        team_name?: string;
+    };
+    gap_ms?: number;
+    gap_laps?: number;
+}>;
+export type TimingResult = z.infer<typeof timingResultSchema>;
 export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     id?: string;
     name?: string;
     track_name?: string;
     laps_target?: number;
+    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -208,6 +339,7 @@ export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     accumulated_pause_ms?: number;
     session_id?: string;
 }>;
+export declare const fetchSessions: () => Promise<TimingSessionSummary[]>;
 export declare const fetchDriverStandings: (sessionId: string) => Promise<{
     status?: string;
     driver_id?: string;
@@ -261,9 +393,9 @@ export declare const fetchPenalties: (sessionId: string) => Promise<{
     seconds?: number;
     issued_at?: string;
     driver?: {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     };
 }[]>;
 export declare const fetchPitEvents: (sessionId: string) => Promise<{
@@ -271,9 +403,9 @@ export declare const fetchPitEvents: (sessionId: string) => Promise<{
     session_id?: string;
     driver_id?: string;
     driver?: {
+        number?: number;
         id?: string;
-        car_number?: number;
-        display_name?: string;
+        name?: string;
     };
     duration_ms?: number;
     started_at?: string;
@@ -282,9 +414,26 @@ export declare const fetchControlEvents: (sessionId: string) => Promise<{
     id?: string;
     session_id?: string;
     type?: string;
-    payload?: Record<string, any>;
     created_at?: string;
+    payload?: Record<string, any>;
     created_by?: string;
+}[]>;
+export declare const fetchTimingResults: (sessionId: string) => Promise<{
+    id?: string;
+    status?: string;
+    session_id?: string;
+    laps?: number;
+    driver_id?: string;
+    total_time_ms?: number;
+    position?: number;
+    driver?: {
+        number?: number;
+        id?: string;
+        name?: string;
+        team_name?: string;
+    };
+    gap_ms?: number;
+    gap_laps?: number;
 }[]>;
 export declare const setFlagStatus: (sessionId: string, flag: string) => Promise<void>;
 export declare const pauseRace: (sessionId: string) => Promise<void>;
@@ -292,4 +441,21 @@ export declare const resumeRace: (sessionId: string) => Promise<void>;
 export declare const updateDriverStatus: (driverId: string, status: string, reason?: string) => Promise<void>;
 export declare const logControlError: (sessionId: string, message: string) => Promise<void>;
 export declare const getRaceTime: (sessionId: string) => Promise<number>;
+export declare const finishSession: (sessionId: string) => Promise<{
+    id?: string;
+    status?: string;
+    session_id?: string;
+    laps?: number;
+    driver_id?: string;
+    total_time_ms?: number;
+    position?: number;
+    driver?: {
+        number?: number;
+        id?: string;
+        name?: string;
+        team_name?: string;
+    };
+    gap_ms?: number;
+    gap_laps?: number;
+}[]>;
 export {};

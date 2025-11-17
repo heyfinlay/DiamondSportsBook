@@ -111,12 +111,20 @@ const AdminDashboard = () => {
             permissions enforced via RLS.
           </p>
         </div>
-        <Link
-          to="/admin/session-setup"
-          className="inline-block rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-widest text-black hover:bg-brand/90"
-        >
-          + Create Session
-        </Link>
+        <div className="flex flex-col items-end gap-2 sm:flex-row">
+          <Link
+            to="/admin/timing-sessions"
+            className="inline-block rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white hover:border-white/60"
+          >
+            Manage Sessions
+          </Link>
+          <Link
+            to="/admin/session-setup"
+            className="inline-block rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-widest text-black hover:bg-brand/90"
+          >
+            + Create Session
+          </Link>
+        </div>
       </header>
 
       <section className="rounded-3xl border border-white/10 bg-black/40 p-6">

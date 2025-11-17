@@ -8,6 +8,7 @@ import MarketDetailPage from "./markets/MarketDetailPage";
 import AccountPage from "./account/AccountPage";
 import AdminDashboard from "./admin/AdminDashboard";
 import SessionSetupPage from "./admin/SessionSetupPage";
+import TimingSessionsPage from "./admin/TimingSessionsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 export const router = createBrowserRouter([
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
                     {
                         path: "admin/session-setup",
                         element: _jsx(SessionSetupPage, {})
+                    },
+                    {
+                        path: "admin/timing-sessions",
+                        element: _jsx(TimingSessionsPage, {})
                     }
                 ]
             }

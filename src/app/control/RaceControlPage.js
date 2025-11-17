@@ -3,10 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createSession, deleteSessionDeep, fetchControlEvents, fetchDriverStandings, fetchSessionDetail, getRaceTime, initializeRace, invalidateLastLap, logLap, logPenalty, logPitEvent, logControlError, pauseRace, resumeRace, setFlagStatus, updateDriverStatus } from "@domains/timing/api/timingApi";
+import { createSession, deleteSessionDeep, fetchControlEvents, fetchDriverStandings, fetchSessionDetail, fetchTimingResults, finishSession, getRaceTime, initializeRace, logLap, logPenalty, logPitEvent, logControlError, pauseRace, resumeRace, setFlagStatus, updateDriverStatus } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
+import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
 const HOTKEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Z", "X", "C", "V", "B", "N", "M"];
 const FLAG_OPTIONS = [
     { value: "green", label: "Green", className: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" },
@@ -30,7 +31,6 @@ const RaceControlPage = () => {
     });
     const [penaltyForm, setPenaltyForm] = useState({ driverId: "", seconds: "5", reason: "" });
     const [pitForm, setPitForm] = useState({ driverId: "" });
-    const [invalidateDriverId, setInvalidateDriverId] = useState("");
     const driverHotkeysRef = useRef(new Map());
     useTimingRealtime(sessionId);
     const sessionQuery = useQuery({
@@ -48,6 +48,14 @@ const RaceControlPage = () => {
         queryFn: () => fetchControlEvents(sessionId),
         enabled: !!sessionId
     });
+    const resultsQuery = useQuery({
+        queryKey: ["timing-results", sessionId],
+        queryFn: () => fetchTimingResults(sessionId),
+        enabled: !!sessionId && (sessionQuery.data?.phase === "finished" || sessionQuery.data?.status === "finished")
+    });
+    const session = sessionQuery.data;
+    const isFinished = Boolean(session?.phase === "finished" || session?.status === "finished");
+    const controlsLocked = isFinished;
     const drivers = driversQuery.data ?? [];
     const recordError = (message) => {
         if (!sessionId)
@@ -113,17 +121,6 @@ const RaceControlPage = () => {
             toast({ variant: "error", title: "Unable to log pit", description: error.message });
         }
     });
-    const invalidateLapMutation = useMutation({
-        mutationFn: (driverId) => invalidateLastLap(driverId),
-        onSuccess: () => {
-            toast({ variant: "success", title: "Lap invalidated" });
-            refreshTimingData();
-        },
-        onError: (error) => {
-            recordError(error.message);
-            toast({ variant: "error", title: "Unable to invalidate lap", description: error.message });
-        }
-    });
     const flagMutation = useMutation({
         mutationFn: ({ sessionId, flag }) => setFlagStatus(sessionId, flag),
         onSuccess: () => {
@@ -166,6 +163,20 @@ const RaceControlPage = () => {
         },
         onError: (error) => toast({ variant: "error", title: "Unable to delete session", description: error.message })
     });
+    const finishSessionMutation = useMutation({
+        mutationFn: () => finishSession(sessionId),
+        onSuccess: (results) => {
+            toast({ variant: "success", title: "Race finished", description: "Final classification saved." });
+            queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
+            queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
+            queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
+            queryClient.setQueryData(["timing-results", sessionId], results);
+        },
+        onError: (error) => {
+            recordError(error.message);
+            toast({ variant: "error", title: "Unable to finish race", description: error.message });
+        }
+    });
     const driverMap = useMemo(() => {
         const map = new Map();
         drivers.forEach((driver) => map.set(driver.driver_id, driver));
@@ -181,7 +192,7 @@ const RaceControlPage = () => {
         driverHotkeysRef.current = mapping;
     }, [drivers]);
     useEffect(() => {
-        if (!sessionId)
+        if (!sessionId || controlsLocked)
             return;
         const handler = (event) => {
             const active = document.activeElement;
@@ -197,7 +208,7 @@ const RaceControlPage = () => {
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [logLapMutation, sessionId]);
+    }, [logLapMutation, sessionId, controlsLocked]);
     if (!sessionId) {
         return (_jsx(CreateSessionForm, { formState: createFormState, onChange: setCreateFormState, onSubmit: (event) => {
                 event.preventDefault();
@@ -213,43 +224,64 @@ const RaceControlPage = () => {
     if (!canManageRace) {
         return (_jsx("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70", children: "You need race control permissions to access this console." }));
     }
-    const session = sessionQuery.data;
     const raceClock = useRaceClock(sessionId, session);
-    return (_jsxs("div", { className: "space-y-8", children: [_jsx(RaceControlHeader, { session: session, raceClock: raceClock, onStartRace: () => initializeRaceMutation.mutate(), onPause: () => pauseMutation.mutate("pause"), onResume: () => pauseMutation.mutate("resume"), onFlag: (flag) => flagMutation.mutate({ sessionId, flag }), onDelete: () => {
+    const guardFinished = (message) => {
+        toast({
+            variant: "error",
+            title: "Session finished",
+            description: message
+        });
+    };
+    const handleLap = (driverId) => {
+        if (controlsLocked) {
+            guardFinished("Results are locked. No further laps can be logged.");
+            return;
+        }
+        logLapMutation.mutate({ driverId });
+    };
+    const handleRetire = (driverId) => {
+        if (controlsLocked) {
+            guardFinished("Driver statuses are locked after the checkered flag.");
+            return;
+        }
+        driverStatusMutation.mutate({ driverId, status: "retired" });
+    };
+    return (_jsxs("div", { className: "space-y-8", children: [_jsx(RaceControlHeader, { session: session, raceClock: raceClock, onStartRace: () => initializeRaceMutation.mutate(), onPause: () => pauseMutation.mutate("pause"), onResume: () => pauseMutation.mutate("resume"), onFlag: (flag) => flagMutation.mutate({ sessionId, flag }), onFinish: () => {
+                    const confirmed = window.confirm("Finish race and lock the results?");
+                    if (confirmed)
+                        finishSessionMutation.mutate();
+                }, onDelete: () => {
                     const confirmed = window.confirm("Delete this session and all timing data?");
                     if (confirmed)
                         deleteSessionMutation.mutate(sessionId);
-                }, disableStart: initializeRaceMutation.isPending, flagLoading: flagMutation.isPending }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [_jsx(DriverCaptureGrid, { drivers: drivers, driverMap: driverMap, hotkeysRef: driverHotkeysRef.current, onLap: (driverId) => logLapMutation.mutate({ driverId }), onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onInvalidate: (driverId) => invalidateLapMutation.mutate(driverId), onRetire: (driverId) => driverStatusMutation.mutate({ driverId, status: "retired" }) }), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, onSubmit: (payload) => logPenaltyMutation.mutate({
+                }, disableStart: initializeRaceMutation.isPending || isFinished, flagLoading: flagMutation.isPending || isFinished, finishing: finishSessionMutation.isPending, isFinished: isFinished }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [_jsx(DriverCaptureGrid, { drivers: drivers, driverMap: driverMap, hotkeysRef: driverHotkeysRef.current, onLap: handleLap, onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onRetire: handleRetire, disabled: controlsLocked }), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, disabled: controlsLocked, onSubmit: (payload) => logPenaltyMutation.mutate({
                                         sessionId,
                                         driverId: payload.driverId || null,
                                         reason: payload.reason,
                                         seconds: payload.seconds
-                                    }) }) }), _jsx(ControlCard, { title: "Pit Event", children: _jsx(PitForm, { drivers: drivers, formState: pitForm, onChange: setPitForm, notify: toast, submitting: logPitEventMutation.isPending, onSubmit: (payload) => logPitEventMutation.mutate({
+                                    }) }) }), _jsx(ControlCard, { title: "Pit Event", children: _jsx(PitForm, { drivers: drivers, formState: pitForm, onChange: setPitForm, notify: toast, submitting: logPitEventMutation.isPending, disabled: controlsLocked, onSubmit: (payload) => logPitEventMutation.mutate({
                                         driverId: payload.driverId,
                                         durationMs: null
-                                    }) }) }), _jsx(ControlCard, { title: "Invalidate Last Lap", children: _jsxs("form", { className: "space-y-3", onSubmit: (event) => {
-                                        event.preventDefault();
-                                        if (!invalidateDriverId) {
-                                            toast({ variant: "error", title: "Select a driver" });
-                                            return;
-                                        }
-                                        invalidateLapMutation.mutate(invalidateDriverId);
-                                    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: invalidateDriverId, onChange: (event) => setInvalidateDriverId(event.target.value), children: [_jsx("option", { value: "", children: "Select driver" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("button", { type: "submit", className: "w-full rounded-2xl border border-red-400/50 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-red-300 disabled:opacity-40", disabled: invalidateLapMutation.isPending, children: invalidateLapMutation.isPending ? "Invalidating…" : "Invalidate Lap" })] }) }), _jsx(ControlCard, { title: "Control Log", children: _jsx(ControlLog, { events: controlEventsQuery.data ?? [], drivers: driverMap, loading: controlEventsQuery.isLoading }) })] })] })] }));
+                                    }) }) }), _jsx(ControlCard, { title: "Lap Invalidation", children: _jsx("p", { className: "text-sm text-white/60", children: "Temporarily disabled while classification logic is being improved." }) }), _jsx(ControlCard, { title: "Control Log", children: _jsx(ControlLog, { events: controlEventsQuery.data ?? [], drivers: driverMap, loading: controlEventsQuery.isLoading }) }), isFinished && (_jsx(ControlCard, { title: "Final Classification", children: _jsx(FinalClassification, { results: resultsQuery.data, loading: resultsQuery.isLoading || finishSessionMutation.isPending }) }))] })] })] }));
 };
-const RaceControlHeader = ({ session, raceClock, onStartRace, onPause, onResume, onFlag, disableStart, flagLoading, onDelete }) => {
+const RaceControlHeader = ({ session, raceClock, onStartRace, onPause, onResume, onFlag, onFinish, disableStart, flagLoading, onDelete, finishing, isFinished }) => {
     const currentFlag = session?.track_status ?? "green";
     const isPaused = Boolean(session?.is_paused);
     const phase = session?.phase ?? "setup";
-    return (_jsxs("header", { className: "rounded-3xl border border-white/10 bg-black/40 p-6 space-y-4", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Session" }), _jsx("h1", { className: "text-3xl font-semibold text-white", children: session?.name ?? "Loading" }), _jsxs("p", { className: "text-white/60", children: [session?.track_name ?? "Track TBD", " \u00B7 Target laps: ", session?.laps_target ?? "—"] })] }), _jsxs("div", { className: "text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Race clock" }), _jsx("p", { className: "text-3xl font-mono text-white", children: formatClock(raceClock) })] })] }), _jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsxs("span", { className: "rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60", children: ["Phase: ", phase] }), _jsxs("span", { className: "rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60", children: ["Flag: ", currentFlag] }), _jsxs("div", { className: "ml-auto flex flex-wrap gap-2", children: [_jsx("button", { className: "rounded-full bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", onClick: onStartRace, disabled: disableStart, children: "Start Race" }), _jsx("button", { className: "rounded-full border border-white/30 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white", onClick: isPaused ? onResume : onPause, children: isPaused ? "Resume" : "Pause" }), _jsxs("button", { className: "inline-flex items-center gap-2 rounded-full border border-red-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-300", onClick: onDelete, children: ["Delete ", _jsx(Trash2, { className: "h-3 w-3" })] })] })] }), _jsx("div", { className: "flex flex-wrap gap-3", children: FLAG_OPTIONS.map((flag) => (_jsx("button", { className: `rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition ${currentFlag === flag.value ? flag.className : "border-white/20 text-white/70"}`, onClick: () => onFlag(flag.value), disabled: flagLoading, children: flag.label }, flag.value))) })] }));
+    return (_jsxs("header", { className: "rounded-3xl border border-white/10 bg-black/40 p-6 space-y-4", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Session" }), _jsx("h1", { className: "text-3xl font-semibold text-white", children: session?.name ?? "Loading" }), _jsxs("p", { className: "text-white/60", children: [session?.track_name ?? "Track TBD", " \u00B7 Target laps: ", session?.laps_target ?? "—"] })] }), _jsxs("div", { className: "text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Race clock" }), _jsx("p", { className: "text-3xl font-mono text-white", children: formatClock(raceClock) })] })] }), _jsx(TrackStatusBanner, { status: session?.track_status, variant: "control" }), _jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsxs("span", { className: "rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60", children: ["Phase: ", phase] }), _jsxs("span", { className: "rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60", children: ["Flag: ", currentFlag] }), _jsxs("div", { className: "ml-auto flex flex-wrap gap-2", children: [_jsx("button", { className: "rounded-full bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", onClick: onStartRace, disabled: disableStart, children: "Start Race" }), _jsx("button", { className: "rounded-full border border-white/30 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white", onClick: isPaused ? onResume : onPause, disabled: isFinished, children: isPaused ? "Resume" : "Pause" }), !isFinished ? (_jsx("button", { className: "rounded-full border border-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40", onClick: onFinish, disabled: finishing, children: finishing ? "Finishing…" : "Finish Race" })) : (_jsx("span", { className: "rounded-full border border-emerald-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200", children: "Classified" })), _jsxs("button", { className: "inline-flex items-center gap-2 rounded-full border border-red-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-300", onClick: onDelete, children: ["Delete ", _jsx(Trash2, { className: "h-3 w-3" })] })] })] }), _jsx("div", { className: "flex flex-wrap gap-3", children: FLAG_OPTIONS.map((flag) => (_jsx("button", { className: `rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] transition ${currentFlag === flag.value ? flag.className : "border-white/20 text-white/70"}`, onClick: () => onFlag(flag.value), disabled: flagLoading || isFinished, children: flag.label }, flag.value))) })] }));
 };
-const DriverCaptureGrid = ({ drivers, driverMap, hotkeysRef, onLap, onPit, onPenalty, onInvalidate, onRetire }) => {
+const DriverCaptureGrid = ({ drivers, driverMap, hotkeysRef, onLap, onPit, onPenalty, onRetire, disabled }) => {
     const keyMap = new Map();
     Array.from(hotkeysRef.entries()).forEach(([key, driverId]) => keyMap.set(driverId, key));
-    return (_jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/40 p-5 space-y-3", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Hotkeys armed" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Driver Capture Grid" })] }), _jsx("p", { className: "text-xs text-white/50", children: "Focus page + press key to log lap." })] }), _jsxs("div", { className: "grid gap-3 sm:grid-cols-2 xl:grid-cols-3", children: [drivers.map((driver) => (_jsx(DriverCard, { driver: driver, hotkey: keyMap.get(driver.driver_id), onLap: onLap, onPenalty: onPenalty, onPit: onPit, onInvalidate: onInvalidate, onRetire: onRetire }, driver.driver_id))), !drivers.length && (_jsx("p", { className: "text-sm text-white/60 col-span-full", children: "No drivers registered in this session yet." }))] })] }));
+    return (_jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/40 p-5 space-y-3", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Hotkeys armed" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Driver Capture Grid" })] }), _jsx("p", { className: "text-xs text-white/50", children: disabled ? "Session finished — controls locked" : "Focus page + press key to log lap." })] }), _jsxs("div", { className: "grid gap-3 sm:grid-cols-2 xl:grid-cols-3", children: [drivers.map((driver) => (_jsx(DriverCard, { driver: driver, hotkey: keyMap.get(driver.driver_id), onLap: onLap, onPenalty: onPenalty, onPit: onPit, onRetire: onRetire, disabled: disabled }, driver.driver_id))), !drivers.length && (_jsx("p", { className: "text-sm text-white/60 col-span-full", children: "No drivers registered in this session yet." }))] })] }));
 };
-const DriverCard = ({ driver, hotkey, onLap, onPenalty, onPit, onInvalidate, onRetire }) => (_jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2", children: [_jsxs("div", { className: "flex items-start justify-between", children: [_jsxs("div", { children: [_jsxs("p", { className: "text-lg font-semibold text-white", children: ["#", driver.car_number, " ", driver.driver_name] }), _jsx("p", { className: "text-xs text-white/60", children: driver.team_name })] }), hotkey && (_jsx("span", { className: "rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white/80", children: hotkey }))] }), _jsxs("div", { className: "grid grid-cols-3 gap-2 text-center text-xs", children: [_jsx(Stat, { label: "Laps", value: driver.laps_completed.toString() }), _jsx(Stat, { label: "Last", value: formatLapTime(driver.last_lap_ms) }), _jsx(Stat, { label: "Best", value: formatLapTime(driver.best_lap_ms) })] }), _jsxs("div", { className: "flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.3em]", children: [_jsx("button", { className: "rounded-full bg-brand/20 px-3 py-1 text-brand hover:bg-brand/30", onClick: () => onLap(driver.driver_id), children: "Lap" }), _jsx("button", { className: "rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60", onClick: () => onPit(driver.driver_id), children: "Pit" }), _jsx("button", { className: "rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60", onClick: () => onPenalty(driver.driver_id), children: "Penalty" }), _jsx("button", { className: "rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60", onClick: () => onInvalidate(driver.driver_id), children: "Invalidate" }), _jsx("button", { className: "rounded-full border border-red-400/50 px-3 py-1 text-red-300 hover:border-red-300", onClick: () => onRetire(driver.driver_id), children: "Retire" })] })] }));
-const PenaltyForm = ({ drivers, formState, onChange, notify, submitting, onSubmit }) => (_jsxs("form", { className: "space-y-3", onSubmit: (event) => {
+const DriverCard = ({ driver, hotkey, onLap, onPenalty, onPit, onRetire, disabled }) => (_jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2", children: [_jsxs("div", { className: "flex items-start justify-between", children: [_jsxs("div", { children: [_jsxs("p", { className: "text-lg font-semibold text-white", children: ["#", driver.car_number, " ", driver.driver_name] }), _jsx("p", { className: "text-xs text-white/60", children: driver.team_name })] }), hotkey && (_jsx("span", { className: "rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white/80", children: hotkey }))] }), _jsxs("div", { className: "grid grid-cols-3 gap-2 text-center text-xs", children: [_jsx(Stat, { label: "Laps", value: driver.laps_completed.toString() }), _jsx(Stat, { label: "Last", value: formatLapTime(driver.last_lap_ms) }), _jsx(Stat, { label: "Best", value: formatLapTime(driver.best_lap_ms) })] }), _jsxs("div", { className: "flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.3em]", children: [_jsx("button", { className: "rounded-full bg-brand/20 px-3 py-1 text-brand hover:bg-brand/30 disabled:opacity-30", onClick: () => onLap(driver.driver_id), disabled: disabled, children: "Lap" }), _jsx("button", { className: "rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60 disabled:opacity-30", onClick: () => onPit(driver.driver_id), disabled: disabled, children: "Pit" }), _jsx("button", { className: "rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60 disabled:opacity-30", onClick: () => onPenalty(driver.driver_id), disabled: disabled, children: "Penalty" }), _jsx("button", { className: "rounded-full border border-red-400/50 px-3 py-1 text-red-300 hover:border-red-300 disabled:opacity-30 disabled:border-white/20", onClick: () => onRetire(driver.driver_id), disabled: disabled, children: "Retire" })] })] }));
+const PenaltyForm = ({ drivers, formState, onChange, notify, submitting, onSubmit, disabled }) => (_jsxs("form", { className: "space-y-3", onSubmit: (event) => {
         event.preventDefault();
+        if (disabled) {
+            notify({ variant: "error", title: "Session finished" });
+            return;
+        }
         const seconds = Number(formState.seconds);
         if (!formState.reason.trim()) {
             notify({ variant: "error", title: "Provide a reason" });
@@ -260,17 +292,30 @@ const PenaltyForm = ({ drivers, formState, onChange, notify, submitting, onSubmi
             return;
         }
         onSubmit({ driverId: formState.driverId, seconds, reason: formState.reason.trim() });
-    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ ...formState, driverId: event.target.value }), children: [_jsx("option", { value: "", children: "Session-level penalty" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("input", { type: "number", min: "1", className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Seconds", value: formState.seconds, onChange: (event) => onChange({ ...formState, seconds: event.target.value }) }), _jsx("input", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Reason", value: formState.reason, onChange: (event) => onChange({ ...formState, reason: event.target.value }) }), _jsx("button", { type: "submit", className: "w-full rounded-2xl bg-white/80 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: submitting, children: submitting ? "Recording…" : "Log Penalty" })] }));
-const PitForm = ({ drivers, formState, onChange, notify, submitting, onSubmit }) => (_jsxs("form", { className: "space-y-3", onSubmit: (event) => {
+    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ ...formState, driverId: event.target.value }), disabled: disabled, children: [_jsx("option", { value: "", children: "Session-level penalty" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("input", { type: "number", min: "1", className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Seconds", value: formState.seconds, onChange: (event) => onChange({ ...formState, seconds: event.target.value }), disabled: disabled }), _jsx("input", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", placeholder: "Reason", value: formState.reason, onChange: (event) => onChange({ ...formState, reason: event.target.value }), disabled: disabled }), _jsx("button", { type: "submit", className: "w-full rounded-2xl bg-white/80 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: submitting || disabled, children: submitting ? "Recording…" : "Log Penalty" })] }));
+const PitForm = ({ drivers, formState, onChange, notify, submitting, onSubmit, disabled }) => (_jsxs("form", { className: "space-y-3", onSubmit: (event) => {
         event.preventDefault();
+        if (disabled) {
+            notify({ variant: "error", title: "Session finished" });
+            return;
+        }
         if (!formState.driverId) {
             notify({ variant: "error", title: "Select a driver" });
             return;
         }
         onSubmit({ driverId: formState.driverId });
-    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ driverId: event.target.value }), children: [_jsx("option", { value: "", children: "Select driver" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("button", { type: "submit", className: "w-full rounded-2xl border border-white/30 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40", disabled: submitting, children: submitting ? "Logging…" : "Log Pit Event" })] }));
+    }, children: [_jsxs("select", { className: "w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm", value: formState.driverId, onChange: (event) => onChange({ driverId: event.target.value }), disabled: disabled, children: [_jsx("option", { value: "", children: "Select driver" }), drivers.map((driver) => (_jsxs("option", { value: driver.driver_id, children: ["#", driver.car_number, " ", driver.driver_name] }, driver.driver_id)))] }), _jsx("button", { type: "submit", className: "w-full rounded-2xl border border-white/30 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40", disabled: submitting || disabled, children: submitting ? "Logging…" : "Log Pit Event" })] }));
 const ControlLog = ({ events, drivers, loading }) => (_jsxs("div", { className: "max-h-[420px] space-y-3 overflow-y-auto pr-1", children: [loading && _jsx("p", { className: "text-sm text-white/60", children: "Loading log\u2026" }), events.map((event) => (_jsxs("article", { className: "rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white", children: [_jsx("p", { className: "text-[11px] uppercase tracking-[0.3em] text-white/40", children: new Date(event.created_at).toLocaleTimeString() }), _jsx("p", { className: "font-semibold", children: formatControlEvent(event, drivers) })] }, event.id))), !events.length && !loading && (_jsx("p", { className: "text-sm text-white/60", children: "No control actions yet." }))] }));
 const ControlCard = ({ title, children }) => (_jsxs("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-4", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: title }), _jsx("div", { className: "mt-3", children: children })] }));
+const FinalClassification = ({ results, loading }) => {
+    if (loading) {
+        return _jsx("p", { className: "text-sm text-white/60", children: "Saving final results\u2026" });
+    }
+    if (!results || results.length === 0) {
+        return _jsx("p", { className: "text-sm text-white/60", children: "No classification stored yet." });
+    }
+    return (_jsx("div", { className: "space-y-2", children: results.map((result) => (_jsxs("article", { className: "flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-3 py-2", children: [_jsxs("div", { children: [_jsxs("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: ["P", result.position] }), _jsxs("p", { className: "text-sm font-semibold text-white", children: ["#", result.driver?.number ?? "—", " ", result.driver?.name ?? "Driver"] }), _jsx("p", { className: "text-xs text-white/50", children: result.driver?.team_name ?? "—" })] }), _jsxs("div", { className: "text-right", children: [_jsx("p", { className: "text-sm font-semibold text-white", children: formatResultGap(result) }), _jsxs("p", { className: "text-xs text-white/60", children: [result.laps, " laps"] }), _jsx("p", { className: "text-xs text-white/60", children: result.total_time_ms ? formatLapTime(result.total_time_ms) : "—" })] })] }, result.id))) }));
+};
 const Stat = ({ label, value }) => (_jsxs("div", { className: "rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-white", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: label }), _jsx("p", { className: "text-sm font-semibold", children: value })] }));
 const CreateSessionForm = ({ formState, onChange, onSubmit, submitting }) => (_jsxs("div", { className: "mx-auto max-w-3xl rounded-3xl border border-white/10 bg-black/50 p-8", children: [_jsx("h1", { className: "text-3xl font-semibold text-white", children: "Create Session" }), _jsx("p", { className: "mt-2 text-sm text-white/60", children: "Enter track details and seed drivers (one per line: Car, Driver, Team)." }), _jsxs("form", { className: "mt-6 space-y-4", onSubmit: onSubmit, children: [_jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Session Name" }), _jsx("input", { className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white", value: formState.name, onChange: (e) => onChange({ ...formState, name: e.target.value }), required: true })] }), _jsxs("div", { className: "grid gap-4 md:grid-cols-2", children: [_jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Track" }), _jsx("input", { className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white", value: formState.trackName, onChange: (e) => onChange({ ...formState, trackName: e.target.value }), required: true })] }), _jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Target Laps" }), _jsx("input", { type: "number", min: 1, className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white", value: formState.lapsTarget, onChange: (e) => onChange({ ...formState, lapsTarget: e.target.value }) })] })] }), _jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Drivers" }), _jsx("textarea", { className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white", rows: 6, placeholder: "22, Max Torque, Redwood Racing", value: formState.driversText, onChange: (e) => onChange({ ...formState, driversText: e.target.value }) })] }), _jsx("button", { type: "submit", disabled: submitting, className: "w-full rounded-2xl bg-brand py-3 text-center text-base font-semibold uppercase tracking-widest text-black disabled:opacity-40", children: submitting ? "Creating…" : "Create Session" })] })] }));
 const parseDrivers = (input) => input
@@ -333,6 +378,20 @@ const useRaceClock = (sessionId, session) => {
     }, [sessionId, session?.is_paused, session?.phase]);
     return time;
 };
+const formatResultGap = (result) => {
+    if (result.position === 1)
+        return "Leader";
+    if (result.gap_laps && result.gap_laps > 0) {
+        return `+${result.gap_laps}L`;
+    }
+    if (result.gap_ms && result.gap_ms > 0) {
+        if (result.gap_ms >= 60000) {
+            return `+${formatLapTime(result.gap_ms)}`;
+        }
+        return `+${(result.gap_ms / 1000).toFixed(3)}`;
+    }
+    return "+0.000";
+};
 const formatLapTime = (ms) => {
     if (!ms || ms <= 0)
         return "—";
@@ -371,6 +430,8 @@ const formatControlEvent = (event, drivers) => {
             return "Race paused";
         case "race_resumed":
             return "Race resumed";
+        case "race_finished":
+            return "Race finished — results locked";
         case "driver_status_changed":
             return `${driver ? driver.driver_name : "Driver"} status → ${event.payload.status}`;
         case "state_updated":

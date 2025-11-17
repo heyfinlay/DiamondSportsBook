@@ -5,6 +5,7 @@ const sessionStateSchema = z.object({
     name: z.string(),
     track_name: z.string(),
     laps_target: z.number().nullable(),
+    status: z.string().optional(),
     phase: z.string(),
     track_status: z.string(),
     race_time_ms: z.number(),
@@ -31,8 +32,8 @@ const driverStandingSchema = z.object({
 const linkedDriverSchema = z
     .object({
     id: z.string(),
-    display_name: z.string(),
-    car_number: z.number().nullable()
+    name: z.string(),
+    number: z.number().nullable()
 })
     .nullable()
     .optional();
@@ -61,10 +62,50 @@ const controlEventSchema = z.object({
     created_at: z.string(),
     created_by: z.string().nullable()
 });
+const sessionSummarySchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    track_name: z.string().nullable(),
+    laps_target: z.number().nullable(),
+    mode: z.string().nullable(),
+    status: z.string(),
+    starts_at: z.string().nullable(),
+    created_at: z.string(),
+    session_state: z
+        .object({
+        session_id: z.string(),
+        procedure_phase: z.string(),
+        flag_status: z.string(),
+        race_time_ms: z.number(),
+        is_timing: z.boolean().optional(),
+        is_paused: z.boolean().optional()
+    })
+        .nullable()
+});
+const resultDriverSchema = z
+    .object({
+    id: z.string(),
+    name: z.string(),
+    number: z.number().nullable(),
+    team_name: z.string().nullable()
+})
+    .nullable();
+const timingResultSchema = z.object({
+    id: z.string(),
+    session_id: z.string(),
+    driver_id: z.string(),
+    position: z.number(),
+    laps: z.number(),
+    total_time_ms: z.number().nullable(),
+    gap_ms: z.number().nullable(),
+    gap_laps: z.number().nullable(),
+    status: z.string(),
+    driver: resultDriverSchema
+});
 export const fetchSessionDetail = async (sessionId) => {
     const { data: sessionRow, error: sessionError } = await supabase
         .from("timing_sessions")
-        .select("id, name, track_name, laps_target")
+        .select("id, name, track_name, laps_target, status")
         .eq("id", sessionId)
         .single();
     if (sessionError)
@@ -83,6 +124,25 @@ export const fetchSessionDetail = async (sessionId) => {
         phase: stateRow.procedure_phase,
         track_status: stateRow.flag_status
     });
+};
+export const fetchSessions = async () => {
+    const { data, error } = await supabase
+        .from("timing_sessions")
+        .select(`
+        id,
+        name,
+        track_name,
+        laps_target,
+        mode,
+        status,
+        starts_at,
+        created_at,
+        session_state:timing_session_state(session_id, procedure_phase, flag_status, race_time_ms, is_timing, is_paused)
+      `)
+        .order("created_at", { ascending: false });
+    if (error)
+        throw error;
+    return z.array(sessionSummarySchema).parse(data ?? []);
 };
 export const fetchDriverStandings = async (sessionId) => {
     const { data, error } = await supabase
@@ -156,7 +216,7 @@ export const deleteSessionDeep = async (sessionId) => {
 export const fetchPenalties = async (sessionId) => {
     const { data, error } = await supabase
         .from("penalties")
-        .select("id, session_id, driver_id, reason, seconds, issued_at, driver:drivers(id, display_name, car_number)")
+        .select("id, session_id, driver_id, reason, seconds, issued_at, driver:timing_drivers(id, name, number)")
         .eq("session_id", sessionId)
         .order("issued_at", { ascending: false })
         .limit(20);
@@ -167,7 +227,7 @@ export const fetchPenalties = async (sessionId) => {
 export const fetchPitEvents = async (sessionId) => {
     const { data, error } = await supabase
         .from("pit_events")
-        .select("id, session_id, driver_id, duration_ms, started_at, driver:drivers(id, display_name, car_number)")
+        .select("id, session_id, driver_id, duration_ms, started_at, driver:timing_drivers(id, name, number)")
         .eq("session_id", sessionId)
         .order("started_at", { ascending: false })
         .limit(20);
@@ -185,6 +245,16 @@ export const fetchControlEvents = async (sessionId) => {
     if (error)
         throw error;
     return z.array(controlEventSchema).parse(data ?? []);
+};
+export const fetchTimingResults = async (sessionId) => {
+    const { data, error } = await supabase
+        .from("timing_results")
+        .select("id, session_id, driver_id, position, laps, total_time_ms, gap_ms, gap_laps, status, driver:timing_drivers(id, name, number, team_name)")
+        .eq("session_id", sessionId)
+        .order("position", { ascending: true });
+    if (error)
+        throw error;
+    return z.array(timingResultSchema).parse(data ?? []);
 };
 export const setFlagStatus = async (sessionId, flag) => {
     const { error } = await supabase.rpc("timing_set_flag_status", {
@@ -237,4 +307,12 @@ export const getRaceTime = async (sessionId) => {
     if (error)
         throw error;
     return Number(data ?? 0);
+};
+export const finishSession = async (sessionId) => {
+    const { data, error } = await supabase.rpc("timing_finish_session", {
+        p_session_id: sessionId
+    });
+    if (error)
+        throw error;
+    return z.array(timingResultSchema).parse(data ?? []);
 };

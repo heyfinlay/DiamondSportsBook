@@ -8,9 +8,10 @@ import {
   fetchControlEvents,
   fetchDriverStandings,
   fetchSessionDetail,
+  fetchTimingResults,
+  finishSession,
   getRaceTime,
   initializeRace,
-  invalidateLastLap,
   logLap,
   logPenalty,
   logPitEvent,
@@ -21,11 +22,13 @@ import {
   updateDriverStatus,
   type ControlEvent,
   type DriverStanding,
-  type SessionState
+  type SessionState,
+  type TimingResult
 } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
+import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
 
 const HOTKEYS = ["1","2","3","4","5","6","7","8","9","0","Q","W","E","R","T","Y","U","I","O","P","A","S","D","F","G","H","J","K","L","Z","X","C","V","B","N","M"];
 
@@ -52,7 +55,6 @@ const RaceControlPage = () => {
   });
   const [penaltyForm, setPenaltyForm] = useState({ driverId: "", seconds: "5", reason: "" });
   const [pitForm, setPitForm] = useState({ driverId: "" });
-  const [invalidateDriverId, setInvalidateDriverId] = useState("");
   const driverHotkeysRef = useRef<Map<string, string>>(new Map());
 
   useTimingRealtime(sessionId);
@@ -74,6 +76,16 @@ const RaceControlPage = () => {
     queryFn: () => fetchControlEvents(sessionId!),
     enabled: !!sessionId
   });
+
+  const resultsQuery = useQuery({
+    queryKey: ["timing-results", sessionId],
+    queryFn: () => fetchTimingResults(sessionId!),
+    enabled: !!sessionId && (sessionQuery.data?.phase === "finished" || sessionQuery.data?.status === "finished")
+  });
+
+  const session = sessionQuery.data;
+  const isFinished = Boolean(session?.phase === "finished" || session?.status === "finished");
+  const controlsLocked = isFinished;
 
   const drivers = driversQuery.data ?? [];
   const recordError = (message: string) => {
@@ -147,18 +159,6 @@ const RaceControlPage = () => {
     }
   });
 
-  const invalidateLapMutation = useMutation({
-    mutationFn: (driverId: string) => invalidateLastLap(driverId),
-    onSuccess: () => {
-      toast({ variant: "success", title: "Lap invalidated" });
-      refreshTimingData();
-    },
-    onError: (error: Error) => {
-      recordError(error.message);
-      toast({ variant: "error", title: "Unable to invalidate lap", description: error.message });
-    }
-  });
-
   const flagMutation = useMutation({
     mutationFn: ({ sessionId, flag }: { sessionId: string; flag: string }) =>
       setFlagStatus(sessionId, flag),
@@ -209,6 +209,21 @@ const RaceControlPage = () => {
       toast({ variant: "error", title: "Unable to delete session", description: error.message })
   });
 
+  const finishSessionMutation = useMutation({
+    mutationFn: () => finishSession(sessionId!),
+    onSuccess: (results) => {
+      toast({ variant: "success", title: "Race finished", description: "Final classification saved." });
+      queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
+      queryClient.setQueryData(["timing-results", sessionId], results);
+    },
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to finish race", description: error.message });
+    }
+  });
+
   const driverMap = useMemo(() => {
     const map = new Map<string, DriverStanding>();
     drivers.forEach((driver) => map.set(driver.driver_id, driver));
@@ -225,7 +240,7 @@ const RaceControlPage = () => {
   }, [drivers]);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || controlsLocked) return;
 
     const handler = (event: KeyboardEvent) => {
       const active = document.activeElement as HTMLElement | null;
@@ -245,7 +260,7 @@ const RaceControlPage = () => {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [logLapMutation, sessionId]);
+  }, [logLapMutation, sessionId, controlsLocked]);
 
   if (!sessionId) {
     return (
@@ -275,8 +290,31 @@ const RaceControlPage = () => {
     );
   }
 
-  const session = sessionQuery.data;
   const raceClock = useRaceClock(sessionId, session);
+
+  const guardFinished = (message: string) => {
+    toast({
+      variant: "error",
+      title: "Session finished",
+      description: message
+    });
+  };
+
+  const handleLap = (driverId: string) => {
+    if (controlsLocked) {
+      guardFinished("Results are locked. No further laps can be logged.");
+      return;
+    }
+    logLapMutation.mutate({ driverId });
+  };
+
+  const handleRetire = (driverId: string) => {
+    if (controlsLocked) {
+      guardFinished("Driver statuses are locked after the checkered flag.");
+      return;
+    }
+    driverStatusMutation.mutate({ driverId, status: "retired" });
+  };
 
   return (
     <div className="space-y-8">
@@ -287,12 +325,18 @@ const RaceControlPage = () => {
         onPause={() => pauseMutation.mutate("pause")}
         onResume={() => pauseMutation.mutate("resume")}
         onFlag={(flag) => flagMutation.mutate({ sessionId, flag })}
+        onFinish={() => {
+          const confirmed = window.confirm("Finish race and lock the results?");
+          if (confirmed) finishSessionMutation.mutate();
+        }}
         onDelete={() => {
           const confirmed = window.confirm("Delete this session and all timing data?");
           if (confirmed) deleteSessionMutation.mutate(sessionId);
         }}
-        disableStart={initializeRaceMutation.isPending}
-        flagLoading={flagMutation.isPending}
+        disableStart={initializeRaceMutation.isPending || isFinished}
+        flagLoading={flagMutation.isPending || isFinished}
+        finishing={finishSessionMutation.isPending}
+        isFinished={isFinished}
       />
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
@@ -300,11 +344,11 @@ const RaceControlPage = () => {
           drivers={drivers}
           driverMap={driverMap}
           hotkeysRef={driverHotkeysRef.current}
-          onLap={(driverId) => logLapMutation.mutate({ driverId })}
+          onLap={handleLap}
           onPit={(driverId) => setPitForm({ driverId })}
           onPenalty={(driverId) => setPenaltyForm((prev) => ({ ...prev, driverId }))}
-          onInvalidate={(driverId) => invalidateLapMutation.mutate(driverId)}
-          onRetire={(driverId) => driverStatusMutation.mutate({ driverId, status: "retired" })}
+          onRetire={handleRetire}
+          disabled={controlsLocked}
         />
 
         <div className="space-y-4">
@@ -315,6 +359,7 @@ const RaceControlPage = () => {
               onChange={setPenaltyForm}
               notify={toast}
               submitting={logPenaltyMutation.isPending}
+              disabled={controlsLocked}
               onSubmit={(payload) =>
                 logPenaltyMutation.mutate({
                   sessionId,
@@ -333,6 +378,7 @@ const RaceControlPage = () => {
               onChange={setPitForm}
               notify={toast}
               submitting={logPitEventMutation.isPending}
+              disabled={controlsLocked}
               onSubmit={(payload) =>
                 logPitEventMutation.mutate({
                   driverId: payload.driverId,
@@ -342,38 +388,10 @@ const RaceControlPage = () => {
             />
           </ControlCard>
 
-          <ControlCard title="Invalidate Last Lap">
-            <form
-              className="space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!invalidateDriverId) {
-                  toast({ variant: "error", title: "Select a driver" });
-                  return;
-                }
-                invalidateLapMutation.mutate(invalidateDriverId);
-              }}
-            >
-              <select
-                className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm"
-                value={invalidateDriverId}
-                onChange={(event) => setInvalidateDriverId(event.target.value)}
-              >
-                <option value="">Select driver</option>
-                {drivers.map((driver) => (
-                  <option key={driver.driver_id} value={driver.driver_id}>
-                    #{driver.car_number} {driver.driver_name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="w-full rounded-2xl border border-red-400/50 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-red-300 disabled:opacity-40"
-                disabled={invalidateLapMutation.isPending}
-              >
-                {invalidateLapMutation.isPending ? "Invalidating…" : "Invalidate Lap"}
-              </button>
-            </form>
+          <ControlCard title="Lap Invalidation">
+            <p className="text-sm text-white/60">
+              Temporarily disabled while classification logic is being improved.
+            </p>
           </ControlCard>
 
           <ControlCard title="Control Log">
@@ -383,6 +401,15 @@ const RaceControlPage = () => {
               loading={controlEventsQuery.isLoading}
             />
           </ControlCard>
+
+          {isFinished && (
+            <ControlCard title="Final Classification">
+              <FinalClassification
+                results={resultsQuery.data}
+                loading={resultsQuery.isLoading || finishSessionMutation.isPending}
+              />
+            </ControlCard>
+          )}
         </div>
       </div>
     </div>
@@ -396,9 +423,12 @@ const RaceControlHeader = ({
   onPause,
   onResume,
   onFlag,
+  onFinish,
   disableStart,
   flagLoading,
-  onDelete
+  onDelete,
+  finishing,
+  isFinished
 }: {
   session?: SessionState;
   raceClock: number;
@@ -409,6 +439,9 @@ const RaceControlHeader = ({
   disableStart?: boolean;
   flagLoading?: boolean;
   onDelete: () => void;
+  onFinish: () => void;
+  finishing?: boolean;
+  isFinished?: boolean;
 }) => {
   const currentFlag = session?.track_status ?? "green";
   const isPaused = Boolean(session?.is_paused);
@@ -429,6 +462,7 @@ const RaceControlHeader = ({
           <p className="text-3xl font-mono text-white">{formatClock(raceClock)}</p>
         </div>
       </div>
+      <TrackStatusBanner status={session?.track_status} variant="control" />
       <div className="flex flex-wrap items-center gap-3">
         <span className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60">
           Phase: {phase}
@@ -447,9 +481,23 @@ const RaceControlHeader = ({
           <button
             className="rounded-full border border-white/30 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white"
             onClick={isPaused ? onResume : onPause}
+            disabled={isFinished}
           >
             {isPaused ? "Resume" : "Pause"}
           </button>
+          {!isFinished ? (
+            <button
+              className="rounded-full border border-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40"
+              onClick={onFinish}
+              disabled={finishing}
+            >
+              {finishing ? "Finishing…" : "Finish Race"}
+            </button>
+          ) : (
+            <span className="rounded-full border border-emerald-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200">
+              Classified
+            </span>
+          )}
           <button
             className="inline-flex items-center gap-2 rounded-full border border-red-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-300"
             onClick={onDelete}
@@ -466,7 +514,7 @@ const RaceControlHeader = ({
               currentFlag === flag.value ? flag.className : "border-white/20 text-white/70"
             }`}
             onClick={() => onFlag(flag.value)}
-            disabled={flagLoading}
+            disabled={flagLoading || isFinished}
           >
             {flag.label}
           </button>
@@ -483,8 +531,8 @@ const DriverCaptureGrid = ({
   onLap,
   onPit,
   onPenalty,
-  onInvalidate,
-  onRetire
+  onRetire,
+  disabled
 }: {
   drivers: DriverStanding[];
   driverMap: Map<string, DriverStanding>;
@@ -492,8 +540,8 @@ const DriverCaptureGrid = ({
   onLap: (driverId: string) => void;
   onPit: (driverId: string) => void;
   onPenalty: (driverId: string) => void;
-  onInvalidate: (driverId: string) => void;
   onRetire: (driverId: string) => void;
+  disabled?: boolean;
 }) => {
   const keyMap = new Map<string, string>();
   Array.from(hotkeysRef.entries()).forEach(([key, driverId]) => keyMap.set(driverId, key));
@@ -505,7 +553,9 @@ const DriverCaptureGrid = ({
           <p className="text-xs uppercase tracking-[0.3em] text-white/60">Hotkeys armed</p>
           <h2 className="text-xl font-semibold text-white">Driver Capture Grid</h2>
         </div>
-        <p className="text-xs text-white/50">Focus page + press key to log lap.</p>
+        <p className="text-xs text-white/50">
+          {disabled ? "Session finished — controls locked" : "Focus page + press key to log lap."}
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {drivers.map((driver) => (
@@ -516,8 +566,8 @@ const DriverCaptureGrid = ({
             onLap={onLap}
             onPenalty={onPenalty}
             onPit={onPit}
-            onInvalidate={onInvalidate}
             onRetire={onRetire}
+            disabled={disabled}
           />
         ))}
         {!drivers.length && (
@@ -536,16 +586,16 @@ const DriverCard = ({
   onLap,
   onPenalty,
   onPit,
-  onInvalidate,
-  onRetire
+  onRetire,
+  disabled
 }: {
   driver: DriverStanding;
   hotkey?: string;
   onLap: (driverId: string) => void;
   onPenalty: (driverId: string) => void;
   onPit: (driverId: string) => void;
-  onInvalidate: (driverId: string) => void;
   onRetire: (driverId: string) => void;
+  disabled?: boolean;
 }) => (
   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
     <div className="flex items-start justify-between">
@@ -568,32 +618,30 @@ const DriverCard = ({
     </div>
     <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-[0.3em]">
       <button
-        className="rounded-full bg-brand/20 px-3 py-1 text-brand hover:bg-brand/30"
+        className="rounded-full bg-brand/20 px-3 py-1 text-brand hover:bg-brand/30 disabled:opacity-30"
         onClick={() => onLap(driver.driver_id)}
+        disabled={disabled}
       >
         Lap
       </button>
       <button
-        className="rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60"
+        className="rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60 disabled:opacity-30"
         onClick={() => onPit(driver.driver_id)}
+        disabled={disabled}
       >
         Pit
       </button>
       <button
-        className="rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60"
+        className="rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60 disabled:opacity-30"
         onClick={() => onPenalty(driver.driver_id)}
+        disabled={disabled}
       >
         Penalty
       </button>
       <button
-        className="rounded-full border border-white/30 px-3 py-1 text-white/80 hover:border-white/60"
-        onClick={() => onInvalidate(driver.driver_id)}
-      >
-        Invalidate
-      </button>
-      <button
-        className="rounded-full border border-red-400/50 px-3 py-1 text-red-300 hover:border-red-300"
+        className="rounded-full border border-red-400/50 px-3 py-1 text-red-300 hover:border-red-300 disabled:opacity-30 disabled:border-white/20"
         onClick={() => onRetire(driver.driver_id)}
+        disabled={disabled}
       >
         Retire
       </button>
@@ -607,7 +655,8 @@ const PenaltyForm = ({
   onChange,
   notify,
   submitting,
-  onSubmit
+  onSubmit,
+  disabled
 }: {
   drivers: DriverStanding[];
   formState: { driverId: string; seconds: string; reason: string };
@@ -615,11 +664,16 @@ const PenaltyForm = ({
   notify: (options: { title: string; description?: string; variant?: "success" | "error" | "default" }) => void;
   submitting: boolean;
   onSubmit: (payload: { driverId: string; seconds: number; reason: string }) => void;
+  disabled?: boolean;
 }) => (
   <form
     className="space-y-3"
     onSubmit={(event) => {
       event.preventDefault();
+      if (disabled) {
+        notify({ variant: "error", title: "Session finished" });
+        return;
+      }
       const seconds = Number(formState.seconds);
       if (!formState.reason.trim()) {
         notify({ variant: "error", title: "Provide a reason" });
@@ -636,6 +690,7 @@ const PenaltyForm = ({
       className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm"
       value={formState.driverId}
       onChange={(event) => onChange({ ...formState, driverId: event.target.value })}
+      disabled={disabled}
     >
       <option value="">Session-level penalty</option>
       {drivers.map((driver) => (
@@ -651,17 +706,19 @@ const PenaltyForm = ({
       placeholder="Seconds"
       value={formState.seconds}
       onChange={(event) => onChange({ ...formState, seconds: event.target.value })}
+      disabled={disabled}
     />
     <input
       className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm"
       placeholder="Reason"
       value={formState.reason}
       onChange={(event) => onChange({ ...formState, reason: event.target.value })}
+      disabled={disabled}
     />
     <button
       type="submit"
       className="w-full rounded-2xl bg-white/80 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
-      disabled={submitting}
+      disabled={submitting || disabled}
     >
       {submitting ? "Recording…" : "Log Penalty"}
     </button>
@@ -674,7 +731,8 @@ const PitForm = ({
   onChange,
   notify,
   submitting,
-  onSubmit
+  onSubmit,
+  disabled
 }: {
   drivers: DriverStanding[];
   formState: { driverId: string };
@@ -682,11 +740,16 @@ const PitForm = ({
   notify: (options: { title: string; description?: string; variant?: "success" | "error" | "default" }) => void;
   submitting: boolean;
   onSubmit: (payload: { driverId: string }) => void;
+  disabled?: boolean;
 }) => (
   <form
     className="space-y-3"
     onSubmit={(event) => {
       event.preventDefault();
+      if (disabled) {
+        notify({ variant: "error", title: "Session finished" });
+        return;
+      }
       if (!formState.driverId) {
         notify({ variant: "error", title: "Select a driver" });
         return;
@@ -698,6 +761,7 @@ const PitForm = ({
       className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm"
       value={formState.driverId}
       onChange={(event) => onChange({ driverId: event.target.value })}
+      disabled={disabled}
     >
       <option value="">Select driver</option>
       {drivers.map((driver) => (
@@ -709,7 +773,7 @@ const PitForm = ({
     <button
       type="submit"
       className="w-full rounded-2xl border border-white/30 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-white disabled:opacity-40"
-      disabled={submitting}
+      disabled={submitting || disabled}
     >
       {submitting ? "Logging…" : "Log Pit Event"}
     </button>
@@ -747,6 +811,46 @@ const ControlCard = ({ title, children }: { title: string; children: React.React
     <div className="mt-3">{children}</div>
   </div>
 );
+
+const FinalClassification = ({
+  results,
+  loading
+}: {
+  results?: TimingResult[];
+  loading: boolean;
+}) => {
+  if (loading) {
+    return <p className="text-sm text-white/60">Saving final results…</p>;
+  }
+  if (!results || results.length === 0) {
+    return <p className="text-sm text-white/60">No classification stored yet.</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {results.map((result) => (
+        <article
+          key={result.id}
+          className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-3 py-2"
+        >
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">P{result.position}</p>
+            <p className="text-sm font-semibold text-white">
+              #{result.driver?.number ?? "—"} {result.driver?.name ?? "Driver"}
+            </p>
+            <p className="text-xs text-white/50">{result.driver?.team_name ?? "—"}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold text-white">{formatResultGap(result)}</p>
+            <p className="text-xs text-white/60">{result.laps} laps</p>
+            <p className="text-xs text-white/60">
+              {result.total_time_ms ? formatLapTime(result.total_time_ms) : "—"}
+            </p>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+};
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-white">
@@ -890,6 +994,20 @@ const useRaceClock = (sessionId: string | undefined, session?: SessionState) => 
   return time;
 };
 
+const formatResultGap = (result: TimingResult) => {
+  if (result.position === 1) return "Leader";
+  if (result.gap_laps && result.gap_laps > 0) {
+    return `+${result.gap_laps}L`;
+  }
+  if (result.gap_ms && result.gap_ms > 0) {
+    if (result.gap_ms >= 60000) {
+      return `+${formatLapTime(result.gap_ms)}`;
+    }
+    return `+${(result.gap_ms / 1000).toFixed(3)}`;
+  }
+  return "+0.000";
+};
+
 const formatLapTime = (ms?: number | null) => {
   if (!ms || ms <= 0) return "—";
   const minutes = Math.floor(ms / 60000);
@@ -931,6 +1049,8 @@ const formatControlEvent = (event: ControlEvent, drivers: Map<string, DriverStan
       return "Race paused";
     case "race_resumed":
       return "Race resumed";
+    case "race_finished":
+      return "Race finished — results locked";
     case "driver_status_changed":
       return `${driver ? driver.driver_name : "Driver"} status → ${event.payload.status}`;
     case "state_updated":
