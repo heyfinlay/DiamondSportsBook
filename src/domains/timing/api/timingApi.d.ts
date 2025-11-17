@@ -9,8 +9,8 @@ declare const sessionStateSchema: z.ZodObject<{
     race_time_ms: z.ZodNumber;
     session_id: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    id?: string;
     name?: string;
+    id?: string;
     track_name?: string;
     laps_target?: number;
     phase?: string;
@@ -18,8 +18,8 @@ declare const sessionStateSchema: z.ZodObject<{
     race_time_ms?: number;
     session_id?: string;
 }, {
-    id?: string;
     name?: string;
+    id?: string;
     track_name?: string;
     laps_target?: number;
     phase?: string;
@@ -69,21 +69,21 @@ export type DriverStanding = z.infer<typeof driverStandingSchema>;
 declare const raceEventSchema: z.ZodObject<{
     id: z.ZodString;
     session_id: z.ZodString;
-    kind: z.ZodString;
+    type: z.ZodString;
     payload: z.ZodRecord<z.ZodString, z.ZodAny>;
     created_at: z.ZodString;
 }, "strip", z.ZodTypeAny, {
+    type?: string;
     id?: string;
-    session_id?: string;
-    kind?: string;
-    payload?: Record<string, any>;
     created_at?: string;
+    session_id?: string;
+    payload?: Record<string, any>;
 }, {
+    type?: string;
     id?: string;
-    session_id?: string;
-    kind?: string;
-    payload?: Record<string, any>;
     created_at?: string;
+    session_id?: string;
+    payload?: Record<string, any>;
 }>;
 export type RaceEvent = z.infer<typeof raceEventSchema>;
 declare const penaltySchema: z.ZodObject<{
@@ -176,8 +176,8 @@ declare const pitEventLogSchema: z.ZodObject<{
 }>;
 export type PitEventLog = z.infer<typeof pitEventLogSchema>;
 export declare const fetchSessionDetail: (sessionId: string) => Promise<{
-    id?: string;
     name?: string;
+    id?: string;
     track_name?: string;
     laps_target?: number;
     phase?: string;
@@ -199,11 +199,11 @@ export declare const fetchDriverStandings: (sessionId: string) => Promise<{
     gap_to_leader_ms?: number;
 }[]>;
 export declare const fetchRaceEvents: (sessionId: string) => Promise<{
+    type?: string;
     id?: string;
-    session_id?: string;
-    kind?: string;
-    payload?: Record<string, any>;
     created_at?: string;
+    session_id?: string;
+    payload?: Record<string, any>;
 }[]>;
 export interface CreateSessionPayload {
     name: string;

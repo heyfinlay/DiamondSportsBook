@@ -19,6 +19,62 @@ export const fetchMarkets = async () => {
         }
     })) ?? []);
 };
+export const fetchMarketEvents = async () => {
+    const { data, error } = await supabase
+        .from("events")
+        .select(`
+      id,
+      title,
+      venue,
+      starts_at,
+      status,
+      takeout,
+      markets:markets(
+        id,
+        name,
+        description,
+        status,
+        type,
+        total_pool,
+        min_stake,
+        max_stake,
+        close_time,
+        outcomes:outcomes(
+          id,
+          label,
+          pool
+        )
+      )
+    `)
+        .order("starts_at", { ascending: true })
+        .order("created_at", { foreignTable: "markets", ascending: true });
+    if (error)
+        throw error;
+    return (data?.map((event) => ({
+        id: event.id,
+        title: event.title,
+        venue: event.venue ?? null,
+        starts_at: event.starts_at ?? null,
+        status: event.status,
+        takeout: Number(event.takeout ?? 0),
+        markets: event.markets?.map((market) => ({
+            id: market.id,
+            name: market.name,
+            description: market.description ?? null,
+            status: market.status,
+            type: market.type,
+            total_pool: Number(market.total_pool ?? 0),
+            min_stake: Number(market.min_stake ?? 0),
+            max_stake: Number(market.max_stake ?? 0),
+            close_time: market.close_time ?? null,
+            outcomes: market.outcomes?.map((outcome) => ({
+                id: outcome.id,
+                label: outcome.label,
+                pool: Number(outcome.pool ?? 0)
+            })) ?? []
+        })) ?? []
+    })) ?? []);
+};
 export const fetchMarketDetail = async (marketId) => {
     const { data, error } = await supabase
         .from("markets")
@@ -77,6 +133,47 @@ export const placeWager = async (marketId, outcomeId, stake, idempotencyKey) => 
     if (error)
         throw error;
     return data;
+};
+export const fetchUserWagers = async (userId, limit = 20) => {
+    if (!userId)
+        return [];
+    const { data, error } = await supabase
+        .from("wagers")
+        .select(`
+      id,
+      stake,
+      status,
+      effective_odds,
+      created_at,
+      outcome:outcomes(label),
+      market:markets(
+        name,
+        type,
+        event:events(title)
+      )
+    `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+    if (error)
+        throw error;
+    return (data?.map((row) => {
+        const outcome = Array.isArray(row.outcome) ? row.outcome[0] : row.outcome;
+        const market = Array.isArray(row.market) ? row.market[0] : row.market;
+        const event = market?.event;
+        const normalizedEvent = Array.isArray(event) ? event[0] : event;
+        return {
+            id: row.id,
+            stake: Number(row.stake ?? 0),
+            status: row.status,
+            effective_odds: Number(row.effective_odds ?? 0),
+            created_at: row.created_at,
+            outcome_label: outcome?.label ?? "Unknown outcome",
+            market_name: market?.name ?? "Unknown market",
+            market_type: market?.type ?? "",
+            event_title: normalizedEvent?.title ?? "Event TBD"
+        };
+    }) ?? []);
 };
 const extractSingle = (value) => {
     if (!value)
