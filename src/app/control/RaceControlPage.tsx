@@ -855,7 +855,7 @@ const EventCard = ({
       <p className="text-[11px] uppercase tracking-[0.3em] text-white/40">
         {timestamp}
       </p>
-      <p className="mt-1 font-semibold text-white">{event.kind}</p>
+      <p className="mt-1 font-semibold text-white">{event.type}</p>
       <p className="text-white/70">{description}</p>
     </div>
   );
@@ -865,7 +865,7 @@ const formatEventDescription = (
   event: RaceEvent,
   drivers: DriverStanding[]
 ) => {
-  if (event.kind === "lap_logged") {
+  if (event.type === "lap_logged") {
     const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
     const lapNumber = event.payload.lap_number;
     const lapMs = event.payload.lap_ms;
@@ -874,7 +874,7 @@ const formatEventDescription = (
       : `Driver ${event.payload.driver_id} logged lap ${lapNumber}`;
   }
 
-  if (event.kind === "lap_invalidated") {
+  if (event.type === "lap_invalidated") {
     const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
     const lapNumber = event.payload.lap_number;
     return driver
@@ -882,7 +882,7 @@ const formatEventDescription = (
       : `Lap ${lapNumber} invalidated for driver ${event.payload.driver_id ?? "unknown"}.`;
   }
 
-  if (event.kind === "penalty_logged") {
+  if (event.type === "penalty_logged") {
     const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
     const seconds = event.payload.seconds;
     const reason = event.payload.reason;
@@ -892,7 +892,7 @@ const formatEventDescription = (
     return `${seconds}s penalty issued: ${reason}`;
   }
 
-  if (event.kind === "pit_event_logged") {
+  if (event.type === "pit_event_logged") {
     const driver = drivers.find((d) => d.driver_id === event.payload.driver_id);
     const durationText = formatDurationSeconds(event.payload.duration_ms);
     const base = driver
@@ -901,11 +901,11 @@ const formatEventDescription = (
     return durationText ? `${base} (${durationText}).` : `${base} logged.`;
   }
 
-  if (event.kind === "race_initialized") {
+  if (event.type === "race_initialized") {
     return "Race initialized and drivers set to running.";
   }
 
-  if (event.kind === "session_created") {
+  if (event.type === "session_created") {
     return `Session created (${event.payload.name ?? "Untitled"})`;
   }
 
