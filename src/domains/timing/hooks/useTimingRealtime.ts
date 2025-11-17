@@ -12,7 +12,12 @@ export const useTimingRealtime = (sessionId?: string) => {
       .channel(`timing-${sessionId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "session_state", filter: `session_id=eq.${sessionId}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "timing_session_state",
+          filter: `session_id=eq.${sessionId}`
+        },
         () => {
           queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
           queryClient.invalidateQueries({ queryKey: ["live-session", sessionId] });
@@ -20,7 +25,7 @@ export const useTimingRealtime = (sessionId?: string) => {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "drivers", filter: `session_id=eq.${sessionId}` },
+        { event: "*", schema: "public", table: "timing_drivers", filter: `session_id=eq.${sessionId}` },
         () => {
           queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
           queryClient.invalidateQueries({ queryKey: ["live-standings", sessionId] });
@@ -28,18 +33,20 @@ export const useTimingRealtime = (sessionId?: string) => {
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "laps", filter: `session_id=eq.${sessionId}` },
+        { event: "*", schema: "public", table: "timing_laps", filter: `session_id=eq.${sessionId}` },
         () => {
           queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
           queryClient.invalidateQueries({ queryKey: ["live-standings", sessionId] });
           queryClient.invalidateQueries({ queryKey: ["timing-events", sessionId] });
+          queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
         }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "race_events", filter: `session_id=eq.${sessionId}` },
+        { event: "*", schema: "public", table: "timing_events", filter: `session_id=eq.${sessionId}` },
         () => {
           queryClient.invalidateQueries({ queryKey: ["timing-events", sessionId] });
+          queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
         }
       )
       .on(

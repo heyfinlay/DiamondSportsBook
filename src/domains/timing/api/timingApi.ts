@@ -9,6 +9,11 @@ const sessionStateSchema = z.object({
   phase: z.string(),
   track_status: z.string(),
   race_time_ms: z.number(),
+  is_timing: z.boolean().optional(),
+  is_paused: z.boolean().optional(),
+  race_started_at: z.string().nullable().optional(),
+  pause_started_at: z.string().nullable().optional(),
+  accumulated_pause_ms: z.number().nullable().optional(),
   session_id: z.string().optional()
 });
 
@@ -72,6 +77,17 @@ const pitEventLogSchema = z.object({
 
 export type PitEventLog = z.infer<typeof pitEventLogSchema>;
 
+const controlEventSchema = z.object({
+  id: z.string(),
+  session_id: z.string(),
+  type: z.string(),
+  payload: z.record(z.any()),
+  created_at: z.string(),
+  created_by: z.string().nullable()
+});
+
+export type ControlEvent = z.infer<typeof controlEventSchema>;
+
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
     .from("timing_sessions")
@@ -83,7 +99,9 @@ export const fetchSessionDetail = async (sessionId: string) => {
 
   const { data: stateRow, error: stateError } = await supabase
     .from("timing_session_state")
-    .select("session_id, procedure_phase, flag_status, race_time_ms")
+    .select(
+      "session_id, procedure_phase, flag_status, race_time_ms, is_timing, is_paused, race_started_at, pause_started_at, accumulated_pause_ms"
+    )
     .eq("session_id", sessionId)
     .single();
 
@@ -154,15 +172,11 @@ export const initializeRace = async (sessionId: string) => {
 
 export interface LogLapPayload {
   driverId: string;
-  lapNumber: number;
-  lapMs: number;
 }
 
 export const logLap = async (payload: LogLapPayload) => {
-  const { error } = await supabase.rpc("timing_log_lap", {
-    p_driver_id: payload.driverId,
-    p_lap_number: payload.lapNumber,
-    p_lap_ms: payload.lapMs
+  const { error } = await supabase.rpc("timing_log_lap_auto", {
+    p_driver_id: payload.driverId
   });
 
   if (error) throw error;
@@ -238,4 +252,47 @@ export const fetchPitEvents = async (sessionId: string) => {
 
   if (error) throw error;
   return z.array(pitEventLogSchema).parse(data ?? []);
+};
+
+export const fetchControlEvents = async (sessionId: string) => {
+  const { data, error } = await supabase
+    .from("race_control_events")
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return z.array(controlEventSchema).parse(data ?? []);
+};
+
+export const setFlagStatus = async (sessionId: string, flag: string) => {
+  const { error } = await supabase.rpc("timing_set_flag_status", {
+    p_session_id: sessionId,
+    p_flag: flag
+  });
+  if (error) throw error;
+};
+
+export const pauseRace = async (sessionId: string) => {
+  const { error } = await supabase.rpc("timing_pause_race", {
+    p_session_id: sessionId
+  });
+  if (error) throw error;
+};
+
+export const resumeRace = async (sessionId: string) => {
+  const { error } = await supabase.rpc("timing_resume_race", {
+    p_session_id: sessionId
+  });
+  if (error) throw error;
+};
+
+export const updateDriverStatus = async (driverId: string, status: string, reason?: string) => {
+  const { error } = await supabase.rpc("timing_update_driver_status", {
+    p_driver_id: driverId,
+    p_status: status,
+    p_reason: reason ?? null
+  });
+  if (error) throw error;
 };
