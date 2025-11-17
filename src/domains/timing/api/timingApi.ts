@@ -74,7 +74,7 @@ export type PitEventLog = z.infer<typeof pitEventLogSchema>;
 
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
-    .from("sessions")
+    .from("timing_sessions")
     .select("id, name, track_name, laps_target")
     .eq("id", sessionId)
     .single();
@@ -82,8 +82,8 @@ export const fetchSessionDetail = async (sessionId: string) => {
   if (sessionError) throw sessionError;
 
   const { data: stateRow, error: stateError } = await supabase
-    .from("session_state")
-    .select("session_id, phase, track_status, race_time_ms")
+    .from("timing_session_state")
+    .select("session_id, procedure_phase, flag_status, race_time_ms")
     .eq("session_id", sessionId)
     .single();
 
@@ -92,7 +92,9 @@ export const fetchSessionDetail = async (sessionId: string) => {
   return sessionStateSchema.parse({
     ...sessionRow,
     ...stateRow,
-    id: sessionRow.id
+    id: sessionRow.id,
+    phase: stateRow.procedure_phase,
+    track_status: stateRow.flag_status
   });
 };
 
@@ -109,7 +111,7 @@ export const fetchDriverStandings = async (sessionId: string) => {
 
 export const fetchRaceEvents = async (sessionId: string) => {
   const { data, error } = await supabase
-    .from("race_events")
+    .from("timing_events")
     .select("*")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: false })
