@@ -62,6 +62,61 @@ begin
 end;
 $$;
 
+-- Pit event RPC aligned to v2 drivers table
+create or replace function public.timing_log_pit_event(
+  p_driver_id uuid,
+  p_duration_ms bigint default null
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor uuid := auth.uid();
+  pit_row public.pit_events;
+  driver_row public.timing_drivers;
+begin
+  if actor is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  if not public.has_permission('race_control') and not public.has_permission('marshal') then
+    raise exception 'Requires marshal or race control permission';
+  end if;
+
+  select * into driver_row
+  from public.timing_drivers
+  where id = p_driver_id
+  for update;
+
+  if driver_row is null then
+    raise exception 'Driver not found';
+  end if;
+
+  insert into public.pit_events(session_id, driver_id, duration_ms, created_by)
+  values (driver_row.session_id, p_driver_id, p_duration_ms, actor)
+  returning * into pit_row;
+
+  update public.timing_drivers
+  set pits = pits + 1
+  where id = p_driver_id
+  returning * into driver_row;
+
+  insert into public.timing_events(session_id, type, payload, created_by)
+  values (
+    driver_row.session_id,
+    'pit_event_logged',
+    jsonb_build_object('driver_id', p_driver_id, 'duration_ms', p_duration_ms),
+    actor
+  );
+
+  return jsonb_build_object(
+    'pit', row_to_json(pit_row),
+    'driver', row_to_json(driver_row)
+  );
+end;
+$$;
+
 -- Track flag setter RPC
 create or replace function public.timing_set_flag_status(
   p_session_id uuid,
@@ -234,6 +289,72 @@ end;
 $$;
 
 -- Control log view (subset of timing events relevant to race control)
+create or replace function public.timing_log_control_error(
+  p_session_id uuid,
+  p_message text
+) returns public.timing_events
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor uuid := auth.uid();
+  event_row public.timing_events;
+begin
+  if actor is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  insert into public.timing_events(session_id, type, payload, created_by)
+  values (
+    p_session_id,
+    'control_error',
+    jsonb_build_object('message', coalesce(trim(p_message), 'unknown error')),
+    actor
+  )
+  returning * into event_row;
+
+  return event_row;
+end;
+$$;
+
+create or replace function public.timing_get_race_time(p_session_id uuid)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  state_row public.timing_session_state;
+  effective_now timestamptz;
+  base_ms bigint;
+  pause_ms bigint;
+begin
+  select * into state_row
+  from public.timing_session_state
+  where session_id = p_session_id;
+
+  if state_row is null or state_row.race_started_at is null then
+    return 0;
+  end if;
+
+  if state_row.is_paused and state_row.pause_started_at is not null then
+    effective_now := state_row.pause_started_at;
+  else
+    effective_now := now();
+  end if;
+
+  base_ms := greatest(
+    0,
+    (extract(epoch from (effective_now - state_row.race_started_at)) * 1000)::bigint
+  );
+
+  pause_ms := coalesce(state_row.accumulated_pause_ms, 0);
+
+  return greatest(0, base_ms - pause_ms);
+end;
+$$;
+
 create or replace view public.race_control_events as
 select
   id,
@@ -248,9 +369,11 @@ where type in (
   'penalty_logged',
   'pit_event_logged',
   'lap_invalidated',
+  'lap_logged',
   'race_paused',
   'race_resumed',
   'driver_status_changed',
+  'control_error',
   'state_updated'
 )
 order by created_at desc;
@@ -261,3 +384,5 @@ grant execute on function public.timing_set_flag_status(uuid, public.flag_status
 grant execute on function public.timing_update_driver_status(uuid, public.driver_status_v2, text) to authenticated;
 grant execute on function public.timing_pause_race(uuid) to authenticated;
 grant execute on function public.timing_resume_race(uuid) to authenticated;
+grant execute on function public.timing_log_control_error(uuid, text) to authenticated;
+grant execute on function public.timing_get_race_time(uuid) to authenticated;

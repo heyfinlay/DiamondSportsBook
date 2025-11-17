@@ -35,16 +35,6 @@ const driverStandingSchema = z.object({
 
 export type DriverStanding = z.infer<typeof driverStandingSchema>;
 
-const raceEventSchema = z.object({
-  id: z.string(),
-  session_id: z.string(),
-  type: z.string(),
-  payload: z.record(z.any()),
-  created_at: z.string()
-});
-
-export type RaceEvent = z.infer<typeof raceEventSchema>;
-
 const linkedDriverSchema = z
   .object({
     id: z.string(),
@@ -125,18 +115,6 @@ export const fetchDriverStandings = async (sessionId: string) => {
 
   if (error) throw error;
   return z.array(driverStandingSchema).parse(data ?? []);
-};
-
-export const fetchRaceEvents = async (sessionId: string) => {
-  const { data, error } = await supabase
-    .from("timing_events")
-    .select("*")
-    .eq("session_id", sessionId)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) throw error;
-  return z.array(raceEventSchema).parse(data ?? []);
 };
 
 export interface CreateSessionPayload {
@@ -295,4 +273,24 @@ export const updateDriverStatus = async (driverId: string, status: string, reaso
     p_reason: reason ?? null
   });
   if (error) throw error;
+};
+
+export const logControlError = async (sessionId: string, message: string) => {
+  try {
+    const { error } = await supabase.rpc("timing_log_control_error", {
+      p_session_id: sessionId,
+      p_message: message
+    });
+    if (error) throw error;
+  } catch {
+    // swallow logging errors to avoid loops
+  }
+};
+
+export const getRaceTime = async (sessionId: string) => {
+  const { data, error } = await supabase.rpc("timing_get_race_time", {
+    p_session_id: sessionId
+  });
+  if (error) throw error;
+  return Number(data ?? 0);
 };

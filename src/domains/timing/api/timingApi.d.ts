@@ -81,26 +81,6 @@ declare const driverStandingSchema: z.ZodObject<{
     gap_to_leader_ms?: number;
 }>;
 export type DriverStanding = z.infer<typeof driverStandingSchema>;
-declare const raceEventSchema: z.ZodObject<{
-    id: z.ZodString;
-    session_id: z.ZodString;
-    type: z.ZodString;
-    payload: z.ZodRecord<z.ZodString, z.ZodAny>;
-    created_at: z.ZodString;
-}, "strip", z.ZodTypeAny, {
-    id?: string;
-    session_id?: string;
-    type?: string;
-    payload?: Record<string, any>;
-    created_at?: string;
-}, {
-    id?: string;
-    session_id?: string;
-    type?: string;
-    payload?: Record<string, any>;
-    created_at?: string;
-}>;
-export type RaceEvent = z.infer<typeof raceEventSchema>;
 declare const penaltySchema: z.ZodObject<{
     id: z.ZodString;
     session_id: z.ZodString;
@@ -241,13 +221,6 @@ export declare const fetchDriverStandings: (sessionId: string) => Promise<{
     position?: number;
     gap_to_leader_ms?: number;
 }[]>;
-export declare const fetchRaceEvents: (sessionId: string) => Promise<{
-    id?: string;
-    session_id?: string;
-    type?: string;
-    payload?: Record<string, any>;
-    created_at?: string;
-}[]>;
 export interface CreateSessionPayload {
     name: string;
     trackName: string;
@@ -317,4 +290,6 @@ export declare const setFlagStatus: (sessionId: string, flag: string) => Promise
 export declare const pauseRace: (sessionId: string) => Promise<void>;
 export declare const resumeRace: (sessionId: string) => Promise<void>;
 export declare const updateDriverStatus: (driverId: string, status: string, reason?: string) => Promise<void>;
+export declare const logControlError: (sessionId: string, message: string) => Promise<void>;
+export declare const getRaceTime: (sessionId: string) => Promise<number>;
 export {};

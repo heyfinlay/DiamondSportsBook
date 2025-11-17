@@ -8,11 +8,13 @@ import {
   fetchControlEvents,
   fetchDriverStandings,
   fetchSessionDetail,
+  getRaceTime,
   initializeRace,
   invalidateLastLap,
   logLap,
   logPenalty,
   logPitEvent,
+  logControlError,
   pauseRace,
   resumeRace,
   setFlagStatus,
@@ -74,6 +76,12 @@ const RaceControlPage = () => {
   });
 
   const drivers = driversQuery.data ?? [];
+  const recordError = (message: string) => {
+    if (!sessionId) return;
+    logControlError(sessionId, message).catch(() => {
+      // best effort logging
+    });
+  };
 
   const refreshTimingData = () => {
     if (!sessionId) return;
@@ -107,8 +115,10 @@ const RaceControlPage = () => {
       toast({ variant: "success", title: "Lap recorded", description: `Driver ${vars.driverId}` });
       refreshTimingData();
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Lap logging failed", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Lap logging failed", description: error.message });
+    }
   });
 
   const logPenaltyMutation = useMutation({
@@ -118,8 +128,10 @@ const RaceControlPage = () => {
       refreshTimingData();
       setPenaltyForm((prev) => ({ ...prev, reason: "" }));
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to log penalty", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to log penalty", description: error.message });
+    }
   });
 
   const logPitEventMutation = useMutation({
@@ -129,8 +141,10 @@ const RaceControlPage = () => {
       refreshTimingData();
       setPitForm((prev) => ({ ...prev, durationMs: "" }));
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to log pit", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to log pit", description: error.message });
+    }
   });
 
   const invalidateLapMutation = useMutation({
@@ -139,8 +153,10 @@ const RaceControlPage = () => {
       toast({ variant: "success", title: "Lap invalidated" });
       refreshTimingData();
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to invalidate lap", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to invalidate lap", description: error.message });
+    }
   });
 
   const flagMutation = useMutation({
@@ -151,8 +167,10 @@ const RaceControlPage = () => {
       queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to update track", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to update track", description: error.message });
+    }
   });
 
   const pauseMutation = useMutation({
@@ -162,8 +180,10 @@ const RaceControlPage = () => {
       queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
       toast({ variant: "success", title: "Timer updated" });
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to update timer", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to update timer", description: error.message });
+    }
   });
 
   const driverStatusMutation = useMutation({
@@ -173,8 +193,10 @@ const RaceControlPage = () => {
       refreshTimingData();
       toast({ variant: "success", title: "Driver updated" });
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to update driver", description: error.message })
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to update driver", description: error.message });
+    }
   });
 
   const deleteSessionMutation = useMutation({
@@ -254,7 +276,7 @@ const RaceControlPage = () => {
   }
 
   const session = sessionQuery.data;
-  const raceClock = useRaceClock(session);
+  const raceClock = useRaceClock(sessionId, session);
 
   return (
     <div className="space-y-8">
@@ -820,32 +842,57 @@ const parseDrivers = (input: string) =>
       };
     });
 
-const useRaceClock = (session?: SessionState) => {
-  const [time, setTime] = useState(() => computeRaceTime(session));
+const useRaceClock = (sessionId: string | undefined, session?: SessionState) => {
+  const [time, setTime] = useState(0);
+  const baselineRef = useRef<{ ms: number; ts: number }>({ ms: 0, ts: performance.now() });
 
   useEffect(() => {
-    setTime(computeRaceTime(session));
-    if (!session?.race_started_at || session.is_paused) return;
+    const current = session?.race_time_ms ?? 0;
+    baselineRef.current = { ms: current, ts: performance.now() };
+    setTime(current);
+  }, [session?.race_time_ms]);
 
-    const start = Date.now();
-    const initial = computeRaceTime(session);
-    const interval = window.setInterval(() => {
-      setTime(initial + (Date.now() - start));
-    }, 500);
+  useEffect(() => {
+    if (!sessionId) {
+      setTime(0);
+      return;
+    }
+    let cancelled = false;
 
-    return () => window.clearInterval(interval);
-  }, [session?.race_started_at, session?.is_paused, session?.pause_started_at, session?.accumulated_pause_ms]);
+    const syncFromServer = async () => {
+      try {
+        const current = await getRaceTime(sessionId);
+        if (cancelled) return;
+        baselineRef.current = { ms: current, ts: performance.now() };
+        setTime(current);
+      } catch (error) {
+        console.error("Failed to sync race clock", error);
+      }
+    };
+
+    syncFromServer();
+    const interval = window.setInterval(syncFromServer, 1500);
+
+    let frame: number;
+    const tick = () => {
+      const { ms, ts } = baselineRef.current;
+      if (session?.is_paused) {
+        setTime(ms);
+      } else {
+        setTime(ms + (performance.now() - ts));
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      cancelAnimationFrame(frame);
+    };
+  }, [sessionId, session?.is_paused, session?.phase]);
 
   return time;
-};
-
-const computeRaceTime = (session?: SessionState) => {
-  if (!session?.race_started_at) return 0;
-  const start = new Date(session.race_started_at).getTime();
-  const now = Date.now();
-  const accumulated = session.accumulated_pause_ms ?? 0;
-  const pause = session.is_paused && session.pause_started_at ? now - new Date(session.pause_started_at).getTime() : 0;
-  return Math.max(0, now - start - accumulated - pause);
 };
 
 const formatLapTime = (ms?: number | null) => {
@@ -875,6 +922,8 @@ const formatControlEvent = (event: ControlEvent, drivers: Map<string, DriverStan
   switch (event.type) {
     case "flag_changed":
       return `Track flag set to ${event.payload.flag}`;
+    case "lap_logged":
+      return `${driver ? driver.driver_name : "Driver"} lap logged (${formatLapTime(event.payload.lap_time_ms)})`;
     case "penalty_logged":
       return `${driver ? driver.driver_name : "Session"} penalty · ${event.payload.seconds}s ${event.payload.reason}`;
     case "pit_event_logged":
@@ -894,6 +943,8 @@ const formatControlEvent = (event: ControlEvent, drivers: Map<string, DriverStan
         return `Phase set to ${event.payload.procedure_phase}`;
       }
       return "Session state updated";
+    case "control_error":
+      return `Error: ${event.payload?.message ?? "Unknown"}`;
     default:
       return event.type;
   }
