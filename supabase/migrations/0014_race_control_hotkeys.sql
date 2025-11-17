@@ -62,6 +62,110 @@ begin
 end;
 $$;
 
+-- Reissue timing_log_lap to target lap_ms column
+create or replace function public.timing_log_lap(
+  p_session_id uuid,
+  p_driver_id uuid,
+  p_lap_time_ms bigint
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor uuid := auth.uid();
+  lap_record public.timing_laps;
+  driver_record public.timing_drivers;
+  next_lap_number integer;
+  min_lap_ms constant bigint := 20000;
+  max_lap_ms constant bigint := 600000;
+begin
+  if actor is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  if not public.has_permission('marshal') and not public.has_permission('race_control') then
+    raise exception 'Requires marshal or race control permission';
+  end if;
+
+  if p_lap_time_ms <= 0 then
+    raise exception 'Lap time must be positive';
+  end if;
+
+  if p_lap_time_ms < min_lap_ms then
+    raise exception 'Lap time too fast (minimum % ms)', min_lap_ms;
+  end if;
+
+  if p_lap_time_ms > max_lap_ms then
+    raise exception 'Lap time too slow (maximum % ms)', max_lap_ms;
+  end if;
+
+  select * into driver_record
+  from public.timing_drivers
+  where id = p_driver_id
+  for update;
+
+  if driver_record is null then
+    raise exception 'Driver not found';
+  end if;
+
+  if driver_record.session_id != p_session_id then
+    raise exception 'Driver does not belong to this session';
+  end if;
+
+  select coalesce(max(lap_number), 0) + 1
+  into next_lap_number
+  from public.timing_laps
+  where driver_id = p_driver_id;
+
+  insert into public.timing_laps(
+    session_id,
+    driver_id,
+    lap_number,
+    lap_ms,
+    invalidated,
+    checkpoint_missed,
+    recorded_by
+  ) values (
+    p_session_id,
+    p_driver_id,
+    next_lap_number,
+    p_lap_time_ms,
+    false,
+    false,
+    actor
+  )
+  returning * into lap_record;
+
+  update public.timing_drivers
+  set
+    laps = laps + 1,
+    last_lap_ms = p_lap_time_ms,
+    best_lap_ms = least(coalesce(best_lap_ms, p_lap_time_ms), p_lap_time_ms),
+    total_time_ms = total_time_ms + p_lap_time_ms,
+    current_lap_started_at = now()
+  where id = p_driver_id
+  returning * into driver_record;
+
+  insert into public.timing_events(session_id, type, payload, created_by)
+  values (
+    p_session_id,
+    'lap_logged',
+    jsonb_build_object(
+      'driver_id', p_driver_id,
+      'lap_number', next_lap_number,
+      'lap_ms', p_lap_time_ms
+    ),
+    actor
+  );
+
+  return jsonb_build_object(
+    'lap', row_to_json(lap_record),
+    'driver', row_to_json(driver_record)
+  );
+end;
+$$;
+
 -- Pit event RPC aligned to v2 drivers table
 create or replace function public.timing_log_pit_event(
   p_driver_id uuid,
