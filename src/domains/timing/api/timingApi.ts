@@ -33,7 +33,7 @@ export type DriverStanding = z.infer<typeof driverStandingSchema>;
 const raceEventSchema = z.object({
   id: z.string(),
   session_id: z.string(),
-  kind: z.string(),
+  type: z.string(),
   payload: z.record(z.any()),
   created_at: z.string()
 });
