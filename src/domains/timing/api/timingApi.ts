@@ -6,6 +6,7 @@ const sessionStateSchema = z.object({
   name: z.string(),
   track_name: z.string(),
   laps_target: z.number().nullable(),
+  status: z.string().optional(),
   phase: z.string(),
   track_status: z.string(),
   race_time_ms: z.number(),
@@ -78,10 +79,57 @@ const controlEventSchema = z.object({
 
 export type ControlEvent = z.infer<typeof controlEventSchema>;
 
+const sessionSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  track_name: z.string().nullable(),
+  laps_target: z.number().nullable(),
+  mode: z.string().nullable(),
+  status: z.string(),
+  starts_at: z.string().nullable(),
+  created_at: z.string(),
+  session_state: z
+    .object({
+      session_id: z.string(),
+      procedure_phase: z.string(),
+      flag_status: z.string(),
+      race_time_ms: z.number(),
+      is_timing: z.boolean().optional(),
+      is_paused: z.boolean().optional()
+    })
+    .nullable()
+});
+
+export type TimingSessionSummary = z.infer<typeof sessionSummarySchema>;
+
+const resultDriverSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    number: z.number().nullable(),
+    team_name: z.string().nullable()
+  })
+  .nullable();
+
+const timingResultSchema = z.object({
+  id: z.string(),
+  session_id: z.string(),
+  driver_id: z.string(),
+  position: z.number(),
+  laps: z.number(),
+  total_time_ms: z.number().nullable(),
+  gap_ms: z.number().nullable(),
+  gap_laps: z.number().nullable(),
+  status: z.string(),
+  driver: resultDriverSchema
+});
+
+export type TimingResult = z.infer<typeof timingResultSchema>;
+
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
     .from("timing_sessions")
-    .select("id, name, track_name, laps_target")
+    .select("id, name, track_name, laps_target, status")
     .eq("id", sessionId)
     .single();
 
@@ -104,6 +152,28 @@ export const fetchSessionDetail = async (sessionId: string) => {
     phase: stateRow.procedure_phase,
     track_status: stateRow.flag_status
   });
+};
+
+export const fetchSessions = async (): Promise<TimingSessionSummary[]> => {
+  const { data, error } = await supabase
+    .from("timing_sessions")
+    .select(
+      `
+        id,
+        name,
+        track_name,
+        laps_target,
+        mode,
+        status,
+        starts_at,
+        created_at,
+        session_state:timing_session_state(session_id, procedure_phase, flag_status, race_time_ms, is_timing, is_paused)
+      `
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return z.array(sessionSummarySchema).parse(data ?? []);
 };
 
 export const fetchDriverStandings = async (sessionId: string) => {
@@ -244,6 +314,19 @@ export const fetchControlEvents = async (sessionId: string) => {
   return z.array(controlEventSchema).parse(data ?? []);
 };
 
+export const fetchTimingResults = async (sessionId: string) => {
+  const { data, error } = await supabase
+    .from("timing_results")
+    .select(
+      "id, session_id, driver_id, position, laps, total_time_ms, gap_ms, gap_laps, status, driver:timing_drivers(id, name, number, team_name)"
+    )
+    .eq("session_id", sessionId)
+    .order("position", { ascending: true });
+
+  if (error) throw error;
+  return z.array(timingResultSchema).parse(data ?? []);
+};
+
 export const setFlagStatus = async (sessionId: string, flag: string) => {
   const { error } = await supabase.rpc("timing_set_flag_status", {
     p_session_id: sessionId,
@@ -293,4 +376,13 @@ export const getRaceTime = async (sessionId: string) => {
   });
   if (error) throw error;
   return Number(data ?? 0);
+};
+
+export const finishSession = async (sessionId: string) => {
+  const { data, error } = await supabase.rpc("timing_finish_session", {
+    p_session_id: sessionId
+  });
+
+  if (error) throw error;
+  return z.array(timingResultSchema).parse(data ?? []);
 };

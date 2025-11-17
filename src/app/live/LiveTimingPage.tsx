@@ -6,10 +6,13 @@ import {
   fetchDriverStandings,
   fetchPenalties,
   fetchPitEvents,
-  fetchSessionDetail
+  fetchSessionDetail,
+  fetchTimingResults,
+  type TimingResult
 } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { buildLeaderboard, formatLapTime } from "@domains/timing/utils/leaderboard";
+import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
 
 const LiveTimingPage = () => {
   const { sessionId } = useParams();
@@ -45,6 +48,12 @@ const LiveTimingPage = () => {
     queryKey: ["live-pit-events", sessionId],
     queryFn: () => fetchPitEvents(sessionId!),
     enabled: !!sessionId
+  });
+
+  const resultsQuery = useQuery({
+    queryKey: ["live-results", sessionId],
+    queryFn: () => fetchTimingResults(sessionId!),
+    enabled: !!sessionId && (sessionQuery.data?.phase === "finished" || sessionQuery.data?.status === "finished")
   });
 
   const isLoading = sessionQuery.isLoading || driversQuery.isLoading;
@@ -86,6 +95,47 @@ const LiveTimingPage = () => {
           </div>
         </div>
       </section>
+
+      {sessionQuery.data?.phase === "finished" && (
+        <section className="rounded-3xl border border-white/10 bg-black/30 p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-white">Final Classification</h2>
+            {resultsQuery.isLoading && (
+              <span className="text-xs uppercase tracking-[0.3em] text-white/40">Loading…</span>
+            )}
+          </div>
+          <div className="mt-4 space-y-3">
+            {(resultsQuery.data ?? []).map((result) => (
+              <article
+                key={result.id}
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/40 px-4 py-3"
+              >
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-white/50">P{result.position}</p>
+                  <p className="font-semibold text-white">
+                    #{result.driver?.number ?? "—"} {result.driver?.name ?? "Driver"}
+                  </p>
+                  <p className="text-xs text-white/60">{result.driver?.team_name ?? "—"}</p>
+                </div>
+                <div className="text-right text-sm text-white">
+                  <p>{formatResultGapDisplay(result)}</p>
+                  <p className="text-xs text-white/60">{result.laps} laps</p>
+                  <p className="text-xs text-white/60">
+                    {result.total_time_ms ? formatLapTime(result.total_time_ms) : "—"}
+                  </p>
+                </div>
+              </article>
+            ))}
+            {!resultsQuery.isLoading && (resultsQuery.data ?? []).length === 0 && (
+              <p className="text-sm text-white/60">
+                No final results saved yet. Race Control must finish the session.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
+      <TrackStatusBanner status={sessionQuery.data?.track_status} variant="live" />
 
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/40 shadow-2xl shadow-black/30">
         <table className="w-full border-collapse text-sm">
@@ -238,5 +288,19 @@ const FeedCard = ({
     </div>
   </div>
 );
+
+const formatResultGapDisplay = (result: TimingResult) => {
+  if (result.position === 1) return "Leader";
+  if (result.gap_laps && result.gap_laps > 0) {
+    return `+${result.gap_laps}L`;
+  }
+  if (result.gap_ms && result.gap_ms > 0) {
+    if (result.gap_ms >= 60000) {
+      return `+${formatLapTime(result.gap_ms)}`;
+    }
+    return `+${(result.gap_ms / 1000).toFixed(3)}`;
+  }
+  return "+0.000";
+};
 
 export default LiveTimingPage;
