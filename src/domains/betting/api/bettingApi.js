@@ -19,6 +19,62 @@ export const fetchMarkets = async () => {
         }
     })) ?? []);
 };
+export const fetchMarketEvents = async () => {
+    const { data, error } = await supabase
+        .from("events")
+        .select(`
+      id,
+      title,
+      venue,
+      starts_at,
+      status,
+      takeout,
+      markets:markets(
+        id,
+        name,
+        description,
+        status,
+        type,
+        total_pool,
+        min_stake,
+        max_stake,
+        close_time,
+        outcomes:outcomes(
+          id,
+          label,
+          pool
+        )
+      )
+    `)
+        .order("starts_at", { ascending: true })
+        .order("created_at", { foreignTable: "markets", ascending: true });
+    if (error)
+        throw error;
+    return (data?.map((event) => ({
+        id: event.id,
+        title: event.title,
+        venue: event.venue ?? null,
+        starts_at: event.starts_at ?? null,
+        status: event.status,
+        takeout: Number(event.takeout ?? 0),
+        markets: event.markets?.map((market) => ({
+            id: market.id,
+            name: market.name,
+            description: market.description ?? null,
+            status: market.status,
+            type: market.type,
+            total_pool: Number(market.total_pool ?? 0),
+            min_stake: Number(market.min_stake ?? 0),
+            max_stake: Number(market.max_stake ?? 0),
+            close_time: market.close_time ?? null,
+            outcomes: market.outcomes?.map((outcome) => ({
+                id: outcome.id,
+                label: outcome.label,
+                pool: Number(outcome.pool ?? 0)
+            })) ?? []
+        })) ?? []
+    })) ?? []);
+};
 export const fetchMarketDetail = async (marketId) => {
     const { data, error } = await supabase
         .from("markets")

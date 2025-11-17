@@ -4,11 +4,38 @@ export interface MarketSummary {
     description: string | null;
     status: string;
     total_pool: number;
+    min_stake?: number;
+    max_stake?: number;
+    close_time?: string | null;
     event: {
         id: string;
         title: string;
         takeout: number;
     };
+}
+export interface EventWithMarkets {
+    id: string;
+    title: string;
+    venue: string | null;
+    starts_at: string | null;
+    status: string;
+    takeout: number;
+    markets: Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        status: string;
+        type: string;
+        total_pool: number;
+        min_stake: number;
+        max_stake: number;
+        close_time: string | null;
+        outcomes: Array<{
+            id: string;
+            label: string;
+            pool: number;
+        }>;
+    }>;
 }
 export declare const fetchMarkets: () => Promise<{
     id: any;
@@ -22,6 +49,7 @@ export declare const fetchMarkets: () => Promise<{
         takeout: number;
     };
 }[]>;
+export declare const fetchMarketEvents: () => Promise<EventWithMarkets[]>;
 export interface OutcomeQuote {
     id: string;
     label: string;

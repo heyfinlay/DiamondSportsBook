@@ -20,7 +20,7 @@ const DEFAULT_STAKE = 100;
 
 const formatStatus = (status: string) => {
   if (!status) return "Unknown";
-  return status.replaceAll("_", " ");
+  return status.replace(/_/g, " ");
 };
 
 const formatClosesAt = (closeTime?: string | null) => {
