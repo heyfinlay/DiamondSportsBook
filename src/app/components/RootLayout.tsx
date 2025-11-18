@@ -15,12 +15,17 @@ const RootLayout = () => {
   const profileQuery = useProfile();
   const role = profileQuery.data?.role ?? "spectator";
   const canControl = role === "race_control" || role === "super_admin";
-  const canAdmin = role === "betting_admin" || role === "super_admin";
+  const canAdmin = role === "betting_admin" || role === "sportsbook_admin" || role === "super_admin";
 
   const filteredNav = [
     ...navItems,
     ...(canControl ? [{ to: "/control/demo", label: "Race Control" }] : []),
-    ...(canAdmin ? [{ to: "/admin", label: "Admin" }] : [])
+    ...(canAdmin
+      ? [
+          { to: "/admin", label: "Admin" },
+          { to: "/dashboard/admin/markets", label: "Markets Admin" }
+        ]
+      : [])
   ];
 
   return (

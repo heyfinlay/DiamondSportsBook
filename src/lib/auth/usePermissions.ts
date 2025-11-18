@@ -33,6 +33,8 @@ export function usePermissions() {
   })
 
   const roleSet = new Set(roles.map((r) => r.role))
+  const isSportsbookAdmin = roleSet.has('sportsbook_admin')
+  const isBettingAdmin = roleSet.has('betting_admin') || isSportsbookAdmin
 
   return {
     roles: Array.from(roleSet),
@@ -43,7 +45,7 @@ export function usePermissions() {
     // Common permission checks
     isRaceControl: roleSet.has('race_control'),
     isMarshal: roleSet.has('marshal'),
-    isBettingAdmin: roleSet.has('betting_admin'),
+    isBettingAdmin,
     isSuperAdmin: roleSet.has('super_admin'),
     canManageRace: roleSet.has('race_control') || roleSet.has('super_admin'),
     canLogLaps: roleSet.has('marshal') || roleSet.has('race_control') || roleSet.has('super_admin'),

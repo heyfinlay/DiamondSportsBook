@@ -25,16 +25,22 @@ export const fetchMarketEvents = async () => {
         .select(`
       id,
       title,
-      venue,
+      description,
       starts_at,
       status,
       takeout,
+      session:timing_sessions(
+        id,
+        name,
+        track_name,
+        mode
+      ),
       markets:markets(
         id,
         name,
         description,
         status,
-        type,
+        pool_type,
         total_pool,
         min_stake,
         max_stake,
@@ -42,7 +48,8 @@ export const fetchMarketEvents = async () => {
         outcomes:outcomes(
           id,
           label,
-          pool
+          pool,
+          color
         )
       )
     `)
@@ -53,16 +60,27 @@ export const fetchMarketEvents = async () => {
     return (data?.map((event) => ({
         id: event.id,
         title: event.title,
-        venue: event.venue ?? null,
+        description: event.description ?? null,
         starts_at: event.starts_at ?? null,
         status: event.status,
         takeout: Number(event.takeout ?? 0),
+        session: (() => {
+            const sessionRow = extractSingle(event.session);
+            return sessionRow
+                ? {
+                    id: sessionRow.id,
+                    name: sessionRow.name,
+                    track_name: sessionRow.track_name ?? null,
+                    mode: sessionRow.mode ?? null
+                }
+                : null;
+        })(),
         markets: event.markets?.map((market) => ({
             id: market.id,
             name: market.name,
             description: market.description ?? null,
             status: market.status,
-            type: market.type,
+            pool_type: market.pool_type,
             total_pool: Number(market.total_pool ?? 0),
             min_stake: Number(market.min_stake ?? 0),
             max_stake: Number(market.max_stake ?? 0),
@@ -70,7 +88,8 @@ export const fetchMarketEvents = async () => {
             outcomes: market.outcomes?.map((outcome) => ({
                 id: outcome.id,
                 label: outcome.label,
-                pool: Number(outcome.pool ?? 0)
+                pool: Number(outcome.pool ?? 0),
+                color: outcome.color ?? null
             })) ?? []
         })) ?? []
     })) ?? []);
@@ -78,14 +97,17 @@ export const fetchMarketEvents = async () => {
 export const fetchMarketDetail = async (marketId) => {
     const { data, error } = await supabase
         .from("markets")
-        .select("*, event:events(*)")
+        .select(`
+        *,
+        event:events(id, title, description, status, takeout)
+      `)
         .eq("id", marketId)
         .single();
     if (error)
         throw error;
     const { data: outcomes, error: outcomesError } = await supabase
         .from("outcomes")
-        .select("*")
+        .select("id, label, pool, color")
         .eq("market_id", marketId);
     if (outcomesError)
         throw outcomesError;
@@ -95,6 +117,8 @@ export const fetchMarketDetail = async (marketId) => {
             name: data.name,
             description: data.description,
             status: data.status,
+            pool_type: data.pool_type,
+            rake_percent: Number(data.rake_percent ?? 0),
             total_pool: Number(data.total_pool),
             min_stake: Number(data.min_stake),
             max_stake: Number(data.max_stake),
@@ -103,7 +127,8 @@ export const fetchMarketDetail = async (marketId) => {
         outcomes: outcomes?.map((outcome) => ({
             id: outcome.id,
             label: outcome.label,
-            pool: Number(outcome.pool)
+            pool: Number(outcome.pool),
+            color: outcome.color ?? null
         })) ?? []
     };
 };
