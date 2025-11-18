@@ -6,6 +6,8 @@ import MarketsPage from "./markets/MarketsPage";
 import MarketDetailPage from "./markets/MarketDetailPage";
 import AccountPage from "./account/AccountPage";
 import AdminDashboard from "./admin/AdminDashboard";
+import MarketManagementPage from "./admin/markets/MarketManagementPage";
+import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
 import SessionSetupPage from "./admin/SessionSetupPage";
 import TimingSessionsPage from "./admin/TimingSessionsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -46,7 +48,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
         ]
       },
       {
-        element: <ProtectedRoute requiredRoles={["betting_admin", "super_admin", "race_control"]} />,
+        element: <ProtectedRoute requiredRoles={["betting_admin", "sportsbook_admin", "super_admin", "race_control"]} />,
         children: [
           {
             path: "admin",
@@ -59,6 +61,14 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           {
             path: "admin/timing-sessions",
             element: <TimingSessionsPage />
+          },
+          {
+            path: "dashboard/admin/markets",
+            element: <MarketManagementPage />
+          },
+          {
+            path: "dashboard/admin/markets/:marketId",
+            element: <MarketDetailAdminPage />
           }
         ]
       }

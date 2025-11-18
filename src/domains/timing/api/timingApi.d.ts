@@ -16,10 +16,10 @@ declare const sessionStateSchema: z.ZodObject<{
     session_id: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
+    status?: string;
     name?: string;
     track_name?: string;
     laps_target?: number;
-    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -31,10 +31,10 @@ declare const sessionStateSchema: z.ZodObject<{
     session_id?: string;
 }, {
     id?: string;
+    status?: string;
     name?: string;
     track_name?: string;
     laps_target?: number;
-    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -106,28 +106,28 @@ declare const penaltySchema: z.ZodObject<{
     }>>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
-    session_id?: string;
-    driver_id?: string;
-    reason?: string;
-    seconds?: number;
-    issued_at?: string;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
+    reason?: string;
+    seconds?: number;
+    issued_at?: string;
 }, {
     id?: string;
-    session_id?: string;
-    driver_id?: string;
-    reason?: string;
-    seconds?: number;
-    issued_at?: string;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
+    reason?: string;
+    seconds?: number;
+    issued_at?: string;
 }>;
 export type PenaltyLog = z.infer<typeof penaltySchema>;
 declare const pitEventLogSchema: z.ZodObject<{
@@ -151,24 +151,24 @@ declare const pitEventLogSchema: z.ZodObject<{
     }>>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
-    session_id?: string;
-    driver_id?: string;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
     duration_ms?: number;
     started_at?: string;
 }, {
     id?: string;
-    session_id?: string;
-    driver_id?: string;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
     duration_ms?: number;
     started_at?: string;
 }>;
@@ -182,16 +182,16 @@ declare const controlEventSchema: z.ZodObject<{
     created_by: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
-    session_id?: string;
     type?: string;
     created_at?: string;
+    session_id?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }, {
     id?: string;
-    session_id?: string;
     type?: string;
     created_at?: string;
+    session_id?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }>;
@@ -229,13 +229,13 @@ declare const sessionSummarySchema: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
+    status?: string;
+    starts_at?: string;
     name?: string;
     track_name?: string;
-    laps_target?: number;
-    status?: string;
     mode?: string;
-    starts_at?: string;
     created_at?: string;
+    laps_target?: number;
     session_state?: {
         race_time_ms?: number;
         is_timing?: boolean;
@@ -246,13 +246,13 @@ declare const sessionSummarySchema: z.ZodObject<{
     };
 }, {
     id?: string;
+    status?: string;
+    starts_at?: string;
     name?: string;
     track_name?: string;
-    laps_target?: number;
-    status?: string;
     mode?: string;
-    starts_at?: string;
     created_at?: string;
+    laps_target?: number;
     session_state?: {
         race_time_ms?: number;
         is_timing?: boolean;
@@ -273,7 +273,7 @@ declare const timingResultSchema: z.ZodObject<{
     gap_ms: z.ZodNullable<z.ZodNumber>;
     gap_laps: z.ZodNullable<z.ZodNumber>;
     status: z.ZodString;
-    driver: z.ZodNullable<z.ZodObject<{
+    driver: z.ZodOptional<z.ZodNullable<z.ZodObject<{
         id: z.ZodString;
         name: z.ZodString;
         number: z.ZodNullable<z.ZodNumber>;
@@ -288,47 +288,47 @@ declare const timingResultSchema: z.ZodObject<{
         id?: string;
         name?: string;
         team_name?: string;
-    }>>;
+    }>>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
     status?: string;
-    session_id?: string;
-    laps?: number;
-    driver_id?: string;
-    total_time_ms?: number;
-    position?: number;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
         team_name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
+    laps?: number;
+    total_time_ms?: number;
+    position?: number;
     gap_ms?: number;
     gap_laps?: number;
 }, {
     id?: string;
     status?: string;
-    session_id?: string;
-    laps?: number;
-    driver_id?: string;
-    total_time_ms?: number;
-    position?: number;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
         team_name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
+    laps?: number;
+    total_time_ms?: number;
+    position?: number;
     gap_ms?: number;
     gap_laps?: number;
 }>;
 export type TimingResult = z.infer<typeof timingResultSchema>;
 export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     id?: string;
+    status?: string;
     name?: string;
     track_name?: string;
     laps_target?: number;
-    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -387,51 +387,51 @@ export declare const logPitEvent: (payload: LogPitEventPayload) => Promise<void>
 export declare const deleteSessionDeep: (sessionId: string) => Promise<void>;
 export declare const fetchPenalties: (sessionId: string) => Promise<{
     id?: string;
-    session_id?: string;
+    driver?: {
+        number?: number;
+        id?: string;
+        name?: string;
+    };
     driver_id?: string;
+    session_id?: string;
     reason?: string;
     seconds?: number;
     issued_at?: string;
-    driver?: {
-        number?: number;
-        id?: string;
-        name?: string;
-    };
 }[]>;
 export declare const fetchPitEvents: (sessionId: string) => Promise<{
     id?: string;
-    session_id?: string;
-    driver_id?: string;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
     duration_ms?: number;
     started_at?: string;
 }[]>;
 export declare const fetchControlEvents: (sessionId: string) => Promise<{
     id?: string;
-    session_id?: string;
     type?: string;
     created_at?: string;
+    session_id?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }[]>;
 export declare const fetchTimingResults: (sessionId: string) => Promise<{
     id?: string;
     status?: string;
-    session_id?: string;
-    laps?: number;
-    driver_id?: string;
-    total_time_ms?: number;
-    position?: number;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
         team_name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
+    laps?: number;
+    total_time_ms?: number;
+    position?: number;
     gap_ms?: number;
     gap_laps?: number;
 }[]>;
@@ -444,17 +444,17 @@ export declare const getRaceTime: (sessionId: string) => Promise<number>;
 export declare const finishSession: (sessionId: string) => Promise<{
     id?: string;
     status?: string;
-    session_id?: string;
-    laps?: number;
-    driver_id?: string;
-    total_time_ms?: number;
-    position?: number;
     driver?: {
         number?: number;
         id?: string;
         name?: string;
         team_name?: string;
     };
+    driver_id?: string;
+    session_id?: string;
+    laps?: number;
+    total_time_ms?: number;
+    position?: number;
     gap_ms?: number;
     gap_laps?: number;
 }[]>;

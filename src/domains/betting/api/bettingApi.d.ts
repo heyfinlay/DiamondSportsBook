@@ -1,3 +1,4 @@
+import type { MarketContainerStatus, PoolStatus } from "./marketAdminApi";
 export interface MarketSummary {
     id: string;
     name: string;
@@ -16,16 +17,22 @@ export interface MarketSummary {
 export interface EventWithMarkets {
     id: string;
     title: string;
-    venue: string | null;
+    description: string | null;
+    status: MarketContainerStatus;
     starts_at: string | null;
-    status: string;
     takeout: number;
+    session: {
+        id: string;
+        name: string;
+        track_name: string | null;
+        mode: string | null;
+    } | null;
     markets: Array<{
         id: string;
         name: string;
         description: string | null;
-        status: string;
-        type: string;
+        status: PoolStatus;
+        pool_type: string;
         total_pool: number;
         min_stake: number;
         max_stake: number;
@@ -34,6 +41,7 @@ export interface EventWithMarkets {
             id: string;
             label: string;
             pool: number;
+            color: string | null;
         }>;
     }>;
 }
@@ -61,6 +69,8 @@ export declare const fetchMarketDetail: (marketId: string) => Promise<{
         name: any;
         description: any;
         status: any;
+        pool_type: any;
+        rake_percent: number;
         total_pool: number;
         min_stake: number;
         max_stake: number;
@@ -70,6 +80,7 @@ export declare const fetchMarketDetail: (marketId: string) => Promise<{
         id: any;
         label: any;
         pool: number;
+        color: any;
     }[];
 }>;
 export declare const previewWager: (marketId: string, outcomeId: string, stake: number) => Promise<{

@@ -146,7 +146,7 @@ const MarketsPage = () => {
                 </span>
                 <h2 className="text-2xl font-semibold text-white">{event.title}</h2>
                 <p className="text-sm text-neutral-400">
-                  {event.venue ? `${event.venue} • ` : ""}
+                  {event.session?.track_name ? `${event.session.track_name} • ` : ""}
                   {event.starts_at ? new Date(event.starts_at).toLocaleString() : "Schedule TBC"}
                 </p>
               </header>
@@ -158,7 +158,7 @@ const MarketsPage = () => {
                     className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#060910]/80 p-4"
                   >
                     <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-neutral-500">
-                      <span>{market.type}</span>
+                      <span>{market.pool_type}</span>
                       <span>{formatStatus(market.status)}</span>
                     </div>
                     <div>

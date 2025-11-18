@@ -89,7 +89,8 @@ const resultDriverSchema = z
     number: z.number().nullable(),
     team_name: z.string().nullable()
 })
-    .nullable();
+    .nullable()
+    .optional();
 const timingResultSchema = z.object({
     id: z.string(),
     session_id: z.string(),
@@ -309,10 +310,10 @@ export const getRaceTime = async (sessionId) => {
     return Number(data ?? 0);
 };
 export const finishSession = async (sessionId) => {
-    const { data, error } = await supabase.rpc("timing_finish_session", {
+    const { error } = await supabase.rpc("timing_finish_session", {
         p_session_id: sessionId
     });
     if (error)
         throw error;
-    return z.array(timingResultSchema).parse(data ?? []);
+    return fetchTimingResults(sessionId);
 };
