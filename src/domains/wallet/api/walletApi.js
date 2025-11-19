@@ -52,9 +52,13 @@ export const fetchAllWalletTransactions = async (limit = 50) => {
     }) ?? []);
 };
 export const requestDeposit = async (amount) => {
-    const { error } = await supabase.rpc("wallet_request_deposit", {
+    const { data, error } = await supabase.rpc("wallet_request_deposit", {
         p_amount: amount
     });
+    if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log("wallet_request_deposit result", { amount, data, error });
+    }
     if (error)
         throw error;
 };
