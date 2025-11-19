@@ -56,6 +56,8 @@ export const requestDeposit = async (amount) => {
         p_amount: amount
     });
     if (import.meta.env.DEV) {
+        // Helpful in dev to trace deposit flow end-to-end
+        // without affecting production behavior.
         // eslint-disable-next-line no-console
         console.log("wallet_request_deposit result", { amount, data, error });
     }
