@@ -31,6 +31,7 @@ export interface PendingDeposit {
     requested_at: string;
     account_id: string;
     user_id: string;
+    display_name: string | null;
     username: string | null;
     ic_phone_number: string | null;
 }
@@ -40,6 +41,7 @@ export declare const fetchPendingDeposits: () => Promise<{
     requested_at: any;
     account_id: any;
     user_id: string;
+    display_name: any;
     username: any;
     ic_phone_number: any;
 }[]>;
@@ -49,6 +51,7 @@ export interface PendingWithdrawal {
     requested_at: string;
     account_id: string;
     user_id: string;
+    display_name: string | null;
     username: string | null;
     ic_phone_number: string | null;
 }
@@ -58,6 +61,7 @@ export declare const fetchPendingWithdrawals: () => Promise<{
     requested_at: any;
     account_id: any;
     user_id: string;
+    display_name: any;
     username: any;
     ic_phone_number: any;
 }[]>;
