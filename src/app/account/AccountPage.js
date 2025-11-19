@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@lib/auth/SessionProvider";
 import { useWalletBalance } from "@domains/wallet/hooks/useWalletBalance";
@@ -30,7 +30,7 @@ const AccountPage = () => {
         enabled: !!user?.id
     });
     // Initialize form fields when profile data loads
-    useMemo(() => {
+    useEffect(() => {
         if (profileQuery.data) {
             setUsername(profileQuery.data.username ?? "");
             setIcPhoneNumber(profileQuery.data.ic_phone_number ?? "");
