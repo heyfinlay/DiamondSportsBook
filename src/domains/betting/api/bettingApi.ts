@@ -38,6 +38,7 @@ export interface EventWithMarkets {
     // Lifecycle: archived markets should not appear on the public board
     archived?: boolean;
     settled_at?: string | null;
+    archived_at?: string | null;
     pool_type: string;
     total_pool: number;
     min_stake: number;
@@ -138,13 +139,12 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
           : null;
       })(),
       markets:
-        // Lifecycle: only show non-archived markets in public board,
-        // and only if their status is one of the public-facing states.
+        // Lifecycle: only show non-archived, non-settled markets in public board.
         (event.markets as EventWithMarkets["markets"])
           ?.filter(
             (market) =>
               !market.archived &&
-              ["open", "closed", "settled"].includes(market.status as string)
+              ["open", "closed"].includes(market.status as string)
           )
           .map((market) => ({
             id: market.id,
