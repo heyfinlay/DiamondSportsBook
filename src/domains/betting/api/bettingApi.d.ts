@@ -32,6 +32,8 @@ export interface EventWithMarkets {
         name: string;
         description: string | null;
         status: PoolStatus;
+        archived?: boolean;
+        settled_at?: string | null;
         pool_type: string;
         total_pool: number;
         min_stake: number;
