@@ -13,6 +13,7 @@ import { useWalletRealtime } from "@domains/wallet/hooks/useWalletRealtime";
 import { useWalletStore } from "@domains/wallet/store/walletStore";
 import { useUserWagers } from "@domains/betting/hooks/useUserWagers";
 import { useToast } from "@app/components/ToastProvider";
+import { fetchUserProfile, updateUserProfile } from "@domains/profile/api/profileApi";
 
 const AccountPage = () => {
   const { user, loading } = useSession();
@@ -21,11 +22,28 @@ const AccountPage = () => {
   const walletStoreBalance = useWalletStore((state) => state.balance);
   const [depositAmount, setDepositAmount] = useState("500");
   const [withdrawAmount, setWithdrawAmount] = useState("250");
+  const [username, setUsername] = useState("");
+  const [icPhoneNumber, setIcPhoneNumber] = useState("");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   const walletBalance = useWalletBalance(user?.id);
   const transactionsQuery = useWalletTransactions(user?.id);
   const wagersQuery = useUserWagers(user?.id);
   useWalletRealtime(user?.id ?? undefined);
+
+  const profileQuery = useQuery({
+    queryKey: ["user-profile", user?.id],
+    queryFn: () => fetchUserProfile(user?.id ?? ""),
+    enabled: !!user?.id
+  });
+
+  // Initialize form fields when profile data loads
+  useMemo(() => {
+    if (profileQuery.data) {
+      setUsername(profileQuery.data.username ?? "");
+      setIcPhoneNumber(profileQuery.data.ic_phone_number ?? "");
+    }
+  }, [profileQuery.data]);
 
   const depositsQuery = useQuery({
     queryKey: ["user-deposits", user?.id],
@@ -86,6 +104,30 @@ const AccountPage = () => {
     }
   });
 
+  const profileMutation = useMutation({
+    mutationFn: () =>
+      updateUserProfile(user?.id ?? "", {
+        username: username.trim() || undefined,
+        ic_phone_number: icPhoneNumber.trim() || undefined
+      }),
+    onSuccess: () => {
+      toast({
+        variant: "success",
+        title: "Profile updated",
+        description: "Your display name and IC phone number have been saved."
+      });
+      queryClient.invalidateQueries({ queryKey: ["user-profile", user?.id] });
+      setIsEditingProfile(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: error.message
+      });
+    }
+  });
+
   if (!user && !loading) {
     return (
       <div className="rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
@@ -96,6 +138,18 @@ const AccountPage = () => {
 
   const handleDeposit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // Check for IC phone number requirement
+    if (!profileQuery.data?.ic_phone_number) {
+      toast({
+        variant: "error",
+        title: "Phone number required",
+        description: "Please add your IC phone number in the profile section above before requesting a deposit."
+      });
+      setIsEditingProfile(true);
+      return;
+    }
+
     const amount = Number(depositAmount);
     if (!amount || amount <= 0) {
       toast({
@@ -110,6 +164,18 @@ const AccountPage = () => {
 
   const handleWithdrawal = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // Check for IC phone number requirement
+    if (!profileQuery.data?.ic_phone_number) {
+      toast({
+        variant: "error",
+        title: "Phone number required",
+        description: "Please add your IC phone number in the profile section above before requesting a withdrawal."
+      });
+      setIsEditingProfile(true);
+      return;
+    }
+
     const amount = Number(withdrawAmount);
     if (!amount || amount <= 0) {
       toast({
@@ -120,6 +186,11 @@ const AccountPage = () => {
       return;
     }
     withdrawalMutation.mutate();
+  };
+
+  const handleProfileUpdate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    profileMutation.mutate();
   };
 
   const transactions = transactionsQuery.data ?? [];
@@ -148,6 +219,94 @@ const AccountPage = () => {
             <p className="text-3xl font-semibold text-white">{balanceDisplay}</p>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Profile</p>
+            <h2 className="text-xl font-semibold text-white">Display Settings</h2>
+          </div>
+          {!isEditingProfile && (
+            <button
+              type="button"
+              onClick={() => setIsEditingProfile(true)}
+              className="text-xs uppercase tracking-[0.3em] text-brand transition hover:text-white"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        {isEditingProfile ? (
+          <form onSubmit={handleProfileUpdate} className="mt-5 space-y-4">
+            <div>
+              <label className="text-xs uppercase tracking-[0.3em] text-white/50">
+                Display Name
+              </label>
+              <input
+                type="text"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your display name"
+              />
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-[0.3em] text-white/50">
+                IC Phone Number
+              </label>
+              <input
+                type="text"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
+                value={icPhoneNumber}
+                onChange={(e) => setIcPhoneNumber(e.target.value)}
+                placeholder="In-character phone number"
+              />
+              <p className="mt-1 text-xs text-white/50">
+                Required for deposit and withdrawal requests
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                className="rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+                disabled={profileMutation.isPending}
+              >
+                {profileMutation.isPending ? "Saving…" : "Save Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUsername(profileQuery.data?.username ?? "");
+                  setIcPhoneNumber(profileQuery.data?.ic_phone_number ?? "");
+                  setIsEditingProfile(false);
+                }}
+                className="rounded-2xl border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-white/5"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="mt-5 space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50">Display Name</p>
+              <p className="mt-1 text-white">
+                {profileQuery.data?.username || (
+                  <span className="text-white/40">Not set</span>
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-white/50">IC Phone Number</p>
+              <p className="mt-1 text-white">
+                {profileQuery.data?.ic_phone_number || (
+                  <span className="text-white/40">Not set (required for deposits/withdrawals)</span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">

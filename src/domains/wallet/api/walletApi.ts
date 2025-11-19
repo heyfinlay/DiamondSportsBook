@@ -94,24 +94,46 @@ export interface PendingDeposit {
   requested_at: string;
   account_id: string;
   user_id: string;
+  username: string | null;
+  ic_phone_number: string | null;
 }
 
 export const fetchPendingDeposits = async () => {
   const { data, error } = await supabase
     .from("deposits")
-    .select("id, amount, requested_at, account_id, wallet_accounts!inner(user_id)")
+    .select(`
+      id,
+      amount,
+      requested_at,
+      account_id,
+      wallet_accounts!inner(
+        user_id,
+        profiles(username, ic_phone_number)
+      )
+    `)
     .eq("status", "requested")
     .order("requested_at", { ascending: true });
 
   if (error) throw error;
   return (
-    data?.map((row) => ({
-      id: row.id,
-      amount: Number(row.amount),
-      requested_at: row.requested_at,
-      account_id: row.account_id,
-      user_id: extractUserId(row.wallet_accounts)
-    })) ?? []
+    data?.map((row) => {
+      const userId = extractUserId(row.wallet_accounts);
+      const walletAccount = Array.isArray(row.wallet_accounts)
+        ? row.wallet_accounts[0]
+        : row.wallet_accounts;
+      const profile = walletAccount?.profiles;
+      const profileData = Array.isArray(profile) ? profile[0] : profile;
+
+      return {
+        id: row.id,
+        amount: Number(row.amount),
+        requested_at: row.requested_at,
+        account_id: row.account_id,
+        user_id: userId,
+        username: profileData?.username || null,
+        ic_phone_number: profileData?.ic_phone_number || null
+      };
+    }) ?? []
   );
 };
 
@@ -121,24 +143,46 @@ export interface PendingWithdrawal {
   requested_at: string;
   account_id: string;
   user_id: string;
+  username: string | null;
+  ic_phone_number: string | null;
 }
 
 export const fetchPendingWithdrawals = async () => {
   const { data, error } = await supabase
     .from("withdrawals")
-    .select("id, amount, requested_at, account_id, wallet_accounts!inner(user_id)")
+    .select(`
+      id,
+      amount,
+      requested_at,
+      account_id,
+      wallet_accounts!inner(
+        user_id,
+        profiles(username, ic_phone_number)
+      )
+    `)
     .eq("status", "requested")
     .order("requested_at", { ascending: true });
 
   if (error) throw error;
   return (
-    data?.map((row) => ({
-      id: row.id,
-      amount: Number(row.amount),
-      requested_at: row.requested_at,
-      account_id: row.account_id,
-      user_id: extractUserId(row.wallet_accounts)
-    })) ?? []
+    data?.map((row) => {
+      const userId = extractUserId(row.wallet_accounts);
+      const walletAccount = Array.isArray(row.wallet_accounts)
+        ? row.wallet_accounts[0]
+        : row.wallet_accounts;
+      const profile = walletAccount?.profiles;
+      const profileData = Array.isArray(profile) ? profile[0] : profile;
+
+      return {
+        id: row.id,
+        amount: Number(row.amount),
+        requested_at: row.requested_at,
+        account_id: row.account_id,
+        user_id: userId,
+        username: profileData?.username || null,
+        ic_phone_number: profileData?.ic_phone_number || null
+      };
+    }) ?? []
   );
 };
 
