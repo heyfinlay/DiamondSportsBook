@@ -212,12 +212,12 @@ Same display structure as deposits
 - [ ] Verify page is visually clean and compact
 
 ### Account Page - Profile
-- [ ] Navigate to `/account`
-- [ ] Verify profile section exists with Display Name and IC Phone Number
-- [ ] Click "Edit" and verify form appears
-- [ ] Enter username and phone number, click "Save Changes"
-- [ ] Verify success toast appears
-- [ ] Verify profile data is saved and displayed
+- [ ✅] Navigate to `/account`
+- [✅ ] Verify profile section exists with Display Name and IC Phone Number
+- [✅ ] Click "Edit" and verify form appears
+- [✅ ] Enter username and phone number, click "Save Changes"
+- [✅ ] Verify success toast appears
+- [ ✅] Verify profile data is saved and displayed
 
 ### Account Page - Deposit/Withdrawal Validation
 - [ ] Clear `ic_phone_number` from profile (or use fresh account)
