@@ -5,17 +5,6 @@ import { useBettingStore } from "@domains/betting/store/bettingStore";
 import { useToast } from "@app/components/ToastProvider";
 import { previewWager } from "@domains/betting/api/bettingApi";
 
-const highlights = [
-  {
-    title: "Event-driven pools",
-    copy: "Follow tote movement across every DBGP session. Markets pull directly from race control telemetry."
-  },
-  {
-    title: "Realtime odds pulses",
-    copy: "Diamonds shift every few seconds—watch the payout estimate evolve before you lock in."
-  }
-];
-
 const DEFAULT_STAKE = 100;
 
 const formatStatus = (status: string) => {
@@ -95,33 +84,28 @@ const MarketsPage = () => {
 
   return (
     <div className="flex flex-col gap-10">
-      <header className="flex flex-col gap-5 rounded-3xl border border-white/5 bg-[#060910]/80 p-8 shadow-[0_0_40px_rgba(15,23,42,0.45)]">
+      <header className="flex flex-col gap-4 rounded-3xl border border-white/5 bg-[#060910]/80 p-8 shadow-[0_0_40px_rgba(15,23,42,0.45)]">
         <span className="text-xs uppercase tracking-[0.35em] text-[#9FF7D3]">
           Diamond Sports Book
         </span>
         <h1 className="text-4xl font-semibold text-white sm:text-5xl">
-          Markets and tote boards
+          Live Markets
         </h1>
         <p className="max-w-2xl text-sm text-neutral-300 sm:text-base">
-          Back podium hopefuls, safety car drama, or fastest lap heroes. Pick a market to preview odds, watch pool
-          growth, and lock in Diamonds before the grid goes green.
+          All DBGP betting uses a live parimutuel system. Your payout depends on the total Diamonds staked across each outcome, and odds will continue shifting until the market closes and locks your final price.
         </p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#9FF7D3]">
+            How It Works
+          </p>
+          <p className="mt-2 text-sm text-neutral-300">
+            Markets update in real-time as Diamonds move across the pool. Odds and payout estimates rise or fall every few seconds. Your final odds are locked only when the market closes.
+          </p>
+        </div>
         <p className="text-[0.7rem] uppercase tracking-[0.3em] text-neutral-500">
           All wagers settled in Diamonds (in-game currency). Parody product; no real-world stakes.
         </p>
       </header>
-
-      <section className="grid gap-6 md:grid-cols-2">
-        {highlights.map((highlight) => (
-          <div
-            key={highlight.title}
-            className="flex flex-col gap-3 rounded-3xl border border-white/5 bg-[#05070F]/80 p-6"
-          >
-            <h2 className="text-xl font-semibold text-white">{highlight.title}</h2>
-            <p className="text-sm text-neutral-400">{highlight.copy}</p>
-          </div>
-        ))}
-      </section>
 
       {eventsQuery.isLoading && (
         <p className="text-sm text-neutral-400">Loading live markets…</p>

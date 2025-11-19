@@ -9,6 +9,7 @@ import { useWalletRealtime } from "@domains/wallet/hooks/useWalletRealtime";
 import { useWalletStore } from "@domains/wallet/store/walletStore";
 import { useUserWagers } from "@domains/betting/hooks/useUserWagers";
 import { useToast } from "@app/components/ToastProvider";
+import { fetchUserProfile, updateUserProfile } from "@domains/profile/api/profileApi";
 const AccountPage = () => {
     const { user, loading } = useSession();
     const queryClient = useQueryClient();
@@ -16,10 +17,25 @@ const AccountPage = () => {
     const walletStoreBalance = useWalletStore((state) => state.balance);
     const [depositAmount, setDepositAmount] = useState("500");
     const [withdrawAmount, setWithdrawAmount] = useState("250");
+    const [username, setUsername] = useState("");
+    const [icPhoneNumber, setIcPhoneNumber] = useState("");
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
     const walletBalance = useWalletBalance(user?.id);
     const transactionsQuery = useWalletTransactions(user?.id);
     const wagersQuery = useUserWagers(user?.id);
     useWalletRealtime(user?.id ?? undefined);
+    const profileQuery = useQuery({
+        queryKey: ["user-profile", user?.id],
+        queryFn: () => fetchUserProfile(user?.id ?? ""),
+        enabled: !!user?.id
+    });
+    // Initialize form fields when profile data loads
+    useMemo(() => {
+        if (profileQuery.data) {
+            setUsername(profileQuery.data.username ?? "");
+            setIcPhoneNumber(profileQuery.data.ic_phone_number ?? "");
+        }
+    }, [profileQuery.data]);
     const depositsQuery = useQuery({
         queryKey: ["user-deposits", user?.id],
         queryFn: () => fetchUserDeposits(user?.id ?? ""),
@@ -74,11 +90,43 @@ const AccountPage = () => {
             });
         }
     });
+    const profileMutation = useMutation({
+        mutationFn: () => updateUserProfile(user?.id ?? "", {
+            username: username.trim() || undefined,
+            ic_phone_number: icPhoneNumber.trim() || undefined
+        }),
+        onSuccess: () => {
+            toast({
+                variant: "success",
+                title: "Profile updated",
+                description: "Your display name and IC phone number have been saved."
+            });
+            queryClient.invalidateQueries({ queryKey: ["user-profile", user?.id] });
+            setIsEditingProfile(false);
+        },
+        onError: (error) => {
+            toast({
+                variant: "error",
+                title: "Update failed",
+                description: error.message
+            });
+        }
+    });
     if (!user && !loading) {
         return (_jsx("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70", children: "Sign in to manage your wallet." }));
     }
     const handleDeposit = (event) => {
         event.preventDefault();
+        // Check for IC phone number requirement
+        if (!profileQuery.data?.ic_phone_number) {
+            toast({
+                variant: "error",
+                title: "Phone number required",
+                description: "Please add your IC phone number in the profile section above before requesting a deposit."
+            });
+            setIsEditingProfile(true);
+            return;
+        }
         const amount = Number(depositAmount);
         if (!amount || amount <= 0) {
             toast({
@@ -92,6 +140,16 @@ const AccountPage = () => {
     };
     const handleWithdrawal = (event) => {
         event.preventDefault();
+        // Check for IC phone number requirement
+        if (!profileQuery.data?.ic_phone_number) {
+            toast({
+                variant: "error",
+                title: "Phone number required",
+                description: "Please add your IC phone number in the profile section above before requesting a withdrawal."
+            });
+            setIsEditingProfile(true);
+            return;
+        }
         const amount = Number(withdrawAmount);
         if (!amount || amount <= 0) {
             toast({
@@ -103,6 +161,10 @@ const AccountPage = () => {
         }
         withdrawalMutation.mutate();
     };
+    const handleProfileUpdate = (event) => {
+        event.preventDefault();
+        profileMutation.mutate();
+    };
     const transactions = transactionsQuery.data ?? [];
     const depositEntries = depositsQuery.data ?? [];
     const withdrawalEntries = withdrawalsQuery.data ?? [];
@@ -112,7 +174,11 @@ const AccountPage = () => {
             return "…";
         return `Ɖ${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
     }, [currentBalance, isWalletLoading]);
-    return (_jsxs("div", { className: "space-y-8", children: [_jsxs("section", { className: "rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-black/40 p-6 shadow-lg shadow-black/40", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Wallet" }), _jsxs("div", { className: "mt-3 flex flex-wrap items-end justify-between gap-4", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-3xl font-semibold text-white", children: "Account" }), _jsxs("p", { className: "text-sm text-white/60", children: ["Linked email: ", _jsx("span", { className: "font-mono", children: user?.email ?? "Loading…" })] })] }), _jsxs("div", { className: "rounded-2xl border border-white/20 bg-black/30 px-6 py-4 text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/60", children: "Available Diamonds" }), _jsx("p", { className: "text-3xl font-semibold text-white", children: balanceDisplay })] })] })] }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]", children: [_jsxs("form", { onSubmit: handleDeposit, className: "rounded-3xl border border-white/10 bg-white/5 p-6 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Add Diamonds" }), _jsx("h3", { className: "mt-2 text-xl font-semibold", children: "Request Deposit" }), _jsx("p", { className: "text-sm text-white/70", children: "Submit for manual approval. Credits appear once racing ops confirms." }), _jsx("input", { type: "number", min: "1", step: "10", className: "mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white", value: depositAmount, onChange: (event) => setDepositAmount(event.target.value) }), _jsx("button", { type: "submit", className: "mt-4 w-full rounded-2xl bg-white/90 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: depositMutation.isPending, children: depositMutation.isPending ? "Requesting…" : "Request Deposit" })] }), _jsxs("form", { onSubmit: handleWithdrawal, className: "rounded-3xl border border-white/10 bg-black/40 p-6 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Cash Out" }), _jsx("h3", { className: "mt-2 text-xl font-semibold", children: "Request Withdrawal" }), _jsx("p", { className: "text-sm text-white/70", children: "Funds are held until administrators complete review." }), _jsx("input", { type: "number", min: "1", step: "10", className: "mt-4 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white", value: withdrawAmount, onChange: (event) => setWithdrawAmount(event.target.value) }), _jsx("button", { type: "submit", className: "mt-4 w-full rounded-2xl bg-brand py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: withdrawalMutation.isPending, children: withdrawalMutation.isPending ? "Submitting…" : "Request Withdrawal" })] }), _jsxs("div", { className: "rounded-3xl border border-dashed border-white/15 bg-transparent p-6 text-sm text-white/70", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Heads up" }), _jsxs("ul", { className: "mt-3 list-disc space-y-2 pl-5", children: [_jsx("li", { children: "Deposits/withdrawals require marshal approval for compliance." }), _jsx("li", { children: "Wagers immediately debit Diamonds and appear in the ledger." }), _jsx("li", { children: "Need help? Ping race control on the admin channel." })] })] })] }), _jsxs("section", { className: "grid gap-6 lg:grid-cols-2", children: [_jsxs("article", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("header", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Ledger" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Recent Transactions" })] }), transactionsQuery.isLoading && (_jsx("span", { className: "text-xs uppercase tracking-[0.3em] text-white/40", children: "Syncing\u2026" }))] }), _jsxs("div", { className: "mt-5 space-y-3", children: [transactions.map((tx) => (_jsxs("div", { className: "flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-semibold capitalize text-white", children: tx.kind }), _jsx("p", { className: "text-xs text-white/60", children: new Date(tx.created_at).toLocaleString() }), renderTransactionNote(tx.meta)] }), _jsxs("p", { className: `text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`, children: [tx.amount > 0 ? "+" : "", "\u0189", tx.amount.toFixed(2)] })] }, tx.id))), !transactions.length && !transactionsQuery.isLoading && (_jsx("p", { className: "text-sm text-white/60", children: "No transactions yet \u2014 request a deposit or place a wager to see ledger entries." }))] })] }), _jsxs("article", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("header", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Activity" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "My Wagers" })] }), wagersQuery.isLoading && (_jsx("span", { className: "text-xs uppercase tracking-[0.3em] text-white/40", children: "Loading\u2026" }))] }), _jsxs("div", { className: "mt-5 space-y-3", children: [wagers.map((wager) => (_jsxs("div", { className: "rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-white", children: [_jsxs("div", { className: "flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50", children: [_jsx("span", { children: wager.market_type || "Market" }), _jsx("span", { children: formatStatus(wager.status) })] }), _jsxs("p", { className: "mt-1 text-base font-semibold", children: ["\u0189", wager.stake.toFixed(2), " on ", wager.outcome_label] }), _jsxs("p", { className: "text-xs text-white/60", children: [wager.market_name, " \u00B7 ", wager.event_title] }), _jsxs("p", { className: "text-xs text-white/60", children: ["Odds ", wager.effective_odds.toFixed(2), " \u00B7 ", new Date(wager.created_at).toLocaleString()] })] }, wager.id))), !wagers.length && !wagersQuery.isLoading && (_jsx("p", { className: "text-sm text-white/60", children: "No wagers yet. Select a market to place your first bet." }))] })] })] }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/20 p-6", children: [_jsxs("header", { className: "flex flex-wrap items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Requests" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Deposit & withdrawal status" })] }), _jsx("div", { className: "text-xs text-white/50", children: "Auto-refreshes whenever an admin updates your request." })] }), _jsxs("div", { className: "mt-6 grid gap-6 lg:grid-cols-2", children: [_jsx(RequestList, { title: "Deposits", isLoading: depositsQuery.isLoading, entries: depositEntries.map((entry) => ({
+    return (_jsxs("div", { className: "space-y-8", children: [_jsxs("section", { className: "rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-black/40 p-6 shadow-lg shadow-black/40", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Wallet" }), _jsxs("div", { className: "mt-3 flex flex-wrap items-end justify-between gap-4", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-3xl font-semibold text-white", children: "Account" }), _jsxs("p", { className: "text-sm text-white/60", children: ["Linked email: ", _jsx("span", { className: "font-mono", children: user?.email ?? "Loading…" })] })] }), _jsxs("div", { className: "rounded-2xl border border-white/20 bg-black/30 px-6 py-4 text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/60", children: "Available Diamonds" }), _jsx("p", { className: "text-3xl font-semibold text-white", children: balanceDisplay })] })] })] }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-white/5 p-6", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Profile" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Display Settings" })] }), !isEditingProfile && (_jsx("button", { type: "button", onClick: () => setIsEditingProfile(true), className: "text-xs uppercase tracking-[0.3em] text-brand transition hover:text-white", children: "Edit" }))] }), isEditingProfile ? (_jsxs("form", { onSubmit: handleProfileUpdate, className: "mt-5 space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Display Name" }), _jsx("input", { type: "text", className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white", value: username, onChange: (e) => setUsername(e.target.value), placeholder: "Enter your display name" })] }), _jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "IC Phone Number" }), _jsx("input", { type: "text", className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white", value: icPhoneNumber, onChange: (e) => setIcPhoneNumber(e.target.value), placeholder: "In-character phone number" }), _jsx("p", { className: "mt-1 text-xs text-white/50", children: "Required for deposit and withdrawal requests" })] }), _jsxs("div", { className: "flex gap-3", children: [_jsx("button", { type: "submit", className: "rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: profileMutation.isPending, children: profileMutation.isPending ? "Saving…" : "Save Changes" }), _jsx("button", { type: "button", onClick: () => {
+                                            setUsername(profileQuery.data?.username ?? "");
+                                            setIcPhoneNumber(profileQuery.data?.ic_phone_number ?? "");
+                                            setIsEditingProfile(false);
+                                        }, className: "rounded-2xl border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-white/5", children: "Cancel" })] })] })) : (_jsxs("div", { className: "mt-5 space-y-3", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Display Name" }), _jsx("p", { className: "mt-1 text-white", children: profileQuery.data?.username || (_jsx("span", { className: "text-white/40", children: "Not set" })) })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "IC Phone Number" }), _jsx("p", { className: "mt-1 text-white", children: profileQuery.data?.ic_phone_number || (_jsx("span", { className: "text-white/40", children: "Not set (required for deposits/withdrawals)" })) })] })] }))] }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]", children: [_jsxs("form", { onSubmit: handleDeposit, className: "rounded-3xl border border-white/10 bg-white/5 p-6 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Add Diamonds" }), _jsx("h3", { className: "mt-2 text-xl font-semibold", children: "Request Deposit" }), _jsx("p", { className: "text-sm text-white/70", children: "Submit for manual approval. Credits appear once racing ops confirms." }), _jsx("input", { type: "number", min: "1", step: "10", className: "mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white", value: depositAmount, onChange: (event) => setDepositAmount(event.target.value) }), _jsx("button", { type: "submit", className: "mt-4 w-full rounded-2xl bg-white/90 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: depositMutation.isPending, children: depositMutation.isPending ? "Requesting…" : "Request Deposit" })] }), _jsxs("form", { onSubmit: handleWithdrawal, className: "rounded-3xl border border-white/10 bg-black/40 p-6 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Cash Out" }), _jsx("h3", { className: "mt-2 text-xl font-semibold", children: "Request Withdrawal" }), _jsx("p", { className: "text-sm text-white/70", children: "Funds are held until administrators complete review." }), _jsx("input", { type: "number", min: "1", step: "10", className: "mt-4 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white", value: withdrawAmount, onChange: (event) => setWithdrawAmount(event.target.value) }), _jsx("button", { type: "submit", className: "mt-4 w-full rounded-2xl bg-brand py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: withdrawalMutation.isPending, children: withdrawalMutation.isPending ? "Submitting…" : "Request Withdrawal" })] }), _jsxs("div", { className: "rounded-3xl border border-dashed border-white/15 bg-transparent p-6 text-sm text-white/70", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Heads up" }), _jsxs("ul", { className: "mt-3 list-disc space-y-2 pl-5", children: [_jsx("li", { children: "Deposits/withdrawals require marshal approval for compliance." }), _jsx("li", { children: "Wagers immediately debit Diamonds and appear in the ledger." }), _jsx("li", { children: "Need help? Ping race control on the admin channel." })] })] })] }), _jsxs("section", { className: "grid gap-6 lg:grid-cols-2", children: [_jsxs("article", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("header", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Ledger" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Recent Transactions" })] }), transactionsQuery.isLoading && (_jsx("span", { className: "text-xs uppercase tracking-[0.3em] text-white/40", children: "Syncing\u2026" }))] }), _jsxs("div", { className: "mt-5 space-y-3", children: [transactions.map((tx) => (_jsxs("div", { className: "flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-semibold capitalize text-white", children: tx.kind }), _jsx("p", { className: "text-xs text-white/60", children: new Date(tx.created_at).toLocaleString() }), renderTransactionNote(tx.meta)] }), _jsxs("p", { className: `text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`, children: [tx.amount > 0 ? "+" : "", "\u0189", tx.amount.toFixed(2)] })] }, tx.id))), !transactions.length && !transactionsQuery.isLoading && (_jsx("p", { className: "text-sm text-white/60", children: "No transactions yet \u2014 request a deposit or place a wager to see ledger entries." }))] })] }), _jsxs("article", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("header", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Activity" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "My Wagers" })] }), wagersQuery.isLoading && (_jsx("span", { className: "text-xs uppercase tracking-[0.3em] text-white/40", children: "Loading\u2026" }))] }), _jsxs("div", { className: "mt-5 space-y-3", children: [wagers.map((wager) => (_jsxs("div", { className: "rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-white", children: [_jsxs("div", { className: "flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50", children: [_jsx("span", { children: wager.market_type || "Market" }), _jsx("span", { children: formatStatus(wager.status) })] }), _jsxs("p", { className: "mt-1 text-base font-semibold", children: ["\u0189", wager.stake.toFixed(2), " on ", wager.outcome_label] }), _jsxs("p", { className: "text-xs text-white/60", children: [wager.market_name, " \u00B7 ", wager.event_title] }), _jsxs("p", { className: "text-xs text-white/60", children: ["Odds ", wager.effective_odds.toFixed(2), " \u00B7 ", new Date(wager.created_at).toLocaleString()] })] }, wager.id))), !wagers.length && !wagersQuery.isLoading && (_jsx("p", { className: "text-sm text-white/60", children: "No wagers yet. Select a market to place your first bet." }))] })] })] }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/20 p-6", children: [_jsxs("header", { className: "flex flex-wrap items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Requests" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Deposit & withdrawal status" })] }), _jsx("div", { className: "text-xs text-white/50", children: "Auto-refreshes whenever an admin updates your request." })] }), _jsxs("div", { className: "mt-6 grid gap-6 lg:grid-cols-2", children: [_jsx(RequestList, { title: "Deposits", isLoading: depositsQuery.isLoading, entries: depositEntries.map((entry) => ({
                                     id: entry.id,
                                     amount: entry.amount,
                                     status: entry.status,
