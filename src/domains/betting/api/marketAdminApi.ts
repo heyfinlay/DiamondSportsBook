@@ -259,6 +259,8 @@ export const closePool = (poolId: string) => callPoolRpc("market_pool_close", po
 export const suspendPool = (poolId: string) => callPoolRpc("market_pool_suspend", poolId);
 export const voidPool = (poolId: string, reason?: string) =>
   callPoolRpc("market_pool_void", poolId, { p_reason: reason ?? null });
+export const archivePool = (poolId: string) => callPoolRpc("market_pool_archive", poolId);
+export const restorePool = (poolId: string) => callPoolRpc("market_pool_restore", poolId);
 
 export interface SettlementPreview {
   pool_id: string;

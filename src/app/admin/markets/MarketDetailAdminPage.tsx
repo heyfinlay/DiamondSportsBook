@@ -13,6 +13,8 @@ import {
   proposeSettlement,
   suspendPool,
   voidPool,
+  archivePool,
+  restorePool,
   type AdminWagerRow,
   type MarketPool,
   type SettlementPreview,
@@ -290,6 +292,26 @@ const PoolManager = ({ pool, onRefresh }: { pool: MarketPool; onRefresh: () => v
     onError: (error: Error) => toast({ variant: "error", title: "Unable to void", description: error.message })
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: () => archivePool(pool.id),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Pool archived" });
+      onRefresh();
+    },
+    onError: (error: Error) =>
+      toast({ variant: "error", title: "Unable to archive", description: error.message })
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: () => restorePool(pool.id),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Pool restored" });
+      onRefresh();
+    },
+    onError: (error: Error) =>
+      toast({ variant: "error", title: "Unable to restore", description: error.message })
+  });
+
   const totalOutcomePool = pool.outcomes.reduce((sum, outcome) => sum + outcome.pool, 0);
 
   const pendingSummary = pool.pending_settlement?.summary
@@ -310,7 +332,7 @@ const PoolManager = ({ pool, onRefresh }: { pool: MarketPool; onRefresh: () => v
           <h3 className="text-xl font-semibold text-white">{pool.name}</h3>
           <p className="text-sm text-white/60">{pool.description}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <PoolActionButton label="Open" onClick={() => openMutation.mutate()} disabled={openMutation.isPending} />
           <PoolActionButton label="Close" onClick={() => closeMutation.mutate()} disabled={closeMutation.isPending} />
           <PoolActionButton label="Suspend" onClick={() => suspendMutation.mutate()} disabled={suspendMutation.isPending} />
@@ -323,6 +345,23 @@ const PoolManager = ({ pool, onRefresh }: { pool: MarketPool; onRefresh: () => v
             }}
             disabled={voidMutation.isPending}
           />
+          {pool.status === "settled" || pool.status === "void" ? (
+            <PoolActionButton
+              label={pool.archived ? "Restore" : "Archive"}
+              onClick={() => {
+                if (!pool.archived) {
+                  const confirmed = window.confirm(
+                    "Archive this pool so it no longer appears on the public board?"
+                  );
+                  if (!confirmed) return;
+                  archiveMutation.mutate();
+                } else {
+                  restoreMutation.mutate();
+                }
+              }}
+              disabled={archiveMutation.isPending || restoreMutation.isPending}
+            />
+          ) : null}
         </div>
       </header>
 
