@@ -40,6 +40,8 @@ export const fetchMarketEvents = async () => {
         name,
         description,
         status,
+        archived,
+        settled_at,
         pool_type,
         total_pool,
         min_stake,
@@ -75,11 +77,19 @@ export const fetchMarketEvents = async () => {
                 }
                 : null;
         })(),
-        markets: event.markets?.map((market) => ({
+        markets: 
+        // Lifecycle: only show non-archived markets in public board,
+        // and only if their status is one of the public-facing states.
+        event.markets
+            ?.filter((market) => !market.archived &&
+            ["open", "closed", "settled"].includes(market.status))
+            .map((market) => ({
             id: market.id,
             name: market.name,
             description: market.description ?? null,
             status: market.status,
+            archived: !!market.archived,
+            settled_at: market.settled_at ?? null,
             pool_type: market.pool_type,
             total_pool: Number(market.total_pool ?? 0),
             min_stake: Number(market.min_stake ?? 0),

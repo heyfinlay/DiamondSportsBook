@@ -26,6 +26,8 @@ export const fetchAdminMarkets = async () => {
           name,
           description,
           status,
+          archived,
+          settled_at,
           pool_type,
           rake_percent,
           total_pool,
@@ -61,6 +63,8 @@ export const fetchAdminMarkets = async () => {
             name: pool.name,
             description: pool.description ?? null,
             status: pool.status,
+            archived: !!pool.archived,
+            settled_at: pool.settled_at ?? null,
             pool_type: pool.pool_type,
             rake_percent: Number(pool.rake_percent ?? 0),
             total_pool: Number(pool.total_pool ?? 0),
@@ -88,6 +92,8 @@ export const fetchAdminMarketDetail = async (marketId) => {
           name,
           description,
           status,
+          archived,
+          settled_at,
           pool_type,
           rake_percent,
           total_pool,
@@ -127,6 +133,8 @@ export const fetchAdminMarketDetail = async (marketId) => {
             name: pool.name,
             description: pool.description ?? null,
             status: pool.status,
+            archived: !!pool.archived,
+            settled_at: pool.settled_at ?? null,
             pool_type: pool.pool_type,
             rake_percent: Number(pool.rake_percent ?? 0),
             total_pool: Number(pool.total_pool ?? 0),
@@ -171,6 +179,8 @@ export const openPool = (poolId) => callPoolRpc("market_pool_open", poolId);
 export const closePool = (poolId) => callPoolRpc("market_pool_close", poolId);
 export const suspendPool = (poolId) => callPoolRpc("market_pool_suspend", poolId);
 export const voidPool = (poolId, reason) => callPoolRpc("market_pool_void", poolId, { p_reason: reason ?? null });
+export const archivePool = (poolId) => callPoolRpc("market_pool_archive", poolId);
+export const restorePool = (poolId) => callPoolRpc("market_pool_restore", poolId);
 export const previewSettlement = async (poolId, outcomeId) => {
     const { data, error } = await supabase.rpc("market_pool_preview_settlement", {
         p_pool_id: poolId,

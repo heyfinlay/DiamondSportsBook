@@ -15,6 +15,8 @@ export interface MarketPool {
   name: string;
   description: string | null;
   status: PoolStatus;
+  archived?: boolean;
+  settled_at?: string | null;
   pool_type: string;
   rake_percent: number;
   total_pool: number;
@@ -83,6 +85,8 @@ export const fetchAdminMarkets = async () => {
           name,
           description,
           status,
+          archived,
+          settled_at,
           pool_type,
           rake_percent,
           total_pool,
@@ -121,6 +125,8 @@ export const fetchAdminMarkets = async () => {
         name: pool.name,
         description: pool.description ?? null,
         status: pool.status as PoolStatus,
+        archived: !!pool.archived,
+        settled_at: pool.settled_at ?? null,
         pool_type: pool.pool_type,
         rake_percent: Number(pool.rake_percent ?? 0),
         total_pool: Number(pool.total_pool ?? 0),
@@ -151,6 +157,8 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
           name,
           description,
           status,
+          archived,
+          settled_at,
           pool_type,
           rake_percent,
           total_pool,
@@ -192,6 +200,8 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
       name: pool.name,
       description: pool.description ?? null,
       status: pool.status as PoolStatus,
+      archived: !!pool.archived,
+      settled_at: pool.settled_at ?? null,
       pool_type: pool.pool_type,
       rake_percent: Number(pool.rake_percent ?? 0),
       total_pool: Number(pool.total_pool ?? 0),
@@ -259,6 +269,8 @@ export const closePool = (poolId: string) => callPoolRpc("market_pool_close", po
 export const suspendPool = (poolId: string) => callPoolRpc("market_pool_suspend", poolId);
 export const voidPool = (poolId: string, reason?: string) =>
   callPoolRpc("market_pool_void", poolId, { p_reason: reason ?? null });
+export const archivePool = (poolId: string) => callPoolRpc("market_pool_archive", poolId);
+export const restorePool = (poolId: string) => callPoolRpc("market_pool_restore", poolId);
 
 export interface SettlementPreview {
   pool_id: string;

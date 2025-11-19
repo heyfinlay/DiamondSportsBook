@@ -5,6 +5,8 @@ export interface MarketPool {
     name: string;
     description: string | null;
     status: PoolStatus;
+    archived?: boolean;
+    settled_at?: string | null;
     pool_type: string;
     rake_percent: number;
     total_pool: number;
@@ -66,6 +68,8 @@ export declare const openPool: (poolId: string) => Promise<any>;
 export declare const closePool: (poolId: string) => Promise<any>;
 export declare const suspendPool: (poolId: string) => Promise<any>;
 export declare const voidPool: (poolId: string, reason?: string) => Promise<any>;
+export declare const archivePool: (poolId: string) => Promise<any>;
+export declare const restorePool: (poolId: string) => Promise<any>;
 export interface SettlementPreview {
     pool_id: string;
     market_id: string;

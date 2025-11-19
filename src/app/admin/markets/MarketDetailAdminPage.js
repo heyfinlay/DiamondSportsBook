@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { closePool, confirmSettlement, fetchAdminMarketDetail, fetchMarketWagers, fetchWalletActivityForMarket, fetchRakeLedger, openPool, previewSettlement, proposeSettlement, suspendPool, voidPool } from "@domains/betting/api/marketAdminApi";
+import { closePool, confirmSettlement, fetchAdminMarketDetail, fetchMarketWagers, fetchWalletActivityForMarket, fetchRakeLedger, openPool, previewSettlement, proposeSettlement, suspendPool, voidPool, archivePool, restorePool } from "@domains/betting/api/marketAdminApi";
 import { useToast } from "@app/components/ToastProvider";
 const tabs = [
     { key: "overview", label: "Overview" },
@@ -120,6 +120,22 @@ const PoolManager = ({ pool, onRefresh }) => {
         },
         onError: (error) => toast({ variant: "error", title: "Unable to void", description: error.message })
     });
+    const archiveMutation = useMutation({
+        mutationFn: () => archivePool(pool.id),
+        onSuccess: () => {
+            toast({ variant: "success", title: "Pool archived" });
+            onRefresh();
+        },
+        onError: (error) => toast({ variant: "error", title: "Unable to archive", description: error.message })
+    });
+    const restoreMutation = useMutation({
+        mutationFn: () => restorePool(pool.id),
+        onSuccess: () => {
+            toast({ variant: "success", title: "Pool restored" });
+            onRefresh();
+        },
+        onError: (error) => toast({ variant: "error", title: "Unable to restore", description: error.message })
+    });
     const totalOutcomePool = pool.outcomes.reduce((sum, outcome) => sum + outcome.pool, 0);
     const pendingSummary = pool.pending_settlement?.summary
         ? pool.pending_settlement.summary
@@ -129,12 +145,22 @@ const PoolManager = ({ pool, onRefresh }) => {
         const num = typeof value === "number" ? value : Number(value ?? 0);
         return Number.isFinite(num) ? num.toFixed(2) : "0.00";
     };
-    return (_jsxs("article", { id: "pools", className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("header", { className: "flex flex-wrap items-start justify-between gap-3", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: pool.status }), _jsx("h3", { className: "text-xl font-semibold text-white", children: pool.name }), _jsx("p", { className: "text-sm text-white/60", children: pool.description })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx(PoolActionButton, { label: "Open", onClick: () => openMutation.mutate(), disabled: openMutation.isPending }), _jsx(PoolActionButton, { label: "Close", onClick: () => closeMutation.mutate(), disabled: closeMutation.isPending }), _jsx(PoolActionButton, { label: "Suspend", onClick: () => suspendMutation.mutate(), disabled: suspendMutation.isPending }), _jsx(PoolActionButton, { label: "Void", onClick: () => {
+    return (_jsxs("article", { id: "pools", className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("header", { className: "flex flex-wrap items-start justify-between gap-3", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: pool.status }), _jsx("h3", { className: "text-xl font-semibold text-white", children: pool.name }), _jsx("p", { className: "text-sm text-white/60", children: pool.description })] }), _jsxs("div", { className: "flex flex-wrap gap-2", children: [_jsx(PoolActionButton, { label: "Open", onClick: () => openMutation.mutate(), disabled: openMutation.isPending }), _jsx(PoolActionButton, { label: "Close", onClick: () => closeMutation.mutate(), disabled: closeMutation.isPending }), _jsx(PoolActionButton, { label: "Suspend", onClick: () => suspendMutation.mutate(), disabled: suspendMutation.isPending }), _jsx(PoolActionButton, { label: "Void", onClick: () => {
                                     const confirmed = window.confirm("Void this pool and refund all wagers?");
                                     if (!confirmed)
                                         return;
                                     voidMutation.mutate();
-                                }, disabled: voidMutation.isPending })] })] }), _jsx("div", { className: "mt-4 overflow-x-auto", children: _jsxs("table", { className: "w-full text-sm", children: [_jsx("thead", { className: "text-left text-xs uppercase tracking-[0.3em] text-white/50", children: _jsxs("tr", { children: [_jsx("th", { className: "py-2", children: "Outcome" }), _jsx("th", { children: "Stake" }), _jsx("th", { children: "% Pool" }), _jsx("th", { children: "Implied Payout" }), _jsx("th", { children: "Select" })] }) }), _jsx("tbody", { children: pool.outcomes.map((outcome) => {
+                                }, disabled: voidMutation.isPending }), pool.status === "settled" || pool.status === "void" ? (_jsx(PoolActionButton, { label: pool.archived ? "Restore" : "Archive", onClick: () => {
+                                    if (!pool.archived) {
+                                        const confirmed = window.confirm("Archive this pool so it no longer appears on the public board?");
+                                        if (!confirmed)
+                                            return;
+                                        archiveMutation.mutate();
+                                    }
+                                    else {
+                                        restoreMutation.mutate();
+                                    }
+                                }, disabled: archiveMutation.isPending || restoreMutation.isPending })) : null] })] }), _jsx("div", { className: "mt-4 overflow-x-auto", children: _jsxs("table", { className: "w-full text-sm", children: [_jsx("thead", { className: "text-left text-xs uppercase tracking-[0.3em] text-white/50", children: _jsxs("tr", { children: [_jsx("th", { className: "py-2", children: "Outcome" }), _jsx("th", { children: "Stake" }), _jsx("th", { children: "% Pool" }), _jsx("th", { children: "Implied Payout" }), _jsx("th", { children: "Select" })] }) }), _jsx("tbody", { children: pool.outcomes.map((outcome) => {
                                 const share = totalOutcomePool > 0 ? (outcome.pool / totalOutcomePool) * 100 : 0;
                                 const implied = outcome.pool > 0 ? (pool.total_pool / outcome.pool).toFixed(2) : "—";
                                 return (_jsxs("tr", { className: "border-t border-white/5 text-white/80", children: [_jsx("td", { className: "py-2", children: _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "h-3 w-3 rounded-full", style: { backgroundColor: outcome.color ?? "#9FF7D3" } }), outcome.label] }) }), _jsxs("td", { children: ["\u0189", outcome.pool.toFixed(2)] }), _jsxs("td", { children: [share.toFixed(1), "%"] }), _jsx("td", { children: implied }), _jsx("td", { children: _jsx("input", { type: "radio", name: `outcome-${pool.id}`, checked: selectedOutcome === outcome.id, onChange: () => {

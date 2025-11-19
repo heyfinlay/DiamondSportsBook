@@ -35,6 +35,9 @@ export interface EventWithMarkets {
     name: string;
     description: string | null;
     status: PoolStatus;
+    // Lifecycle: archived markets should not appear on the public board
+    archived?: boolean;
+    settled_at?: string | null;
     pool_type: string;
     total_pool: number;
     min_stake: number;
@@ -94,6 +97,8 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
         name,
         description,
         status,
+        archived,
+        settled_at,
         pool_type,
         total_pool,
         min_stake,
@@ -133,24 +138,34 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
           : null;
       })(),
       markets:
-        (event.markets as EventWithMarkets["markets"])?.map((market) => ({
-          id: market.id,
-          name: market.name,
-          description: market.description ?? null,
-          status: market.status as PoolStatus,
-          pool_type: market.pool_type,
-          total_pool: Number(market.total_pool ?? 0),
-          min_stake: Number(market.min_stake ?? 0),
-          max_stake: Number(market.max_stake ?? 0),
-          close_time: market.close_time ?? null,
-          outcomes:
-            market.outcomes?.map((outcome) => ({
-              id: outcome.id,
-              label: outcome.label,
-              pool: Number(outcome.pool ?? 0),
-              color: outcome.color ?? null
-            })) ?? []
-        })) ?? []
+        // Lifecycle: only show non-archived markets in public board,
+        // and only if their status is one of the public-facing states.
+        (event.markets as EventWithMarkets["markets"])
+          ?.filter(
+            (market) =>
+              !market.archived &&
+              ["open", "closed", "settled"].includes(market.status as string)
+          )
+          .map((market) => ({
+            id: market.id,
+            name: market.name,
+            description: market.description ?? null,
+            status: market.status as PoolStatus,
+            archived: !!market.archived,
+            settled_at: market.settled_at ?? null,
+            pool_type: market.pool_type,
+            total_pool: Number(market.total_pool ?? 0),
+            min_stake: Number(market.min_stake ?? 0),
+            max_stake: Number(market.max_stake ?? 0),
+            close_time: market.close_time ?? null,
+            outcomes:
+              market.outcomes?.map((outcome) => ({
+                id: outcome.id,
+                label: outcome.label,
+                pool: Number(outcome.pool ?? 0),
+                color: outcome.color ?? null
+              })) ?? []
+          })) ?? []
     })) ?? []
   );
 };
