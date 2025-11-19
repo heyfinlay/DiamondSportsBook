@@ -138,9 +138,14 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
           : null;
       })(),
       markets:
-        // Lifecycle: hide archived markets from the public event board
+        // Lifecycle: only show non-archived markets in public board,
+        // and only if their status is one of the public-facing states.
         (event.markets as EventWithMarkets["markets"])
-          ?.filter((market) => !market.archived)
+          ?.filter(
+            (market) =>
+              !market.archived &&
+              ["open", "closed", "settled"].includes(market.status as string)
+          )
           .map((market) => ({
             id: market.id,
             name: market.name,
