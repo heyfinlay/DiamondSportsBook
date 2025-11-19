@@ -7,6 +7,7 @@ export interface MarketPool {
     status: PoolStatus;
     archived?: boolean;
     settled_at?: string | null;
+    archived_at?: string | null;
     pool_type: string;
     rake_percent: number;
     total_pool: number;
