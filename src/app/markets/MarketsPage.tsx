@@ -146,9 +146,13 @@ const MarketsPage = () => {
                     key={market.id}
                     className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#060910]/80 p-4"
                   >
-                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-neutral-500">
-                      <span>{market.name}</span>
-                      <span>{formatStatus(market.status)}</span>
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-[1.125rem] font-semibold leading-tight text-white md:text-[1.35rem]">
+                        {market.name}
+                      </h3>
+                      <span className="shrink-0 text-xs uppercase tracking-[0.35em] text-neutral-500">
+                        {formatStatus(market.status)}
+                      </span>
                     </div>
                     <div>
                       {market.description && (
