@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,6 +15,7 @@ import {
   voidPool,
   archivePool,
   restorePool,
+  updatePoolCopy,
   type AdminWagerRow,
   type MarketPool,
   type SettlementPreview,
@@ -36,6 +37,7 @@ const MarketDetailAdminPage = () => {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]["key"]>("overview");
   const [walletPoolFilter, setWalletPoolFilter] = useState<string>("all");
   const [wagerPoolFilter, setWagerPoolFilter] = useState<string>("all");
+  const [editingPool, setEditingPool] = useState<MarketPool | null>(null);
 
   const detailQuery = useQuery({
     queryKey: ["admin-market-detail", marketId],
@@ -137,6 +139,18 @@ const MarketDetailAdminPage = () => {
           totalWagers={totalWagers}
           pendingWagers={pendingWagers}
           totalRake={totalRake}
+          onEditPool={setEditingPool}
+        />
+      )}
+
+      {editingPool && (
+        <PoolConfigModal
+          pool={editingPool}
+          onClose={() => setEditingPool(null)}
+          onSuccess={() => {
+            refreshDetail();
+            setEditingPool(null);
+          }}
         />
       )}
 
@@ -186,13 +200,15 @@ const OverviewTab = ({
   totalHandle,
   totalWagers,
   pendingWagers,
-  totalRake
+  totalRake,
+  onEditPool
 }: {
   pools: MarketPool[];
   totalHandle: number;
   totalWagers: number;
   pendingWagers: number;
   totalRake: number;
+  onEditPool: (pool: MarketPool) => void;
 }) => {
   return (
     <section className="space-y-4">
@@ -214,12 +230,13 @@ const OverviewTab = ({
             </header>
             <p className="mt-2 text-xs text-white/60">{pool.description}</p>
             <p className="mt-2 text-xs text-white/40">Rake {(pool.rake_percent * 100).toFixed(1)}%</p>
-            <a
-              href="#pools"
+            <button
+              type="button"
+              onClick={() => onEditPool(pool)}
               className="mt-3 inline-block text-xs uppercase tracking-[0.3em] text-brand hover:text-white"
             >
               Manage pool →
-            </a>
+            </button>
           </article>
         ))}
       </div>
@@ -600,5 +617,144 @@ const PoolActionButton = ({ label, onClick, disabled }: { label: string; onClick
     {label}
   </button>
 );
+
+const PoolConfigModal = ({
+  pool,
+  onClose,
+  onSuccess
+}: {
+  pool: MarketPool;
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const { toast } = useToast();
+  const [name, setName] = useState(pool.name);
+  const [description, setDescription] = useState(pool.description ?? "");
+
+  const updateMutation = useMutation({
+    mutationFn: () => updatePoolCopy(pool.id, { name, description: description.trim() || null }),
+    onSuccess: () => {
+      toast({
+        variant: "success",
+        title: "Pool updated",
+        description: "Pool copy has been saved."
+      });
+      onSuccess();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "error",
+        title: "Update failed",
+        description: error.message
+      });
+    }
+  });
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast({
+        variant: "error",
+        title: "Validation error",
+        description: "Pool name is required."
+      });
+      return;
+    }
+    updateMutation.mutate();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#060910] p-8 shadow-2xl">
+        <header className="flex items-start justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Pool Configuration</p>
+            <h2 className="text-2xl font-semibold text-white">Edit Pool Copy</h2>
+            <p className="mt-1 text-sm text-white/60">
+              Update display name and description (settlement logic unchanged)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-xs uppercase tracking-[0.3em] text-white/60 transition hover:text-white"
+          >
+            Close
+          </button>
+        </header>
+
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <div>
+            <label className="text-xs uppercase tracking-[0.3em] text-white/50">
+              Pool Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:outline-none"
+              placeholder="e.g. Overall Winner"
+              required
+            />
+            <p className="mt-1 text-xs text-white/50">
+              This is the primary label shown on cards and market details
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs uppercase tracking-[0.3em] text-white/50">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:outline-none"
+              placeholder="Optional tagline or helper text"
+              rows={3}
+            />
+            <p className="mt-1 text-xs text-white/50">
+              Displayed below the pool name as supplementary information
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#9FF7D3]">
+              Current Pool Info
+            </p>
+            <div className="mt-2 grid gap-2 text-sm">
+              <p className="text-white/60">
+                <span className="text-white/40">Type:</span> {pool.pool_type}
+              </p>
+              <p className="text-white/60">
+                <span className="text-white/40">Status:</span> {pool.status}
+              </p>
+              <p className="text-white/60">
+                <span className="text-white/40">Total Pool:</span> Ɖ{pool.total_pool.toLocaleString()}
+              </p>
+              <p className="text-white/60">
+                <span className="text-white/40">Rake:</span> {(pool.rake_percent * 100).toFixed(1)}%
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="flex-1 rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+            >
+              {updateMutation.isPending ? "Saving…" : "Save Changes"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-2xl border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-white/5"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export default MarketDetailAdminPage;

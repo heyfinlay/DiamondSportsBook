@@ -147,13 +147,12 @@ const MarketsPage = () => {
                     className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#060910]/80 p-4"
                   >
                     <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-neutral-500">
-                      <span>{market.pool_type}</span>
+                      <span>{market.name}</span>
                       <span>{formatStatus(market.status)}</span>
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white">{market.name}</h3>
                       {market.description && (
-                        <p className="text-xs text-neutral-400">{market.description}</p>
+                        <p className="text-sm text-neutral-400">{market.description}</p>
                       )}
                     </div>
                     <p className="text-xs text-neutral-400">

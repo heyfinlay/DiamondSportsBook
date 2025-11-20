@@ -275,3 +275,11 @@ export const fetchRakeLedger = async (marketId) => {
         pool_id: row.pool_id
     })) ?? []);
 };
+export const updatePoolCopy = async (poolId, updates) => {
+    const { error } = await supabase
+        .from("markets")
+        .update(updates)
+        .eq("id", poolId);
+    if (error)
+        throw error;
+};

@@ -410,7 +410,7 @@ export interface RakeLedgerEntry {
 }
 
 export const fetchRakeLedger = async (marketId: string) => {
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from("market_rake_ledger")
     .select("id, amount, meta, created_at, pool_id")
     .eq("market_id", marketId)
@@ -426,4 +426,18 @@ export const fetchRakeLedger = async (marketId: string) => {
       pool_id: row.pool_id
     })) ?? []
   ) as RakeLedgerEntry[];
+};
+
+export interface UpdatePoolCopyPayload {
+  name?: string;
+  description?: string | null;
+}
+
+export const updatePoolCopy = async (poolId: string, updates: UpdatePoolCopyPayload) => {
+  const { error } = await supabase
+    .from("markets")
+    .update(updates)
+    .eq("id", poolId);
+
+  if (error) throw error;
 };

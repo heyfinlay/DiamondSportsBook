@@ -121,3 +121,8 @@ export interface RakeLedgerEntry {
     pool_id: string;
 }
 export declare const fetchRakeLedger: (marketId: string) => Promise<RakeLedgerEntry[]>;
+export interface UpdatePoolCopyPayload {
+    name?: string;
+    description?: string | null;
+}
+export declare const updatePoolCopy: (poolId: string, updates: UpdatePoolCopyPayload) => Promise<void>;
