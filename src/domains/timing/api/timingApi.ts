@@ -88,6 +88,7 @@ const sessionSummarySchema = z.object({
   status: z.string(),
   starts_at: z.string().nullable(),
   created_at: z.string(),
+  archived_at: z.string().nullable().optional(),
   session_state: z
     .object({
       session_id: z.string(),
@@ -168,6 +169,7 @@ export const fetchSessions = async (): Promise<TimingSessionSummary[]> => {
         status,
         starts_at,
         created_at,
+        archived_at,
         session_state:timing_session_state(session_id, procedure_phase, flag_status, race_time_ms, is_timing, is_paused)
       `
     )
@@ -386,4 +388,20 @@ export const finishSession = async (sessionId: string) => {
 
   if (error) throw error;
   return fetchTimingResults(sessionId);
+};
+
+export const archiveSession = async (sessionId: string) => {
+  const { error } = await supabase.rpc("timing_archive_session", {
+    p_session_id: sessionId
+  });
+
+  if (error) throw error;
+};
+
+export const restoreSession = async (sessionId: string) => {
+  const { error } = await supabase.rpc("timing_restore_session", {
+    p_session_id: sessionId
+  });
+
+  if (error) throw error;
 };

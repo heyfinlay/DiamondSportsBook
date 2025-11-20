@@ -170,6 +170,105 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
   );
 };
 
+export const fetchArchivedMarketEvents = async (): Promise<EventWithMarkets[]> => {
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      `
+      id,
+      title,
+      description,
+      starts_at,
+      status,
+      takeout,
+      session:timing_sessions(
+        id,
+        name,
+        track_name,
+        mode,
+        archived_at
+      ),
+      markets:markets(
+        id,
+        name,
+        description,
+        status,
+        archived,
+        settled_at,
+        archived_at,
+        pool_type,
+        total_pool,
+        min_stake,
+        max_stake,
+        close_time,
+        outcomes:outcomes(
+          id,
+          label,
+          pool,
+          color
+        )
+      )
+    `
+    )
+    .order("starts_at", { ascending: false });
+
+  if (error) throw error;
+
+  const results: EventWithMarkets[] = [];
+
+  for (const event of data ?? []) {
+    const sessionRow = extractSingle(event.session);
+    // Only include events with archived sessions or settled/archived status
+    if (
+      !sessionRow?.archived_at &&
+      !["settled", "archived"].includes(event.status as string)
+    ) {
+      continue;
+    }
+
+    results.push({
+      id: event.id,
+      title: event.title,
+      description: event.description ?? null,
+      starts_at: event.starts_at ?? null,
+      status: event.status as MarketContainerStatus,
+      takeout: Number(event.takeout ?? 0),
+      session: sessionRow
+        ? {
+            id: sessionRow.id,
+            name: sessionRow.name,
+            track_name: sessionRow.track_name ?? null,
+            mode: sessionRow.mode ?? null
+          }
+        : null,
+      markets:
+        (event.markets as any[])?.map((market) => ({
+          id: market.id,
+          name: market.name,
+          description: market.description ?? null,
+          status: market.status as PoolStatus,
+          archived: !!market.archived,
+          settled_at: market.settled_at ?? null,
+          archived_at: market.archived_at ?? null,
+          pool_type: market.pool_type,
+          total_pool: Number(market.total_pool ?? 0),
+          min_stake: Number(market.min_stake ?? 0),
+          max_stake: Number(market.max_stake ?? 0),
+          close_time: market.close_time ?? null,
+          outcomes:
+            market.outcomes?.map((outcome: any) => ({
+              id: outcome.id,
+              label: outcome.label,
+              pool: Number(outcome.pool ?? 0),
+              color: outcome.color ?? null
+            })) ?? []
+        })) ?? []
+    });
+  }
+
+  return results;
+};
+
 export interface OutcomeQuote {
   id: string;
   label: string;

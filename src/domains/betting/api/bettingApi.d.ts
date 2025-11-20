@@ -61,6 +61,7 @@ export declare const fetchMarkets: () => Promise<{
     };
 }[]>;
 export declare const fetchMarketEvents: () => Promise<EventWithMarkets[]>;
+export declare const fetchArchivedMarketEvents: () => Promise<EventWithMarkets[]>;
 export interface OutcomeQuote {
     id: string;
     label: string;
