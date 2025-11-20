@@ -448,7 +448,17 @@ const AccountPage = () => {
                   <div className="text-xs text-white/60">
                     <span>Odds {wager.effective_odds.toFixed(2)}</span>
                     <span className="mx-1">·</span>
-                    <span>Potential Ɖ{wager.estimated_payout.toFixed(2)}</span>
+                    {wager.status === "won" && wager.settled_payout ? (
+                      <span className="font-semibold text-emerald-300">
+                        Final Payout Ɖ{wager.settled_payout.toFixed(2)}
+                      </span>
+                    ) : wager.status === "void_refund" && wager.settled_payout ? (
+                      <span className="font-semibold text-yellow-300">
+                        Refunded Ɖ{wager.settled_payout.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span>Potential Ɖ{wager.estimated_payout.toFixed(2)}</span>
+                    )}
                   </div>
                   <a
                     href={`/market/${wager.market_id}`}

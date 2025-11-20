@@ -10,6 +10,7 @@ import MarketManagementPage from "./admin/markets/MarketManagementPage";
 import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
 import SessionSetupPage from "./admin/SessionSetupPage";
 import TimingSessionsPage from "./admin/TimingSessionsPage";
+import SettlementAuditPage, { PoolPayoutDetailPage } from "./admin/SettlementAuditPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 
@@ -61,6 +62,14 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           {
             path: "admin/timing-sessions",
             element: <TimingSessionsPage />
+          },
+          {
+            path: "admin/settlements",
+            element: <SettlementAuditPage />
+          },
+          {
+            path: "admin/settlements/:poolId",
+            element: <PoolPayoutDetailPage />
           },
           {
             path: "dashboard/admin/markets",
