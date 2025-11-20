@@ -80,7 +80,12 @@ const MarketsPage = () => {
     });
   };
 
-  const hasEvents = (eventsQuery.data?.length ?? 0) > 0;
+  // Filter to only show events with at least one active market
+  const eventsWithActiveMarkets = eventsQuery.data?.filter(
+    (event) => event.markets.length > 0
+  ) ?? [];
+
+  const hasEvents = eventsWithActiveMarkets.length > 0;
 
   return (
     <div className="flex flex-col gap-10">
@@ -92,14 +97,14 @@ const MarketsPage = () => {
           Live Markets
         </h1>
         <p className="max-w-2xl text-sm text-neutral-300 sm:text-base">
-          All DBGP betting uses a live parimutuel system. Your payout depends on the total Diamonds staked across each outcome, and odds will continue shifting until the market closes and locks your final price.
+          All DBGP betting uses a live parimutuel system. Your payout depends on the total Diamonds staked across each outcome.
         </p>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#9FF7D3]">
             How It Works
           </p>
           <p className="mt-2 text-sm text-neutral-300">
-            Markets update in real-time as Diamonds move across the pool. Odds and payout estimates rise or fall every few seconds. Your final odds are locked only when the market closes.
+            Markets update in real time as Diamonds move across the pool. Odds and payout estimates will rise or fall until the market closes and locks your final price.
           </p>
         </div>
         <p className="text-[0.7rem] uppercase tracking-[0.3em] text-neutral-500">
@@ -119,7 +124,7 @@ const MarketsPage = () => {
 
       {hasEvents ? (
         <section className="flex flex-col gap-6">
-          {eventsQuery.data?.map((event) => (
+          {eventsWithActiveMarkets.map((event) => (
             <div
               key={event.id}
               className="flex flex-col gap-4 rounded-3xl border border-white/5 bg-[#05070F]/80 p-6"

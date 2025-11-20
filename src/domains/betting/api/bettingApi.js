@@ -78,11 +78,10 @@ export const fetchMarketEvents = async () => {
                 : null;
         })(),
         markets: 
-        // Lifecycle: only show non-archived markets in public board,
-        // and only if their status is one of the public-facing states.
+        // Lifecycle: only show non-archived, non-settled markets in public board.
         event.markets
             ?.filter((market) => !market.archived &&
-            ["open", "closed", "settled"].includes(market.status))
+            ["open", "closed"].includes(market.status))
             .map((market) => ({
             id: market.id,
             name: market.name,
