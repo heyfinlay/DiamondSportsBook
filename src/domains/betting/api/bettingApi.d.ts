@@ -97,9 +97,13 @@ export declare const previewWager: (marketId: string, outcomeId: string, stake: 
 export declare const placeWager: (marketId: string, outcomeId: string, stake: number, idempotencyKey?: string) => Promise<any>;
 export interface UserWager {
     id: string;
+    market_id: string;
+    outcome_id: string;
+    event_id: string;
     stake: number;
     status: string;
     effective_odds: number;
+    estimated_payout: number;
     created_at: string;
     outcome_label: string;
     market_name: string;

@@ -263,15 +263,18 @@ export const fetchUserWagers = async (userId, limit = 20) => {
         .from("wagers")
         .select(`
       id,
+      market_id,
       stake,
       status,
       effective_odds,
+      estimated_payout,
       created_at,
-      outcome:outcomes(label),
+      outcome:outcomes(id, label),
       market:markets(
+        id,
         name,
-        type,
-        event:events(title)
+        pool_type,
+        event:events(id, title)
       )
     `)
         .eq("user_id", userId)
@@ -286,13 +289,17 @@ export const fetchUserWagers = async (userId, limit = 20) => {
         const normalizedEvent = Array.isArray(event) ? event[0] : event;
         return {
             id: row.id,
+            market_id: row.market_id,
             stake: Number(row.stake ?? 0),
             status: row.status,
             effective_odds: Number(row.effective_odds ?? 0),
+            estimated_payout: Number(row.estimated_payout ?? 0),
             created_at: row.created_at,
+            outcome_id: outcome?.id ?? "",
             outcome_label: outcome?.label ?? "Unknown outcome",
             market_name: market?.name ?? "Unknown market",
-            market_type: market?.type ?? "",
+            market_type: market?.pool_type ?? "",
+            event_id: normalizedEvent?.id ?? "",
             event_title: normalizedEvent?.title ?? "Event TBD"
         };
     }) ?? []);

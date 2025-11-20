@@ -425,17 +425,40 @@ const AccountPage = () => {
                 className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-white"
               >
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50">
-                  <span>{wager.market_type || "Market"}</span>
-                  <span>{formatStatus(wager.status)}</span>
+                  <span className="capitalize">{wager.market_type.replace(/_/g, " ")}</span>
+                  <span className={`rounded-full px-2 py-0.5 ${
+                    wager.status === "won" ? "bg-emerald-500/20 text-emerald-300" :
+                    wager.status === "lost" ? "bg-red-500/20 text-red-300" :
+                    wager.status === "refunded" ? "bg-yellow-500/20 text-yellow-300" :
+                    "bg-blue-500/20 text-blue-300"
+                  }`}>
+                    {formatStatus(wager.status)}
+                  </span>
                 </div>
-                <p className="mt-1 text-base font-semibold">
+                <p className="mt-2 text-base font-semibold">
                   Ɖ{wager.stake.toFixed(2)} on {wager.outcome_label}
                 </p>
                 <p className="text-xs text-white/60">
-                  {wager.market_name} · {wager.event_title}
+                  {wager.event_title}
                 </p>
-                <p className="text-xs text-white/60">
-                  Odds {wager.effective_odds.toFixed(2)} · {new Date(wager.created_at).toLocaleString()}
+                <p className="mt-1 text-xs text-white/60">
+                  {wager.market_name}
+                </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="text-xs text-white/60">
+                    <span>Odds {wager.effective_odds.toFixed(2)}</span>
+                    <span className="mx-1">·</span>
+                    <span>Potential Ɖ{wager.estimated_payout.toFixed(2)}</span>
+                  </div>
+                  <a
+                    href={`/market/${wager.market_id}`}
+                    className="text-xs font-semibold uppercase tracking-[0.3em] text-brand transition hover:text-white"
+                  >
+                    View →
+                  </a>
+                </div>
+                <p className="mt-1 text-xs text-white/50">
+                  {new Date(wager.created_at).toLocaleString()}
                 </p>
               </div>
             ))}

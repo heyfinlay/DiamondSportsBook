@@ -355,9 +355,13 @@ export const placeWager = async (
 
 export interface UserWager {
   id: string;
+  market_id: string;
+  outcome_id: string;
+  event_id: string;
   stake: number;
   status: string;
   effective_odds: number;
+  estimated_payout: number;
   created_at: string;
   outcome_label: string;
   market_name: string;
@@ -372,15 +376,18 @@ export const fetchUserWagers = async (userId: string, limit = 20): Promise<UserW
     .select(
       `
       id,
+      market_id,
       stake,
       status,
       effective_odds,
+      estimated_payout,
       created_at,
-      outcome:outcomes(label),
+      outcome:outcomes(id, label),
       market:markets(
+        id,
         name,
-        type,
-        event:events(title)
+        pool_type,
+        event:events(id, title)
       )
     `
     )
@@ -398,13 +405,17 @@ export const fetchUserWagers = async (userId: string, limit = 20): Promise<UserW
       const normalizedEvent = Array.isArray(event) ? event[0] : event;
       return {
         id: row.id,
+        market_id: row.market_id,
         stake: Number(row.stake ?? 0),
         status: row.status,
         effective_odds: Number(row.effective_odds ?? 0),
+        estimated_payout: Number(row.estimated_payout ?? 0),
         created_at: row.created_at,
+        outcome_id: outcome?.id ?? "",
         outcome_label: outcome?.label ?? "Unknown outcome",
         market_name: market?.name ?? "Unknown market",
-        market_type: market?.type ?? "",
+        market_type: market?.pool_type ?? "",
+        event_id: normalizedEvent?.id ?? "",
         event_title: normalizedEvent?.title ?? "Event TBD"
       };
     }) ?? []
