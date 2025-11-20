@@ -268,6 +268,7 @@ export const fetchUserWagers = async (userId, limit = 20) => {
       status,
       effective_odds,
       estimated_payout,
+      settled_payout,
       created_at,
       outcome:outcomes(id, label),
       market:markets(
@@ -294,6 +295,7 @@ export const fetchUserWagers = async (userId, limit = 20) => {
             status: row.status,
             effective_odds: Number(row.effective_odds ?? 0),
             estimated_payout: Number(row.estimated_payout ?? 0),
+            settled_payout: row.settled_payout ? Number(row.settled_payout) : null,
             created_at: row.created_at,
             outcome_id: outcome?.id ?? "",
             outcome_label: outcome?.label ?? "Unknown outcome",

@@ -11,6 +11,7 @@ import MarketManagementPage from "./admin/markets/MarketManagementPage";
 import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
 import SessionSetupPage from "./admin/SessionSetupPage";
 import TimingSessionsPage from "./admin/TimingSessionsPage";
+import SettlementAuditPage, { PoolPayoutDetailPage } from "./admin/SettlementAuditPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 export const router = createBrowserRouter([
@@ -61,6 +62,14 @@ export const router = createBrowserRouter([
                     {
                         path: "admin/timing-sessions",
                         element: _jsx(TimingSessionsPage, {})
+                    },
+                    {
+                        path: "admin/settlements",
+                        element: _jsx(SettlementAuditPage, {})
+                    },
+                    {
+                        path: "admin/settlements/:poolId",
+                        element: _jsx(PoolPayoutDetailPage, {})
                     },
                     {
                         path: "dashboard/admin/markets",

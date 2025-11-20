@@ -104,6 +104,7 @@ export interface UserWager {
     status: string;
     effective_odds: number;
     estimated_payout: number;
+    settled_payout: number | null;
     created_at: string;
     outcome_label: string;
     market_name: string;
