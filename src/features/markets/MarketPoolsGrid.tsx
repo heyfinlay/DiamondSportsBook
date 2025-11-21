@@ -24,17 +24,15 @@ const statusClasses: Record<PoolStatus, string> = {
 
 export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
   return (
-    <section className="w-full bg-slate-950 px-4 py-6 text-slate-50 md:px-6 lg:px-10">
+    <section className="w-full rounded-3xl border border-white/10 bg-black/30 px-4 py-6 text-slate-50 shadow-[0_0_30px_rgba(3,7,18,0.5)] md:px-6 lg:px-8">
       <header className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            DayBreak Grand Prix
-          </p>
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">DayBreak Grand Prix</p>
           <h2 className="text-2xl font-semibold leading-tight text-white md:text-3xl">
             Active Markets
           </h2>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-white/50">
           {pools.length} pool{pools.length === 1 ? "" : "s"}
         </p>
       </header>
@@ -57,14 +55,14 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
           return (
             <article
               key={pool.id}
-              className="flex h-full flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-[0_0_24px_rgba(8,15,30,0.35)]"
+              className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/40 p-4"
             >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold leading-tight text-white">
                     {pool.title}
                   </h3>
-                  <p className="text-xs text-slate-400">{pool.timeRemainingLabel}</p>
+                  <p className="text-xs text-white/60">{pool.timeRemainingLabel}</p>
                 </div>
                 <span
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[pool.status]}`}
@@ -73,24 +71,20 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                 </span>
               </div>
 
-              <div className="mb-3 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
                 <div className="flex flex-col">
-                  <span className="text-xs text-slate-400">Total Pool</span>
-                  <span className="font-semibold text-white">
-                    Ɖ{formatDiamonds(pool.totalStake)}
-                  </span>
+                  <span className="text-xs text-white/50">Total Pool</span>
+                  <span className="font-semibold">Ɖ{formatDiamonds(pool.totalStake)}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-slate-400">Bets</span>
-                  <span className="block font-semibold text-white">
-                    {pool.totalBets.toLocaleString("en-US")}
-                  </span>
+                  <span className="text-xs text-white/50">Bets</span>
+                  <span className="block font-semibold">{pool.totalBets.toLocaleString("en-US")}</span>
                 </div>
               </div>
 
-              <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.28em] text-slate-400">
+              <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.28em] text-white/50">
                 <span>Market Distribution</span>
-                <span className="text-slate-300">{distributionLabel}</span>
+                <span>{distributionLabel}</span>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -99,25 +93,20 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                   const isFavourite = outcome.id === favourite?.id;
                   const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
                   return (
-                    <div
-                      key={outcome.id}
-                      className="rounded-xl border border-slate-800/80 bg-slate-900/50 px-3 py-2"
-                    >
+                    <div key={outcome.id} className="rounded-xl border border-white/5 bg-white/5 px-3 py-2">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 overflow-hidden">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-semibold text-white">
-                              {outcome.teamName}
-                            </p>
+                            <p className="truncate text-sm font-semibold text-white">{outcome.teamName}</p>
                             {isFavourite && (
                               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
                                 Favourite
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-400">{outcome.driverName}</p>
+                          <p className="text-xs text-white/50">{outcome.driverName}</p>
 
-                          <div className="mt-2 h-2 w-full rounded-full bg-slate-800">
+                          <div className="mt-2 h-2 w-full rounded-full bg-white/10">
                             <div
                               className={`h-full rounded-full ${
                                 isFavourite ? "bg-emerald-500" : "bg-sky-500"
@@ -125,18 +114,14 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                               style={{ width: fillWidth }}
                             />
                           </div>
-                          <p className="mt-1 text-[11px] text-slate-400">
+                          <p className="mt-1 text-[11px] text-white/50">
                             Staked: Ɖ{formatDiamonds(outcome.diamondsStaked)}
                           </p>
                         </div>
 
                         <div className="flex flex-col items-end gap-1 text-right">
-                          <p className="text-sm font-semibold text-white">
-                            {formatOdds(outcome.baselineOdds)}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            Share: {formatPercent(outcome.marketShare)}
-                          </p>
+                          <p className="text-sm font-semibold text-white">{formatOdds(outcome.baselineOdds)}</p>
+                          <p className="text-xs text-white/60">Share: {formatPercent(outcome.marketShare)}</p>
                           <TrendPill delta={outcome.trendDelta} />
                         </div>
                       </div>
@@ -145,13 +130,11 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                 })}
               </div>
 
-              <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200">
-                <div className="text-xs text-slate-400">
-                  View full market · {racePrefix}
-                </div>
+              <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
+                <div className="text-xs text-white/50">View full market · {racePrefix}</div>
                 <button
                   type="button"
-                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-slate-950 transition hover:bg-emerald-400"
+                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-emerald-400"
                   onClick={() => onSelectPool?.(pool.id)}
                 >
                   View Market

@@ -66,7 +66,7 @@ export function BetSlipDrawer({
     });
   };
 
-  const drawerClasses = `fixed inset-y-0 right-0 z-50 w-full max-w-md transform border-l border-slate-800 bg-slate-900/95 shadow-[0_0_35px_rgba(0,0,0,0.55)] transition-transform duration-300 ${
+  const drawerClasses = `fixed inset-y-0 right-0 z-50 w-full max-w-md transform border-l border-white/10 bg-[#05070F] shadow-[0_0_35px_rgba(0,0,0,0.65)] transition-transform duration-300 ${
     isOpen ? "translate-x-0" : "translate-x-full"
   }`;
 

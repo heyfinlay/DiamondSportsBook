@@ -51,47 +51,37 @@ export function PoolDetails({
   };
 
   return (
-    <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-slate-50 shadow-[0_0_32px_rgba(8,15,30,0.4)] md:p-6">
+    <section className="space-y-4 rounded-3xl border border-white/10 bg-black/30 p-5 text-white">
       <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <h1 className="text-xl font-semibold leading-tight text-white md:text-2xl">
-            {pool.title}
-          </h1>
-          <p className="max-w-2xl text-sm text-slate-300 md:text-base">
-            Odds and market share update in real time until the pool closes. Estimated returns may change as new bets are placed.
+          <h2 className="text-xl font-semibold leading-tight md:text-2xl">{pool.title}</h2>
+          <p className="max-w-2xl text-sm text-white/60 md:text-base">
+            Odds and market share update in real time until the pool closes.
           </p>
         </div>
-        <div className="flex flex-col items-start gap-2 text-sm text-slate-300 md:items-end">
+        <div className="flex flex-col items-start gap-2 text-sm text-white/60 md:items-end">
           <div
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[pool.status]}`}
           >
             {statusLabel[pool.status]}
           </div>
           <p>{pool.timeRemainingLabel}</p>
-          <p className="text-xs text-slate-500">Last updated {pool.lastUpdatedLabel}</p>
+          <p className="text-xs text-white/40">Last updated {pool.lastUpdatedLabel}</p>
         </div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Pool Stake Total</p>
-          <p className="mt-1 text-lg font-semibold text-white">Ɖ{formatDiamonds(pool.totalStake)}</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.25em] text-white/50">Pool Size</p>
+          <p className="mt-1 text-lg font-semibold">Ɖ{formatDiamonds(pool.totalStake)}</p>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Total Bets Placed</p>
-          <p className="mt-1 text-lg font-semibold text-white">
-            {pool.totalBets.toLocaleString("en-US")}
-          </p>
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.25em] text-white/50">Bets</p>
+          <p className="mt-1 text-lg font-semibold">{pool.totalBets.toLocaleString("en-US")}</p>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Rake</p>
-          <p className="mt-1 text-lg font-semibold text-white">
-            {formatPercent(pool.rakePercent / 100)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Market Status</p>
-          <p className="mt-1 text-lg font-semibold text-white">{statusLabel[pool.status]}</p>
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.25em] text-white/50">Rake</p>
+          <p className="mt-1 text-lg font-semibold">{formatPercent(pool.rakePercent / 100)}</p>
         </div>
       </div>
 
@@ -107,62 +97,54 @@ export function PoolDetails({
               key={outcome.id}
               type="button"
               onClick={() => handleSelect(outcome.id)}
-              className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                 isSelected
-                  ? "border-emerald-400/60 bg-slate-900"
-                  : "border-slate-800 bg-slate-900/60 hover:border-slate-700"
+                  ? "border-emerald-400/60 bg-white/10"
+                  : "border-white/10 bg-white/5 hover:border-white/20"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-base font-semibold text-white">{outcome.teamName}</p>
+                    <p className="text-base font-semibold">{outcome.teamName}</p>
                     {isFavourite && (
                       <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
                         Favourite
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-slate-400">Driver: {outcome.driverName}</p>
+                  <p className="text-sm text-white/60">Driver: {outcome.driverName}</p>
                 </div>
                 <TrendPill delta={outcome.trendDelta} />
               </div>
 
-              <div className="mt-3 grid gap-3 text-sm text-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-3 grid gap-3 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
-                    Market Share
-                  </p>
-                  <p className="font-semibold text-white">{formatPercent(outcome.marketShare)}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/40">Share</p>
+                  <p className="font-semibold">{formatPercent(outcome.marketShare)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Baseline Odds</p>
-                  <p className="font-semibold text-white">{formatOdds(outcome.baselineOdds)}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/40">Odds</p>
+                  <p className="font-semibold">{formatOdds(outcome.baselineOdds)}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Bets</p>
-                  <p className="font-semibold text-white">{outcome.numBets.toLocaleString()}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/40">Bets</p>
+                  <p className="font-semibold">{outcome.numBets.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
-                    Diamonds Staked
-                  </p>
-                  <p className="font-semibold text-white">Ɖ{formatDiamonds(outcome.diamondsStaked)}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/40">Staked</p>
+                  <p className="font-semibold">Ɖ{formatDiamonds(outcome.diamondsStaked)}</p>
                 </div>
               </div>
 
-              <div className="mt-3 space-y-2 text-sm text-slate-200">
-                <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className="mt-3 space-y-2 text-sm text-white/80">
+                <div className="flex items-center justify-between text-xs text-white/50">
                   <span>Implied probability</span>
                   <span className="text-white">
                     {impliedProbabilityFromOdds(outcome.baselineOdds)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Pool share</span>
-                  <span className="text-white">{formatPercent(outcome.marketShare)}</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-slate-800">
+                <div className="h-2 w-full rounded-full bg-white/10">
                   <div
                     className="h-full rounded-full bg-sky-500"
                     style={{ width: fillWidth }}
