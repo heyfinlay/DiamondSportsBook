@@ -16,6 +16,7 @@ interface BetSlipDrawerProps {
   onClose: () => void;
   onSelectOutcome: (outcomeId: string) => void;
   onPlaceBet?: (params: { poolId: string; outcomeId: string; stake: number }) => void;
+  isPlacing?: boolean;
 }
 
 const MIN_STAKE = 25_000;
@@ -34,7 +35,8 @@ export function BetSlipDrawer({
   selectedOutcomeId,
   onClose,
   onSelectOutcome,
-  onPlaceBet
+  onPlaceBet,
+  isPlacing = false
 }: BetSlipDrawerProps) {
   const [stakeInput, setStakeInput] = useState<string>("");
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -304,10 +306,10 @@ export function BetSlipDrawer({
             <button
               type="button"
               className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-              disabled={!selectedOutcomeId || !stakeValid || poolClosed}
+              disabled={!selectedOutcomeId || !stakeValid || poolClosed || isPlacing}
               onClick={handlePlaceBet}
             >
-              Place Wager
+              {isPlacing ? "Placing…" : "Place Wager"}
             </button>
           </div>
         </div>

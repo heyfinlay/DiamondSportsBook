@@ -8,6 +8,7 @@
       "@app/*": ["src/app/*"],
       "@domains/*": ["src/domains/*"],
       "@lib/*": ["src/lib/*"],
+      "@config/*": ["src/config/*"],
       "@styles/*": ["src/styles/*"]
     },
     "types": ["vitest/globals"]

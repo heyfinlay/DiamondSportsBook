@@ -7,11 +7,12 @@ import { fetchUiPools } from "../../features/markets/api";
 import { currencyLabel } from "@lib/currency";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
+import { marketKeys } from "@lib/query/keys";
 const MarketsPage = () => {
     const navigate = useNavigate();
     const { user, loading: sessionLoading } = useSession();
     const poolsQuery = useQuery({
-        queryKey: ["markets:v2-pools"],
+        queryKey: marketKeys.pools(),
         queryFn: fetchUiPools
     });
     const pools = poolsQuery.data ?? [];

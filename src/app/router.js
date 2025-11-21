@@ -14,6 +14,7 @@ import TimingSessionsPage from "./admin/TimingSessionsPage";
 import SettlementAuditPage, { PoolPayoutDetailPage } from "./admin/SettlementAuditPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
+import AuthCallbackPage from "./auth/AuthCallbackPage";
 export const router = createBrowserRouter([
     {
         path: "/login",
@@ -80,6 +81,10 @@ export const router = createBrowserRouter([
                         element: _jsx(MarketDetailAdminPage, {})
                     }
                 ]
+            },
+            {
+                path: "auth/callback",
+                element: _jsx(AuthCallbackPage, {})
             }
         ]
     }

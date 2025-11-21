@@ -11,6 +11,7 @@ import { useUserWagers } from "@domains/betting/hooks/useUserWagers";
 import { useToast } from "@app/components/ToastProvider";
 import { fetchUserProfile, updateUserProfile } from "@domains/profile/api/profileApi";
 import { currencyLabel, currencySymbol } from "@lib/currency";
+import { walletKeys } from "@lib/query/keys";
 const currencyLabelTitle = currencyLabel.charAt(0).toUpperCase() + currencyLabel.slice(1);
 const AccountPage = () => {
     const { user, loading } = useSession();
@@ -58,8 +59,8 @@ const AccountPage = () => {
                 title: "Deposit requested",
                 description: `An admin will review and credit your ${currencyLabel} shortly.`
             });
-            queryClient.invalidateQueries({ queryKey: ["wallet-transactions", user?.id] });
-            queryClient.invalidateQueries({ queryKey: ["wallet-balance", user?.id] });
+            queryClient.invalidateQueries({ queryKey: walletKeys.transactions(user?.id) });
+            queryClient.invalidateQueries({ queryKey: walletKeys.balance(user?.id) });
             queryClient.invalidateQueries({ queryKey: ["user-deposits", user?.id] });
             setDepositAmount("500");
         },
@@ -79,8 +80,8 @@ const AccountPage = () => {
                 title: "Withdrawal requested",
                 description: "Funds are locked until race control approves the request."
             });
-            queryClient.invalidateQueries({ queryKey: ["wallet-transactions", user?.id] });
-            queryClient.invalidateQueries({ queryKey: ["wallet-balance", user?.id] });
+            queryClient.invalidateQueries({ queryKey: walletKeys.transactions(user?.id) });
+            queryClient.invalidateQueries({ queryKey: walletKeys.balance(user?.id) });
             queryClient.invalidateQueries({ queryKey: ["user-withdrawals", user?.id] });
             setWithdrawAmount("250");
         },

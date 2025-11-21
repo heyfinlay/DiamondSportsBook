@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSession } from "@lib/auth/SessionProvider";
 import { supabase } from "@lib/supabaseClient";
-const DISCORD_REDIRECT_URL = "https://discord.com/oauth2/authorize?client_id=1441480156739928074&response_type=code&redirect_uri=https%3A%2F%2Fefqjrzrqkacdkvchtyed.supabase.co%2Fauth%2Fv1%2Fcallback&scope=identify+email";
 export function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -172,7 +171,7 @@ export function LoginPage() {
             const { error: discordError } = await supabase.auth.signInWithOAuth({
                 provider: "discord",
                 options: {
-                    redirectTo: DISCORD_REDIRECT_URL
+                    redirectTo: `${window.location.origin}/auth/callback`
                 }
             });
             if (discordError) {
