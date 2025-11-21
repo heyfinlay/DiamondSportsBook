@@ -206,10 +206,15 @@ export const fetchPoolsPricing = async (): Promise<PoolPricingRow[]> => {
 };
 
 export const fetchPoolPricing = async (poolId: string): Promise<PoolPricingRow[]> => {
+  if (!poolId) throw new Error("poolId is required");
   const { data, error } = await supabase.rpc("get_pool_pricing", {
     p_pool_id: poolId
   });
-  if (error) throw error;
+  if (error) {
+    console.warn("get_pool_pricing failed, falling back to get_pools_pricing", error);
+    const fallback = await fetchPoolsPricing();
+    return fallback.filter((row) => row.pool_id === poolId);
+  }
   return (data as PoolPricingRow[]) ?? [];
 };
 
