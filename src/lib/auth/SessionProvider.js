@@ -28,6 +28,34 @@ export const SessionProvider = ({ children }) => {
             subscription.unsubscribe();
         };
     }, []);
+    useEffect(() => {
+        if (!user)
+            return;
+        const derivedUsername = user.user_metadata?.username ??
+            user.user_metadata?.user_name ??
+            user.user_metadata?.full_name ??
+            (user.email ? user.email.split("@")[0] : "");
+        const icNumber = user.user_metadata?.ic_number ?? "";
+        const updates = { id: user.id };
+        if (derivedUsername) {
+            updates.username = derivedUsername;
+        }
+        if (icNumber) {
+            updates.ic_phone_number = icNumber;
+        }
+        if (!updates.username && !updates.ic_phone_number) {
+            return;
+        }
+        const syncProfile = async () => {
+            try {
+                await supabase.from("profiles").upsert(updates, { onConflict: "id" });
+            }
+            catch (err) {
+                console.error("Failed to sync profile metadata", err);
+            }
+        };
+        void syncProfile();
+    }, [user]);
     const signIn = async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({
             email,
@@ -38,6 +66,21 @@ export const SessionProvider = ({ children }) => {
     const signUp = async ({ email, password, username, icNumber }) => {
         const trimmedUsername = username.trim();
         const trimmedIc = icNumber.trim();
+        if (!trimmedUsername || !trimmedIc) {
+            return { error: new Error("Username and IC number are required.") };
+        }
+        const { data: existingUsername, error: usernameCheckError } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("username", trimmedUsername)
+            .maybeSingle();
+        if (usernameCheckError &&
+            usernameCheckError.code !== "PGRST116") {
+            return { error: usernameCheckError };
+        }
+        if (existingUsername) {
+            return { error: new Error("That username is already taken.") };
+        }
         const { data, error } = await supabase.auth.signUp({
             email,
             password,

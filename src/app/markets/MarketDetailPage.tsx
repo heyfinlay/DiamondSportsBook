@@ -10,6 +10,8 @@ import { fetchUiLiveBetsForPool, fetchUiPoolById } from "../../features/markets/
 import { USE_MARKET_LAYOUT_V2 } from "../../features/markets/flags";
 import { formatCurrency } from "../../features/markets/utils/format";
 import type { Pool } from "../../features/markets/types";
+import { useSession } from "@lib/auth/SessionProvider";
+import { AuthCtaBanner } from "./components/AuthCtaBanner";
 
 // v2 Markets detail page: maps v1 pool/outcome totals into the new UI components.
 
@@ -18,6 +20,7 @@ const MarketDetailPage = () => {
   const queryClient = useQueryClient();
   const [betSlipOpen, setBetSlipOpen] = useState(false);
   const [selectedOutcomeId, setSelectedOutcomeId] = useState<string | null>(null);
+  const { user, loading: sessionLoading } = useSession();
 
   useBettingRealtime(marketId);
 
@@ -98,6 +101,7 @@ const MarketDetailPage = () => {
   return (
     <div className="space-y-8">
       {headerContent}
+      {!sessionLoading && !user && <AuthCtaBanner />}
 
       <section className="flex flex-col gap-6">
         <PoolDetails

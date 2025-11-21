@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { TrendPill } from "./components/TrendPill";
+import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
 import {
   formatCurrency,
   formatOdds,
   formatPercent,
   impliedProbabilityFromOdds
 } from "./utils/format";
+import { getOutcomeRankings } from "./utils/outcomeStats";
 import type { LiveBet, Pool, PoolStatus } from "./types";
 
 interface PoolDetailsProps {
@@ -32,12 +33,10 @@ const statusClasses: Record<PoolStatus, string> = {
 export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetailsProps) {
   const [selectedOutcomeId, setSelectedOutcomeId] = useState<string | null>(null);
 
-  const favouriteOutcomeId = useMemo(() => {
-    if (!pool.outcomes.length) return null;
-    return pool.outcomes.reduce((lowest, current) =>
-      current.baselineOdds < lowest.baselineOdds ? current : lowest
-    ).id;
-  }, [pool.outcomes]);
+  const { favouriteId, bestPayoutId } = useMemo(
+    () => getOutcomeRankings(pool.outcomes),
+    [pool.outcomes]
+  );
 
   const handleSelect = (outcomeId: string) => {
     setSelectedOutcomeId(outcomeId);
@@ -88,7 +87,8 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetail
           const isSelected = selectedOutcomeId === outcome.id;
           const sharePercent = Math.max(outcome.marketShare * 100, 0);
           const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
-          const isFavourite = favouriteOutcomeId === outcome.id;
+          const isFavourite = favouriteId === outcome.id;
+          const isBestPayout = bestPayoutId === outcome.id;
           const accentStyle = outcome.teamColor
             ? { borderLeftColor: outcome.teamColor, borderLeftWidth: "4px" }
             : undefined;
@@ -116,15 +116,12 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetail
                       />
                     )}
                     <p className="text-base font-semibold">{outcome.teamName}</p>
-                    {isFavourite && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
-                        Favourite
-                      </span>
-                    )}
                   </div>
-                  <p className="text-sm text-white/60">Driver: {outcome.driverName}</p>
+                  {outcome.driverName && (
+                    <p className="text-sm text-white/60">{outcome.driverName}</p>
+                  )}
                 </div>
-                <TrendPill delta={outcome.trendDelta} />
+                <OutcomeStatusPills isFavourite={isFavourite} isBestPayout={isBestPayout} />
               </div>
 
               <div className="mt-3 grid gap-3 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4">
@@ -155,8 +152,11 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetail
                 </div>
                 <div className="h-2 w-full rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-sky-500"
-                    style={{ width: fillWidth }}
+                    className="h-full rounded-full"
+                    style={{
+                      width: fillWidth,
+                      backgroundColor: outcome.teamColor ?? "#38bdf8"
+                    }}
                   />
                 </div>
               </div>
