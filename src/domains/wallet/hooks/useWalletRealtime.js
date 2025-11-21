@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { supabase } from "@lib/supabaseClient";
 import { useQueryClient } from "@tanstack/react-query";
+import { walletKeys } from "@lib/query/keys";
 export const useWalletRealtime = (userId) => {
     const queryClient = useQueryClient();
     useEffect(() => {
@@ -22,8 +23,8 @@ export const useWalletRealtime = (userId) => {
             if (!accountId || cancelled)
                 return;
             const invalidateUserQueries = () => {
-                queryClient.invalidateQueries({ queryKey: ["wallet-balance", userId] });
-                queryClient.invalidateQueries({ queryKey: ["wallet-transactions", userId] });
+                queryClient.invalidateQueries({ queryKey: walletKeys.balance(userId) });
+                queryClient.invalidateQueries({ queryKey: walletKeys.transactions(userId) });
                 queryClient.invalidateQueries({ queryKey: ["admin-wallet-audit"] });
                 queryClient.invalidateQueries({ queryKey: ["user-deposits", userId] });
                 queryClient.invalidateQueries({ queryKey: ["user-withdrawals", userId] });

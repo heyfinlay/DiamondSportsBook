@@ -11,6 +11,7 @@ interface BetSlipDrawerProps {
         outcomeId: string;
         stake: number;
     }) => void;
+    isPlacing?: boolean;
 }
-export declare function BetSlipDrawer({ isOpen, pool, outcomes, selectedOutcomeId, onClose, onSelectOutcome, onPlaceBet }: BetSlipDrawerProps): import("react/jsx-runtime").JSX.Element;
+export declare function BetSlipDrawer({ isOpen, pool, outcomes, selectedOutcomeId, onClose, onSelectOutcome, onPlaceBet, isPlacing }: BetSlipDrawerProps): import("react/jsx-runtime").JSX.Element;
 export {};

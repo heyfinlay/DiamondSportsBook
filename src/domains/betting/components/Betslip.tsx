@@ -7,6 +7,8 @@ import { useWalletBalance } from "@domains/wallet/hooks/useWalletBalance";
 import { useSession } from "@lib/auth/SessionProvider";
 import { useToast } from "@app/components/ToastProvider";
 import { currencyLabel, currencySymbol } from "@lib/currency";
+import { walletKeys } from "@lib/query/keys";
+import { refetchAfterBet } from "@lib/query/refetchers";
 
 const QUICK_STAKES = [
   { label: "100", value: 100 },
@@ -78,37 +80,49 @@ export const Betslip = () => {
     }
   });
 
+  type SubmitVariables = { marketId: string; outcomeId: string; stake: number };
+  type WalletContext = {
+    previousBalance?: { balance: number };
+    balanceKey?: ReturnType<typeof walletKeys.balance>;
+  };
+
   const {
     mutate: submitWager,
     isPending: isPlacing
-  } = useMutation({
-    mutationFn: ({
-      marketId,
-      outcomeId,
-      stake
-    }: {
-      marketId: string;
-      outcomeId: string;
-      stake: number;
-    }) => placeWager(marketId, outcomeId, stake, createId()),
-    onSuccess: () => {
-      toast({
-        variant: "success",
-        title: "Wager placed",
-        description: `Your ${currencyLabel} are locked in. Good luck!`
-      });
-      queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["wallet-transactions"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["wager-history"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["user-wagers"], exact: false });
-      closeBetslip();
+  } = useMutation<unknown, Error, SubmitVariables, WalletContext>({
+    mutationFn: ({ marketId, outcomeId, stake }) => placeWager(marketId, outcomeId, stake, createId()),
+    onMutate: async (variables) => {
+      if (!user?.id) return {};
+      const balanceKey = walletKeys.balance(user.id);
+      await queryClient.cancelQueries({ queryKey: balanceKey });
+      const previousBalance = queryClient.getQueryData<{ balance: number }>(balanceKey);
+      if (previousBalance) {
+        queryClient.setQueryData(balanceKey, {
+          balance: Math.max(0, previousBalance.balance - variables.stake)
+        });
+      }
+      return { previousBalance, balanceKey };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.previousBalance && context.balanceKey) {
+        queryClient.setQueryData(context.balanceKey, context.previousBalance);
+      }
       toast({
         variant: "error",
         title: "Bet placement failed",
         description: error.message
       });
+    },
+    onSuccess: (_data, variables) => {
+      toast({
+        variant: "success",
+        title: "Wager placed",
+        description: `Your ${currencyLabel} are locked in. Good luck!`
+      });
+      refetchAfterBet(queryClient, { marketId: variables.marketId, userId: user?.id });
+      queryClient.invalidateQueries({ queryKey: ["wager-history"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["user-wagers"], exact: false });
+      closeBetslip();
     }
   });
 

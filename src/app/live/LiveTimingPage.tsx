@@ -13,6 +13,8 @@ import {
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { buildLeaderboard, formatLapTime } from "@domains/timing/utils/leaderboard";
 import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
+import { timingKeys } from "@lib/query/keys";
+import { LIVE_TIMING_POLL_INTERVAL_MS } from "@config/realtime";
 
 const LiveTimingPage = () => {
   const { sessionId } = useParams();
@@ -27,33 +29,40 @@ const LiveTimingPage = () => {
   }
 
   const sessionQuery = useQuery({
-    queryKey: ["live-session", sessionId],
+    queryKey: timingKeys.session(sessionId),
     queryFn: () => fetchSessionDetail(sessionId!),
-    enabled: !!sessionId
+    enabled: !!sessionId,
+    refetchInterval: LIVE_TIMING_POLL_INTERVAL_MS
   });
 
   const driversQuery = useQuery({
-    queryKey: ["live-standings", sessionId],
+    queryKey: timingKeys.standings(sessionId),
     queryFn: () => fetchDriverStandings(sessionId!),
-    enabled: !!sessionId
+    enabled: !!sessionId,
+    refetchInterval: LIVE_TIMING_POLL_INTERVAL_MS
   });
 
   const penaltiesQuery = useQuery({
-    queryKey: ["live-penalties", sessionId],
+    queryKey: timingKeys.penalties(sessionId),
     queryFn: () => fetchPenalties(sessionId!),
-    enabled: !!sessionId
+    enabled: !!sessionId,
+    refetchInterval: LIVE_TIMING_POLL_INTERVAL_MS
   });
 
   const pitEventsQuery = useQuery({
-    queryKey: ["live-pit-events", sessionId],
+    queryKey: timingKeys.pitEvents(sessionId),
     queryFn: () => fetchPitEvents(sessionId!),
-    enabled: !!sessionId
+    enabled: !!sessionId,
+    refetchInterval: LIVE_TIMING_POLL_INTERVAL_MS
   });
 
   const resultsQuery = useQuery({
-    queryKey: ["live-results", sessionId],
+    queryKey: timingKeys.results(sessionId),
     queryFn: () => fetchTimingResults(sessionId!),
-    enabled: !!sessionId && (sessionQuery.data?.phase === "finished" || sessionQuery.data?.status === "finished")
+    enabled:
+      !!sessionId &&
+      (sessionQuery.data?.phase === "finished" || sessionQuery.data?.status === "finished"),
+    refetchInterval: LIVE_TIMING_POLL_INTERVAL_MS
   });
 
   const isLoading = sessionQuery.isLoading || driversQuery.isLoading;

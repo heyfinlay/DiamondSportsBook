@@ -12,6 +12,9 @@ import { formatCurrency } from "../../features/markets/utils/format";
 import type { Pool } from "../../features/markets/types";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
+import { marketKeys, walletKeys } from "@lib/query/keys";
+import { refetchAfterBet } from "@lib/query/refetchers";
+import { LIVE_BETS_POLL_INTERVAL_MS, MARKET_POLL_INTERVAL_MS } from "@config/realtime";
 
 // v2 Markets detail page: maps v1 pool/outcome totals into the new UI components.
 
@@ -25,30 +28,47 @@ const MarketDetailPage = () => {
   useBettingRealtime(marketId);
 
   const poolQuery = useQuery({
-    queryKey: ["markets:v2-pool", marketId],
+    queryKey: marketKeys.pool(marketId),
     queryFn: () => fetchUiPoolById(marketId!),
-    enabled: !!marketId
+    enabled: !!marketId,
+    refetchInterval: MARKET_POLL_INTERVAL_MS
   });
 
   const liveBetsQuery = useQuery({
-    queryKey: ["markets:v2-live-bets", marketId],
+    queryKey: marketKeys.liveBets(marketId),
     queryFn: () => fetchUiLiveBetsForPool(marketId!),
-    enabled: !!marketId
+    enabled: !!marketId,
+    refetchInterval: LIVE_BETS_POLL_INTERVAL_MS
   });
 
-  const placeBetMutation = useMutation({
-    mutationFn: ({
-      poolId,
-      outcomeId,
-      stake
-    }: {
-      poolId: string;
-      outcomeId: string;
-      stake: number;
-    }) => placeWager(poolId, outcomeId, stake, crypto.randomUUID()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["markets:v2-pool", marketId] });
-      queryClient.invalidateQueries({ queryKey: ["markets:v2-live-bets", marketId] });
+  type PlaceBetVariables = { poolId: string; outcomeId: string; stake: number };
+  type BetContext = {
+    previousBalance?: { balance: number };
+    balanceKey?: ReturnType<typeof walletKeys.balance>;
+  };
+
+  const placeBetMutation = useMutation<unknown, Error, PlaceBetVariables, BetContext>({
+    mutationFn: ({ poolId, outcomeId, stake }) =>
+      placeWager(poolId, outcomeId, stake, crypto.randomUUID()),
+    onMutate: async (variables) => {
+      if (!user?.id) return {};
+      const balanceKey = walletKeys.balance(user.id);
+      await queryClient.cancelQueries({ queryKey: balanceKey });
+      const previousBalance = queryClient.getQueryData<{ balance: number }>(balanceKey);
+      if (previousBalance) {
+        queryClient.setQueryData(balanceKey, {
+          balance: Math.max(0, previousBalance.balance - variables.stake)
+        });
+      }
+      return { previousBalance, balanceKey };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousBalance && context.balanceKey) {
+        queryClient.setQueryData(context.balanceKey, context.previousBalance);
+      }
+    },
+    onSuccess: (_data, variables) => {
+      refetchAfterBet(queryClient, { marketId: variables.poolId, userId: user?.id });
       setBetSlipOpen(false);
     }
   });
@@ -124,6 +144,7 @@ const MarketDetailPage = () => {
         onPlaceBet={({ poolId, outcomeId, stake }) =>
           placeBetMutation.mutate({ poolId, outcomeId, stake })
         }
+        isPlacing={placeBetMutation.isPending}
       />
     </div>
   );
