@@ -1,37 +1,22 @@
-import { supabase } from "@lib/supabaseClient";
+import { fetchMarketDetail, fetchMarketEvents } from "@domains/betting/api/bettingApi";
 import {
-  mapDbLiveBetToUiLiveBet,
-  mapPricingRowsToPools,
-  type DbLiveBet,
-  type PoolPricingRow
+  mapEventWithMarketsToUiPools,
+  mapMarketDetailToUiPool,
+  type MarketDetailData
 } from "./domain/adapter";
 import type { LiveBet, Pool } from "./types";
 
-// Data sources:
-// - get_pools_pricing (RPC) aggregates wagers for pool + outcome stats and odds.
-// - get_pool_pricing (RPC) single-pool variant.
-// - get_recent_pool_bets (RPC) anonymized recent bets for live feed.
-
 export const fetchUiPools = async (): Promise<Pool[]> => {
-  const { data, error } = await supabase.rpc("get_pools_pricing");
-  if (error) throw error;
-  return mapPricingRowsToPools((data as PoolPricingRow[]) ?? []);
+  const events = await fetchMarketEvents();
+  return mapEventWithMarketsToUiPools(events);
 };
 
 export const fetchUiPoolById = async (poolId: string): Promise<Pool | null> => {
-  const { data, error } = await supabase.rpc("get_pool_pricing", { p_pool_id: poolId });
-  if (error) throw error;
-  const pools = mapPricingRowsToPools((data as PoolPricingRow[]) ?? []);
-  return pools[0] ?? null;
+  const detail = await fetchMarketDetail(poolId);
+  return mapMarketDetailToUiPool(detail as unknown as MarketDetailData);
 };
 
-export const fetchUiLiveBetsForPool = async (poolId: string, limit = 30): Promise<LiveBet[]> => {
-  const { data, error } = await supabase.rpc("get_recent_pool_bets", {
-    p_pool_id: poolId,
-    p_limit: limit
-  });
-  if (error) {
-    return [];
-  }
-  return (data as DbLiveBet[] | null)?.map(mapDbLiveBetToUiLiveBet) ?? [];
+export const fetchUiLiveBetsForPool = async (_poolId: string): Promise<LiveBet[]> => {
+  // Live bet feed is not exposed publicly yet; return an empty list so the UI renders gracefully.
+  return [];
 };

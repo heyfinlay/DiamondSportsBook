@@ -71,11 +71,11 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
   const liveVolume = liveBetsForPool.reduce((sum, bet) => sum + bet.amount, 0);
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-slate-50 shadow-[0_0_32px_rgba(8,15,30,0.35)] md:p-6">
+    <section className="rounded-3xl border border-white/10 bg-black/30 p-5 text-white">
       <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Pool Analytics</p>
-          <h3 className="text-xl font-semibold text-white">{pool.title}</h3>
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Pool Analytics</p>
+          <h3 className="text-xl font-semibold">{pool.title}</h3>
         </div>
         <div className="flex gap-2">
           {(["overview", "live"] as AnalyticsTab[]).map((tab) => (
@@ -86,7 +86,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
               className={`rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] transition ${
                 activeTab === tab
                   ? "bg-emerald-500 text-slate-950"
-                  : "border border-slate-700 text-slate-200 hover:border-slate-500"
+                  : "border border-white/20 text-white/80 hover:border-white/40"
               }`}
             >
               {tab === "overview" ? "Overview" : "Live Bets"}
@@ -98,25 +98,21 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
       {activeTab === "overview" && (
         <div className="mt-4 space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Pool Stake</p>
-              <p className="mt-1 text-lg font-semibold text-white">Ɖ{formatDiamonds(pool.totalStake)}</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/50">Pool Stake</p>
+              <p className="mt-1 text-lg font-semibold">Ɖ{formatDiamonds(pool.totalStake)}</p>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Total Bets</p>
-              <p className="mt-1 text-lg font-semibold text-white">
-                {pool.totalBets.toLocaleString("en-US")}
-              </p>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/50">Total Bets</p>
+              <p className="mt-1 text-lg font-semibold">{pool.totalBets.toLocaleString("en-US")}</p>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Last Updated</p>
-              <p className="mt-1 text-lg font-semibold text-white">{pool.lastUpdatedLabel}</p>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/50">Last Updated</p>
+              <p className="mt-1 text-lg font-semibold">{pool.lastUpdatedLabel}</p>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Rake</p>
-              <p className="mt-1 text-lg font-semibold text-white">
-                {formatPercent(pool.rakePercent / 100)}
-              </p>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/50">Rake</p>
+              <p className="mt-1 text-lg font-semibold">{formatPercent(pool.rakePercent / 100)}</p>
             </div>
           </div>
 
@@ -128,14 +124,14 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                 onClick={() => setTimeframe(option.key)}
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition ${
                   timeframe === option.key
-                    ? "bg-slate-800 text-emerald-200"
-                    : "border border-slate-700 text-slate-300 hover:border-slate-500"
+                    ? "bg-white/10 text-emerald-200"
+                    : "border border-white/20 text-white/70 hover:border-white/40"
                 }`}
               >
                 {option.label}
               </button>
             ))}
-            <p className="text-xs text-slate-500">Timeframe: {timeframe}</p>
+            <p className="text-xs text-white/40">Timeframe: {timeframe}</p>
           </div>
 
           <div className="space-y-3">
@@ -145,27 +141,27 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
               return (
                 <div
                   key={outcome.id}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-slate-800 px-3 py-2">
+                    <div className="rounded-xl bg-black/30 px-3 py-2">
                       <p className="text-sm font-semibold text-white">{outcome.teamName}</p>
-                      <p className="text-xs text-slate-400">{outcome.driverName}</p>
+                      <p className="text-xs text-white/60">{outcome.driverName}</p>
                     </div>
                     <Sparkline />
                   </div>
 
-                  <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-slate-200 md:grid-cols-4">
+                  <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 md:grid-cols-4">
                     <div>
-                      <p className="text-xs text-slate-400">Staked</p>
+                      <p className="text-xs text-white/50">Staked</p>
                       <p className="font-semibold text-white">Ɖ{formatDiamonds(outcome.diamondsStaked)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Share</p>
+                      <p className="text-xs text-white/50">Share</p>
                       <p className="font-semibold text-white">{formatPercent(outcome.marketShare)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Odds</p>
+                      <p className="text-xs text-white/50">Odds</p>
                       <p className="font-semibold text-white">{formatOdds(outcome.baselineOdds)}</p>
                     </div>
                     <div className="flex items-center justify-end gap-2">
@@ -174,13 +170,15 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                   </div>
 
                   <div className="w-full md:w-48">
-                    <div className="h-2 w-full rounded-full bg-slate-800">
+                    <div className="h-2 w-full rounded-full bg-white/10">
                       <div
                         className="h-full rounded-full bg-emerald-500"
                         style={{ width: fillWidth }}
                       />
                     </div>
-                    <p className="mt-1 text-[11px] text-slate-400">Pool share {formatPercent(outcome.marketShare)}</p>
+                    <p className="mt-1 text-[11px] text-white/60">
+                      Pool share {formatPercent(outcome.marketShare)}
+                    </p>
                   </div>
                 </div>
               );
@@ -191,11 +189,11 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
 
       {activeTab === "live" && (
         <div className="mt-4 space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-            <p className="text-sm text-slate-200">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-sm text-white/80">
               Live feed of wagers for this pool. Updates as bets are placed and priced.
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-white/50">
               {liveBetsForPool.length} bets · Ɖ{formatDiamonds(liveVolume)}
             </p>
           </div>
@@ -207,7 +205,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
               className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition ${
                 teamFilter === "all"
                   ? "bg-emerald-500 text-slate-950"
-                  : "border border-slate-700 text-slate-200 hover:border-slate-500"
+                  : "border border-white/20 text-white/80 hover:border-white/40"
               }`}
             >
               All
@@ -219,8 +217,8 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                 onClick={() => setTeamFilter(outcome.teamName)}
                 className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition ${
                   teamFilter === outcome.teamName
-                    ? "bg-slate-800 text-emerald-200"
-                    : "border border-slate-700 text-slate-200 hover:border-slate-500"
+                    ? "bg-white/10 text-emerald-200"
+                    : "border border-white/20 text-white/80 hover:border-white/40"
                 }`}
               >
                 {outcome.teamName}
@@ -230,35 +228,35 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
 
           <div className="space-y-2">
             {liveBetsForPool.length === 0 && (
-              <p className="text-sm text-slate-400">No live bets yet for this filter.</p>
+              <p className="text-sm text-white/60">No live bets yet for this filter.</p>
             )}
 
             {liveBetsForPool.map((bet) => (
               <div
                 key={bet.id}
-                className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-sm font-semibold text-white">
                     {getInitials(bet.teamName)}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white">{bet.teamName}</p>
-                    {bet.driverName && <p className="text-xs text-slate-400">{bet.driverName}</p>}
+                    {bet.driverName && <p className="text-xs text-white/60">{bet.driverName}</p>}
                   </div>
                 </div>
 
-                <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-slate-200 sm:grid-cols-3">
+                <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 sm:grid-cols-3">
                   <div>
-                    <p className="text-xs text-slate-400">Amount</p>
+                    <p className="text-xs text-white/50">Amount</p>
                     <p className="font-semibold text-white">Ɖ{formatDiamonds(bet.amount)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400">Odds at placement</p>
+                    <p className="text-xs text-white/50">Odds at placement</p>
                     <p className="font-semibold text-white">{formatOdds(bet.oddsAtPlacement)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-400">Placed</p>
+                    <p className="text-xs text-white/50">Placed</p>
                     <p className="font-semibold text-white">{formatRelativeTime(bet.placedAt)}</p>
                   </div>
                 </div>
