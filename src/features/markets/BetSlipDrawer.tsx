@@ -56,8 +56,30 @@ export function BetSlipDrawer({
   const stakeValid = stakeValue >= MIN_STAKE;
   const poolClosed = pool?.status === "closed" || pool?.status === "settled";
 
-  const estimatedPayout =
-    selectedOutcome && stakeValue > 0 ? Math.round(stakeValue * selectedOutcome.baselineOdds) : 0;
+  const payoutEstimate = useMemo(() => {
+    if (!selectedOutcome || stakeValue <= 0) return null;
+
+    const existingPoolTotal = Math.max(pool.totalStake ?? 0, 0);
+    const existingOutcomeHandle = Math.max(selectedOutcome.diamondsStaked ?? 0, 0);
+    const rakeFraction = Math.max(0, Math.min(pool.rakePercent / 100, 0.95));
+
+    const poolAfter = existingPoolTotal + stakeValue;
+    const outcomeHandleAfter = existingOutcomeHandle + stakeValue;
+    if (poolAfter <= 0 || outcomeHandleAfter <= 0) return null;
+
+    const distributablePool = poolAfter * (1 - rakeFraction);
+    const userShareOfOutcome = stakeValue / outcomeHandleAfter;
+    const estimatedPayout = userShareOfOutcome * distributablePool;
+
+    if (!Number.isFinite(estimatedPayout)) {
+      return null;
+    }
+
+    return {
+      estimatedPayout,
+      userShareOfOutcome
+    };
+  }, [pool.rakePercent, pool.totalStake, selectedOutcome, stakeValue]);
 
   const handlePlaceBet = () => {
     if (!pool || !selectedOutcomeId || !stakeValid || poolClosed) return;
@@ -249,24 +271,26 @@ export function BetSlipDrawer({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-slate-400">Estimated payout</p>
-                      <p className="text-lg font-semibold text-white">
-                        {formatCurrency(estimatedPayout)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Max payout</p>
-                      <p className="font-semibold text-white">{formatCurrency(estimatedPayout)}</p>
-                    </div>
-                    <div className="text-right">
                       <p className="text-xs text-slate-400">Probability</p>
                       <p className="font-semibold text-white">
                         {impliedProbabilityFromOdds(selectedOutcome.baselineOdds)}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Estimated payout if this outcome wins</p>
+                      <p className="text-lg font-semibold text-white">
+                        {payoutEstimate ? formatCurrency(payoutEstimate.estimatedPayout) : "—"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400">Your share after bet</p>
+                      <p className="font-semibold text-white">
+                        {payoutEstimate ? formatPercent(payoutEstimate.userShareOfOutcome) : "—"}
+                      </p>
+                    </div>
                   </div>
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Estimated payout is based on current pool state. Final payout may change as new bets are placed.
+                    Estimate factors in your stake, projected pool total, and rake. Final payout may change as markets move.
                   </p>
                 </div>
               </div>

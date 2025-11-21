@@ -1,6 +1,7 @@
 import React from "react";
-import { TrendPill } from "./components/TrendPill";
+import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
+import { getOutcomeRankings } from "./utils/outcomeStats";
 import type { Pool, PoolStatus } from "./types";
 
 interface MarketPoolsGridProps {
@@ -40,13 +41,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
       <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {pools.map((pool) => {
           const sorted = [...pool.outcomes].sort((a, b) => b.marketShare - a.marketShare);
-          const favourite = sorted[0]
-            ? sorted.reduce(
-                (lowest, current) =>
-                  current.baselineOdds < lowest.baselineOdds ? current : lowest,
-                sorted[0]
-              )
-            : null;
+          const { favouriteId, bestPayoutId } = getOutcomeRankings(pool.outcomes);
           const distributionLabel = `${pool.outcomes.length} outcome${
             pool.outcomes.length === 1 ? "" : "s"
           }`;
@@ -90,7 +85,8 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
               <div className="flex flex-col gap-3">
                 {sorted.slice(0, 5).map((outcome) => {
                   const sharePercent = Math.max(outcome.marketShare * 100, 0);
-                  const isFavourite = outcome.id === favourite?.id;
+                  const isFavourite = outcome.id === favouriteId;
+                  const isBestPayout = outcome.id === bestPayoutId;
                   const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
                   return (
                     <div key={outcome.id} className="rounded-xl border border-white/5 bg-white/5 px-3 py-2">
@@ -105,20 +101,16 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                               />
                             )}
                             <p className="truncate text-sm font-semibold text-white">{outcome.teamName}</p>
-                            {isFavourite && (
-                              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
-                                Favourite
-                              </span>
-                            )}
                           </div>
                           <p className="text-xs text-white/50">{outcome.driverName}</p>
 
                           <div className="mt-2 h-2 w-full rounded-full bg-white/10">
                             <div
-                              className={`h-full rounded-full ${
-                                isFavourite ? "bg-emerald-500" : "bg-sky-500"
-                              }`}
-                              style={{ width: fillWidth }}
+                              className="h-full rounded-full"
+                              style={{
+                                width: fillWidth,
+                                backgroundColor: outcome.teamColor ?? "#38bdf8"
+                              }}
                             />
                           </div>
                           <p className="mt-1 text-[11px] text-white/50">
@@ -129,7 +121,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                         <div className="flex flex-col items-end gap-1 text-right">
                           <p className="text-sm font-semibold text-white">{formatOdds(outcome.baselineOdds)}</p>
                           <p className="text-xs text-white/60">Share: {formatPercent(outcome.marketShare)}</p>
-                          <TrendPill delta={outcome.trendDelta} />
+                          <OutcomeStatusPills isFavourite={isFavourite} isBestPayout={isBestPayout} />
                         </div>
                       </div>
                     </div>

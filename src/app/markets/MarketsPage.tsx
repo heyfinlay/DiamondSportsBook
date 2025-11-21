@@ -4,9 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import { fetchUiPools } from "../../features/markets/api";
 import { currencyLabel } from "@lib/currency";
+import { useSession } from "@lib/auth/SessionProvider";
+import { AuthCtaBanner } from "./components/AuthCtaBanner";
 
 const MarketsPage = () => {
   const navigate = useNavigate();
+  const { user, loading: sessionLoading } = useSession();
 
   const poolsQuery = useQuery({
     queryKey: ["markets:v2-pools"],
@@ -34,6 +37,7 @@ const MarketsPage = () => {
           All wagers settle in {capitalizedCurrencyLabel} (in-game currency). Parody product; no real-world stakes.
         </p>
       </header>
+      {!sessionLoading && !user && <AuthCtaBanner />}
 
       {poolsQuery.isLoading && (
         <p className="text-sm text-neutral-400">Loading live markets…</p>

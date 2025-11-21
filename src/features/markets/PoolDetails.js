@@ -1,7 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo, useState } from "react";
-import { TrendPill } from "./components/TrendPill";
+import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
 import { formatCurrency, formatOdds, formatPercent, impliedProbabilityFromOdds } from "./utils/format";
+import { getOutcomeRankings } from "./utils/outcomeStats";
 const statusLabel = {
     open: "Open",
     closing_soon: "Closing Soon",
@@ -16,11 +17,7 @@ const statusClasses = {
 };
 export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }) {
     const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
-    const favouriteOutcomeId = useMemo(() => {
-        if (!pool.outcomes.length)
-            return null;
-        return pool.outcomes.reduce((lowest, current) => current.baselineOdds < lowest.baselineOdds ? current : lowest).id;
-    }, [pool.outcomes]);
+    const { favouriteId, bestPayoutId } = useMemo(() => getOutcomeRankings(pool.outcomes), [pool.outcomes]);
     const handleSelect = (outcomeId) => {
         setSelectedOutcomeId(outcomeId);
         onOutcomeSelect?.(outcomeId);
@@ -30,12 +27,16 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }) {
                     const isSelected = selectedOutcomeId === outcome.id;
                     const sharePercent = Math.max(outcome.marketShare * 100, 0);
                     const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
-                    const isFavourite = favouriteOutcomeId === outcome.id;
+                    const isFavourite = favouriteId === outcome.id;
+                    const isBestPayout = bestPayoutId === outcome.id;
                     const accentStyle = outcome.teamColor
                         ? { borderLeftColor: outcome.teamColor, borderLeftWidth: "4px" }
                         : undefined;
                     return (_jsxs("button", { type: "button", onClick: () => handleSelect(outcome.id), className: `w-full rounded-2xl border px-4 py-3 text-left transition ${isSelected
                             ? "border-emerald-400/60 bg-white/10"
-                            : "border-white/10 bg-white/5 hover:border-white/20"}`, style: accentStyle, children: [_jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [outcome.teamColor && (_jsx("span", { className: "h-2.5 w-2.5 rounded-full border border-white/20", style: { backgroundColor: outcome.teamColor }, "aria-hidden": "true" })), _jsx("p", { className: "text-base font-semibold", children: outcome.teamName }), isFavourite && (_jsx("span", { className: "rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200", children: "Favourite" }))] }), _jsxs("p", { className: "text-sm text-white/60", children: ["Driver: ", outcome.driverName] })] }), _jsx(TrendPill, { delta: outcome.trendDelta })] }), _jsxs("div", { className: "mt-3 grid gap-3 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Share" }), _jsx("p", { className: "font-semibold", children: formatPercent(outcome.marketShare) })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Odds" }), _jsx("p", { className: "font-semibold", children: formatOdds(outcome.baselineOdds) })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Bets" }), _jsx("p", { className: "font-semibold", children: outcome.numBets.toLocaleString() })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Amount Bet" }), _jsx("p", { className: "font-semibold", children: formatCurrency(outcome.diamondsStaked) })] })] }), _jsxs("div", { className: "mt-3 space-y-2 text-sm text-white/80", children: [_jsxs("div", { className: "flex items-center justify-between text-xs text-white/50", children: [_jsx("span", { children: "Implied probability" }), _jsx("span", { className: "text-white", children: impliedProbabilityFromOdds(outcome.baselineOdds) })] }), _jsx("div", { className: "h-2 w-full rounded-full bg-white/10", children: _jsx("div", { className: "h-full rounded-full bg-sky-500", style: { width: fillWidth } }) })] })] }, outcome.id));
+                            : "border-white/10 bg-white/5 hover:border-white/20"}`, style: accentStyle, children: [_jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { children: [_jsxs("div", { className: "flex items-center gap-2", children: [outcome.teamColor && (_jsx("span", { className: "h-2.5 w-2.5 rounded-full border border-white/20", style: { backgroundColor: outcome.teamColor }, "aria-hidden": "true" })), _jsx("p", { className: "text-base font-semibold", children: outcome.teamName })] }), outcome.driverName && (_jsx("p", { className: "text-sm text-white/60", children: outcome.driverName }))] }), _jsx(OutcomeStatusPills, { isFavourite: isFavourite, isBestPayout: isBestPayout })] }), _jsxs("div", { className: "mt-3 grid gap-3 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Share" }), _jsx("p", { className: "font-semibold", children: formatPercent(outcome.marketShare) })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Odds" }), _jsx("p", { className: "font-semibold", children: formatOdds(outcome.baselineOdds) })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Bets" }), _jsx("p", { className: "font-semibold", children: outcome.numBets.toLocaleString() })] }), _jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.25em] text-white/40", children: "Amount Bet" }), _jsx("p", { className: "font-semibold", children: formatCurrency(outcome.diamondsStaked) })] })] }), _jsxs("div", { className: "mt-3 space-y-2 text-sm text-white/80", children: [_jsxs("div", { className: "flex items-center justify-between text-xs text-white/50", children: [_jsx("span", { children: "Implied probability" }), _jsx("span", { className: "text-white", children: impliedProbabilityFromOdds(outcome.baselineOdds) })] }), _jsx("div", { className: "h-2 w-full rounded-full bg-white/10", children: _jsx("div", { className: "h-full rounded-full", style: {
+                                                width: fillWidth,
+                                                backgroundColor: outcome.teamColor ?? "#38bdf8"
+                                            } }) })] })] }, outcome.id));
                 }) })] }));
 }
