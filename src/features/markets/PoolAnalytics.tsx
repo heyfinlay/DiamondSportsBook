@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { TrendPill } from "./components/TrendPill";
-import { formatDiamonds, formatOdds, formatPercent } from "./utils/format";
+import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import type { LiveBet, Pool } from "./types";
+import { USE_MARKET_LAYOUT_V2 } from "./flags";
 
 interface PoolAnalyticsProps {
   pool: Pool;
@@ -15,18 +16,6 @@ const timeframeOptions: { key: Timeframe; label: string }[] = [
   { key: "60m", label: "Last 60m" },
   { key: "24h", label: "Last 24h" }
 ];
-
-const Sparkline = () => (
-  <svg viewBox="0 0 120 40" className="h-10 w-28 text-emerald-400">
-    <polyline
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      points="0,30 20,25 40,28 60,18 80,22 100,14 120,18"
-      className="opacity-80"
-    />
-  </svg>
-);
 
 const formatRelativeTime = (timestamp: string) => {
   const date = new Date(timestamp);
@@ -49,7 +38,120 @@ const getInitials = (name: string) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
+export function PoolAnalytics(props: PoolAnalyticsProps) {
+  if (USE_MARKET_LAYOUT_V2) {
+    return <LiveBetsAnalytics {...props} />;
+  }
+  return <LegacyPoolAnalytics {...props} />;
+}
+
+function LiveBetsAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
+  const [teamFilter, setTeamFilter] = useState<string>("all");
+
+  const liveBetsForPool = useMemo(
+    () =>
+      liveBets.filter(
+        (bet) =>
+          bet.poolId === pool.id && (teamFilter === "all" || bet.teamName === teamFilter)
+      ),
+    [liveBets, pool.id, teamFilter]
+  );
+
+  const liveVolume = liveBetsForPool.reduce((sum, bet) => sum + bet.amount, 0);
+
+  return (
+    <section className="rounded-3xl border border-white/10 bg-black/30 p-5 text-white">
+      <header className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.3em] text-white/60">Live Bets</p>
+        <h3 className="text-xl font-semibold">{pool.title}</h3>
+        <p className="text-sm text-white/60">
+          Track wagers as they land. Filter by team to focus on a single outcome.
+        </p>
+      </header>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+        <p className="text-xs uppercase tracking-[0.25em] text-white/50">Recent Volume</p>
+        <p className="mt-1 text-lg font-semibold text-white">
+          {liveBetsForPool.length} bets · {formatCurrency(liveVolume)}
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setTeamFilter("all")}
+          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition ${
+            teamFilter === "all"
+              ? "bg-emerald-500 text-slate-950"
+              : "border border-white/20 text-white/80 hover:border-white/40"
+          }`}
+        >
+          All
+        </button>
+        {pool.outcomes.map((outcome) => (
+          <button
+            key={outcome.id}
+            type="button"
+            onClick={() => setTeamFilter(outcome.teamName)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition ${
+              teamFilter === outcome.teamName
+                ? "bg-white/10 text-emerald-200"
+                : "border border-white/20 text-white/80 hover:border-white/40"
+            }`}
+          >
+            {outcome.teamName}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {liveBetsForPool.length === 0 ? (
+          <p className="text-sm text-white/60">No live bets yet for this filter.</p>
+        ) : (
+          liveBetsForPool.map((bet) => (
+            <article
+              key={bet.id}
+              className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-sm font-semibold text-white"
+                  style={
+                    bet.teamColor
+                      ? { backgroundColor: bet.teamColor, color: "#050505" }
+                      : { backgroundColor: "rgba(15,23,42,0.6)" }
+                  }
+                >
+                  {getInitials(bet.teamName)}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">{bet.teamName}</p>
+                  {bet.driverName && <p className="text-xs text-white/60">{bet.driverName}</p>}
+                  <p className="text-[11px] text-white/40">
+                    Bet #{bet.id.slice(0, 8)} · {formatRelativeTime(bet.placedAt)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 sm:max-w-xs">
+                <div>
+                  <p className="text-xs text-white/50">Amount</p>
+                  <p className="font-semibold text-white">{formatCurrency(bet.amount)}</p>
+                </div>
+                <div className="text-right sm:text-left">
+                  <p className="text-xs text-white/50">Odds at placement</p>
+                  <p className="font-semibold text-white">{formatOdds(bet.oddsAtPlacement)}</p>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LegacyPoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("overview");
   const [timeframe, setTimeframe] = useState<Timeframe>("60m");
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -100,7 +202,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
               <p className="text-xs uppercase tracking-[0.25em] text-white/50">Pool Stake</p>
-              <p className="mt-1 text-lg font-semibold">Ɖ{formatDiamonds(pool.totalStake)}</p>
+              <p className="mt-1 text-lg font-semibold">{formatCurrency(pool.totalStake)}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
               <p className="text-xs uppercase tracking-[0.25em] text-white/50">Total Bets</p>
@@ -148,13 +250,13 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                       <p className="text-sm font-semibold text-white">{outcome.teamName}</p>
                       <p className="text-xs text-white/60">{outcome.driverName}</p>
                     </div>
-                    <Sparkline />
+                    <p className="text-[11px] text-white/40">Trend data unavailable</p>
                   </div>
 
                   <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 md:grid-cols-4">
                     <div>
-                      <p className="text-xs text-white/50">Staked</p>
-                      <p className="font-semibold text-white">Ɖ{formatDiamonds(outcome.diamondsStaked)}</p>
+                      <p className="text-xs text-white/50">Total Amount Bet</p>
+                      <p className="font-semibold text-white">{formatCurrency(outcome.diamondsStaked)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-white/50">Share</p>
@@ -171,10 +273,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
 
                   <div className="w-full md:w-48">
                     <div className="h-2 w-full rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: fillWidth }}
-                      />
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: fillWidth }} />
                     </div>
                     <p className="mt-1 text-[11px] text-white/60">
                       Pool share {formatPercent(outcome.marketShare)}
@@ -194,7 +293,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
               Live feed of wagers for this pool. Updates as bets are placed and priced.
             </p>
             <p className="text-xs text-white/50">
-              {liveBetsForPool.length} bets · Ɖ{formatDiamonds(liveVolume)}
+              {liveBetsForPool.length} bets · {formatCurrency(liveVolume)}
             </p>
           </div>
 
@@ -249,7 +348,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                 <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 sm:grid-cols-3">
                   <div>
                     <p className="text-xs text-white/50">Amount</p>
-                    <p className="font-semibold text-white">Ɖ{formatDiamonds(bet.amount)}</p>
+                    <p className="font-semibold text-white">{formatCurrency(bet.amount)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-white/50">Odds at placement</p>
@@ -259,14 +358,6 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                     <p className="text-xs text-white/50">Placed</p>
                     <p className="font-semibold text-white">{formatRelativeTime(bet.placedAt)}</p>
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {bet.amount >= 25000 && (
-                    <span className="rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200">
-                      High Roller
-                    </span>
-                  )}
                 </div>
               </div>
             ))}

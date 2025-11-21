@@ -14,6 +14,9 @@ import { useWalletStore } from "@domains/wallet/store/walletStore";
 import { useUserWagers } from "@domains/betting/hooks/useUserWagers";
 import { useToast } from "@app/components/ToastProvider";
 import { fetchUserProfile, updateUserProfile } from "@domains/profile/api/profileApi";
+import { currencyLabel, currencySymbol } from "@lib/currency";
+
+const currencyLabelTitle = currencyLabel.charAt(0).toUpperCase() + currencyLabel.slice(1);
 
 const AccountPage = () => {
   const { user, loading } = useSession();
@@ -66,7 +69,7 @@ const AccountPage = () => {
       toast({
         variant: "success",
         title: "Deposit requested",
-        description: "An admin will review and credit your Diamonds shortly."
+        description: `An admin will review and credit your ${currencyLabel} shortly.`
       });
       queryClient.invalidateQueries({ queryKey: ["wallet-transactions", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["wallet-balance", user?.id] });
@@ -200,7 +203,7 @@ const AccountPage = () => {
 
   const balanceDisplay = useMemo(() => {
     if (isWalletLoading) return "…";
-    return `Ɖ${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    return `${currencySymbol}${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
   }, [currentBalance, isWalletLoading]);
 
   return (
@@ -215,7 +218,7 @@ const AccountPage = () => {
             </p>
           </div>
           <div className="rounded-2xl border border-white/20 bg-black/30 px-6 py-4 text-right">
-            <p className="text-xs uppercase tracking-[0.35em] text-white/60">Available Diamonds</p>
+            <p className="text-xs uppercase tracking-[0.35em] text-white/60">Available {currencyLabelTitle}</p>
             <p className="text-3xl font-semibold text-white">{balanceDisplay}</p>
           </div>
         </div>
@@ -314,7 +317,7 @@ const AccountPage = () => {
           onSubmit={handleDeposit}
           className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white"
         >
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Add Diamonds</p>
+          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Add {currencyLabelTitle}</p>
           <h3 className="mt-2 text-xl font-semibold">Request Deposit</h3>
           <p className="text-sm text-white/70">
             Submit for manual approval. Credits appear once racing ops confirms.
@@ -364,7 +367,7 @@ const AccountPage = () => {
           <p className="text-xs uppercase tracking-[0.35em] text-white/50">Heads up</p>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>Deposits/withdrawals require marshal approval for compliance.</li>
-            <li>Wagers immediately debit Diamonds and appear in the ledger.</li>
+            <li>Wagers immediately debit {currencyLabel} and appear in the ledger.</li>
             <li>Need help? Ping race control on the admin channel.</li>
           </ul>
         </div>
@@ -396,7 +399,7 @@ const AccountPage = () => {
                 </div>
                 <p className={`text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`}>
                   {tx.amount > 0 ? "+" : ""}
-                  Ɖ{tx.amount.toFixed(2)}
+                  {`${currencySymbol}${tx.amount.toFixed(2)}`}
                 </p>
               </div>
             ))}
@@ -436,7 +439,7 @@ const AccountPage = () => {
                   </span>
                 </div>
                 <p className="mt-2 text-base font-semibold">
-                  Ɖ{wager.stake.toFixed(2)} on {wager.outcome_label}
+                  {`${currencySymbol}${wager.stake.toFixed(2)}`} on {wager.outcome_label}
                 </p>
                 <p className="text-xs text-white/60">
                   {wager.event_title}
@@ -450,14 +453,14 @@ const AccountPage = () => {
                     <span className="mx-1">·</span>
                     {wager.status === "won" && wager.settled_payout ? (
                       <span className="font-semibold text-emerald-300">
-                        Final Payout Ɖ{wager.settled_payout.toFixed(2)}
+                        Final Payout {`${currencySymbol}${wager.settled_payout.toFixed(2)}`}
                       </span>
                     ) : wager.status === "void_refund" && wager.settled_payout ? (
                       <span className="font-semibold text-yellow-300">
-                        Refunded Ɖ{wager.settled_payout.toFixed(2)}
+                        Refunded {`${currencySymbol}${wager.settled_payout.toFixed(2)}`}
                       </span>
                     ) : (
-                      <span>Potential Ɖ{wager.estimated_payout.toFixed(2)}</span>
+                      <span>Potential {`${currencySymbol}${wager.estimated_payout.toFixed(2)}`}</span>
                     )}
                   </div>
                   <a
@@ -551,7 +554,7 @@ const RequestList = ({
             className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-base font-semibold">Ɖ{entry.amount.toFixed(2)}</p>
+              <p className="text-base font-semibold">{`${currencySymbol}${entry.amount.toFixed(2)}`}</p>
               <span className="rounded-full border border-white/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/70">
                 {formatStatus(entry.status)}
               </span>

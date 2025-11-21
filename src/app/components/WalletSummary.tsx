@@ -3,6 +3,7 @@ import { useWalletRealtime } from "@domains/wallet/hooks/useWalletRealtime";
 import { useWalletStore } from "@domains/wallet/store/walletStore";
 import { useSession } from "@lib/auth/SessionProvider";
 import { Link } from "react-router-dom";
+import { currencySymbol } from "@lib/currency";
 
 const WalletSummary = () => {
   const { user, loading } = useSession();
@@ -26,7 +27,9 @@ const WalletSummary = () => {
       <div className="text-left">
         <p className="text-[0.6rem] uppercase tracking-[0.35em] text-white/60">Wallet</p>
         <p className="text-lg font-semibold text-white">
-          {pending ? "…" : `Ɖ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+          {pending
+            ? "…"
+            : `${currencySymbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
         </p>
       </div>
       <Link

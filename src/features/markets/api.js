@@ -1,0 +1,25 @@
+import { fetchPoolPricing, fetchPoolsPricing, fetchRecentPoolBets } from "@domains/betting/api/bettingApi";
+import { mapPricingRowsToPool, mapPricingRowsToPools } from "./domain/adapter";
+import { getTeamColor } from "./teamColors";
+export const fetchUiPools = async () => {
+    const rows = await fetchPoolsPricing();
+    return mapPricingRowsToPools(rows);
+};
+export const fetchUiPoolById = async (poolId) => {
+    const rows = await fetchPoolPricing(poolId);
+    return mapPricingRowsToPool(rows);
+};
+export const fetchUiLiveBetsForPool = async (poolId) => {
+    const bets = await fetchRecentPoolBets(poolId);
+    return bets.map((bet) => ({
+        id: bet.id,
+        poolId: bet.pool_id,
+        outcomeId: bet.outcome_id,
+        teamName: bet.team_name,
+        driverName: bet.driver_name ?? undefined,
+        teamColor: getTeamColor(bet.team_name),
+        amount: Number(bet.amount ?? 0),
+        placedAt: bet.created_at,
+        oddsAtPlacement: Number(bet.odds_at_placement ?? 0)
+    }));
+};

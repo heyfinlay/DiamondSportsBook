@@ -1,6 +1,6 @@
 import React from "react";
 import { TrendPill } from "./components/TrendPill";
-import { formatDiamonds, formatOdds, formatPercent } from "./utils/format";
+import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import type { Pool, PoolStatus } from "./types";
 
 interface MarketPoolsGridProps {
@@ -74,7 +74,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
               <div className="mb-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
                 <div className="flex flex-col">
                   <span className="text-xs text-white/50">Total Pool</span>
-                  <span className="font-semibold">Ɖ{formatDiamonds(pool.totalStake)}</span>
+                  <span className="font-semibold">{formatCurrency(pool.totalStake)}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-white/50">Bets</span>
@@ -97,6 +97,13 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 overflow-hidden">
                           <div className="flex items-center gap-2">
+                            {outcome.teamColor && (
+                              <span
+                                className="h-2 w-2 rounded-full border border-white/20"
+                                style={{ backgroundColor: outcome.teamColor }}
+                                aria-hidden="true"
+                              />
+                            )}
                             <p className="truncate text-sm font-semibold text-white">{outcome.teamName}</p>
                             {isFavourite && (
                               <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
@@ -115,7 +122,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                             />
                           </div>
                           <p className="mt-1 text-[11px] text-white/50">
-                            Staked: Ɖ{formatDiamonds(outcome.diamondsStaked)}
+                            Total Bet: {formatCurrency(outcome.diamondsStaked)}
                           </p>
                         </div>
 

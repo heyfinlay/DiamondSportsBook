@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSession } from '@lib/auth/SessionProvider'
+import { supabase } from '@lib/supabaseClient'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [icNumber, setIcNumber] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -24,7 +27,36 @@ export function LoginPage() {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password)
+        const trimmedUsername = username.trim()
+        const trimmedIc = icNumber.trim()
+
+        if (!trimmedUsername || !trimmedIc) {
+          setError('Username and IC number are required.')
+          return
+        }
+
+        const { data: existingUsername, error: usernameCheckError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', trimmedUsername)
+          .maybeSingle()
+
+        if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
+          setError('Unable to verify username availability.')
+          return
+        }
+
+        if (existingUsername) {
+          setError('That username is already taken. Choose another one.')
+          return
+        }
+
+        const { error } = await signUp({
+          email: email.trim(),
+          password,
+          username: trimmedUsername,
+          icNumber: trimmedIc
+        })
         if (error) {
           setError(error.message)
         } else {
@@ -33,6 +65,8 @@ export function LoginPage() {
           )
           setIsSignUp(false)
           setPassword('')
+          setUsername('')
+          setIcNumber('')
         }
       } else {
         const { error } = await signIn(email, password)
@@ -112,6 +146,41 @@ export function LoginPage() {
             </div>
           </div>
 
+          {isSignUp && (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="username" className="sr-only">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required={isSignUp}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="relative block w-full rounded-md border border-slate-600 px-3 py-2 text-white placeholder-slate-400 bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Username"
+                />
+              </div>
+              <div>
+                <label htmlFor="ic-number" className="sr-only">
+                  IC Number
+                </label>
+                <input
+                  id="ic-number"
+                  name="ic-number"
+                  type="text"
+                  required={isSignUp}
+                  value={icNumber}
+                  onChange={(e) => setIcNumber(e.target.value)}
+                  className="relative block w-full rounded-md border border-slate-600 px-3 py-2 text-white placeholder-slate-400 bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="IC Number"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <button
               type="submit"
@@ -129,6 +198,8 @@ export function LoginPage() {
                 setIsSignUp(!isSignUp)
                 setError(null)
                 setMessage(null)
+                setUsername('')
+                setIcNumber('')
               }}
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >

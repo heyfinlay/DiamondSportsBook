@@ -10,6 +10,7 @@ import {
 } from "@domains/betting/api/marketAdminApi";
 import { fetchSessions, type TimingSessionSummary } from "@domains/timing/api/timingApi";
 import { useToast } from "@app/components/ToastProvider";
+import { currencySymbol } from "@lib/currency";
 import { formatDistanceToNow } from "date-fns";
 
 const FILTERS: Array<{ key: MarketFilterKey; label: string; statuses: MarketContainerStatus[] | null }> = [
@@ -152,7 +153,7 @@ const MarketCard = ({ market }: { market: MarketContainer }) => {
         </div>
         <div className="text-right">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Handle</p>
-          <p className="text-2xl font-semibold">Ɖ{handle.toLocaleString()}</p>
+          <p className="text-2xl font-semibold">{`${currencySymbol}${handle.toLocaleString()}`}</p>
           <p className="text-xs text-white/60">{openPools} / {totalPools} pools open</p>
         </div>
       </div>

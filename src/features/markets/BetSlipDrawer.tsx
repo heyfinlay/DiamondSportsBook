@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { currencyLabel } from "@lib/currency";
 import {
-  formatDiamonds,
+  formatCurrency,
   formatOdds,
   formatPercent,
   impliedProbabilityFromOdds
@@ -105,9 +106,7 @@ export function BetSlipDrawer({
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                 <div className="flex items-center justify-between text-sm text-slate-300">
                   <span>Pool Size</span>
-                  <span className="font-semibold text-white">
-                    Ɖ{formatDiamonds(pool.totalStake)}
-                  </span>
+                  <span className="font-semibold text-white">{formatCurrency(pool.totalStake)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm text-slate-300">
                   <span>Closes</span>
@@ -160,7 +159,16 @@ export function BetSlipDrawer({
                         onClick={() => onSelectOutcome(outcome.id)}
                       >
                         <div>
-                          <p className="font-semibold">{outcome.teamName}</p>
+                          <div className="flex items-center gap-2">
+                            {outcome.teamColor && (
+                              <span
+                                className="h-2 w-2 rounded-full border border-white/20"
+                                style={{ backgroundColor: outcome.teamColor }}
+                                aria-hidden="true"
+                              />
+                            )}
+                            <p className="font-semibold">{outcome.teamName}</p>
+                          </div>
                           <p className="text-[11px] text-slate-400">{outcome.driverName}</p>
                         </div>
                         <div className="text-right">
@@ -193,7 +201,7 @@ export function BetSlipDrawer({
                 </div>
                 <div className="mt-3 space-y-1">
                   <label className="text-xs uppercase tracking-[0.25em] text-slate-400">
-                    Stake (Diamonds)
+                    Stake ({currencyLabel})
                   </label>
                   <input
                     type="text"
@@ -207,9 +215,13 @@ export function BetSlipDrawer({
                     className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none ring-emerald-400/60 focus:border-emerald-400"
                     placeholder="Enter stake"
                   />
-                  <p className="text-[11px] text-slate-500">Minimum stake is 25K diamonds.</p>
+                  <p className="text-[11px] text-slate-500">
+                    Minimum stake is {formatCurrency(MIN_STAKE)}.
+                  </p>
                   {!stakeValid && (
-                    <p className="text-[11px] text-rose-300">Minimum stake is 25K diamonds.</p>
+                    <p className="text-[11px] text-rose-300">
+                      Minimum stake is {formatCurrency(MIN_STAKE)}.
+                    </p>
                   )}
                 </div>
               </div>
@@ -224,11 +236,13 @@ export function BetSlipDrawer({
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400">Estimated payout</p>
-                    <p className="text-lg font-semibold text-white">Ɖ{formatDiamonds(estimatedPayout)}</p>
+                    <p className="text-lg font-semibold text-white">
+                      {formatCurrency(estimatedPayout)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400">Max payout</p>
-                    <p className="font-semibold text-white">Ɖ{formatDiamonds(estimatedPayout)}</p>
+                    <p className="font-semibold text-white">{formatCurrency(estimatedPayout)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400">Probability</p>

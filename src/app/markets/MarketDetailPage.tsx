@@ -7,6 +7,8 @@ import { BetSlipDrawer } from "../../features/markets/BetSlipDrawer";
 import { PoolAnalytics } from "../../features/markets/PoolAnalytics";
 import { PoolDetails } from "../../features/markets/PoolDetails";
 import { fetchUiLiveBetsForPool, fetchUiPoolById } from "../../features/markets/api";
+import { USE_MARKET_LAYOUT_V2 } from "../../features/markets/flags";
+import { formatCurrency } from "../../features/markets/utils/format";
 import type { Pool } from "../../features/markets/types";
 
 // v2 Markets detail page: maps v1 pool/outcome totals into the new UI components.
@@ -71,20 +73,31 @@ const MarketDetailPage = () => {
     setBetSlipOpen(true);
   };
 
+  const headerContent = USE_MARKET_LAYOUT_V2 ? (
+    <header className="rounded-3xl border border-white/10 bg-black/30 p-6">
+      <p className="text-xs uppercase tracking-[0.35em] text-white/50">Market</p>
+      <h1 className="mt-2 text-3xl font-semibold text-white">{pool.title}</h1>
+      <p className="text-sm text-white/60">{pool.timeRemainingLabel}</p>
+      <p className="text-xs text-white/40">Updated {pool.lastUpdatedLabel}</p>
+    </header>
+  ) : (
+    <header className="flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-white/10 bg-black/30 p-6">
+      <div>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Pool</p>
+        <h1 className="text-3xl font-semibold text-white">{pool.title}</h1>
+        <p className="text-sm text-white/60">{pool.timeRemainingLabel}</p>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-right">
+        <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Pool</p>
+        <p className="text-2xl font-semibold text-white">{formatCurrency(pool.totalStake)}</p>
+        <p className="text-xs text-white/50">Rake {pool.rakePercent.toFixed(1)}%</p>
+      </div>
+    </header>
+  );
+
   return (
     <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-white/10 bg-black/30 p-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Pool</p>
-          <h1 className="text-3xl font-semibold text-white">{pool.title}</h1>
-          <p className="text-sm text-white/60">{pool.timeRemainingLabel}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-right">
-          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Pool</p>
-          <p className="text-2xl font-semibold text-white">Ɖ{pool.totalStake.toLocaleString("en-US")}</p>
-          <p className="text-xs text-white/50">Rake {pool.rakePercent.toFixed(1)}%</p>
-        </div>
-      </header>
+      {headerContent}
 
       <section className="flex flex-col gap-6">
         <PoolDetails

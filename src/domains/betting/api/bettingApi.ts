@@ -53,6 +53,35 @@ export interface EventWithMarkets {
   }>;
 }
 
+export interface PoolPricingRow {
+  pool_id: string;
+  pool_name: string;
+  pool_status: string;
+  rake_percent: number | null;
+  close_time: string | null;
+  updated_at: string | null;
+  total_stake: number | null;
+  total_bets: number | null;
+  last_activity_at: string | null;
+  outcome_id: string;
+  outcome_label: string;
+  driver_name: string | null;
+  outcome_stake: number | null;
+  outcome_bets: number | null;
+  baseline_odds: number | null;
+}
+
+export interface RecentPoolBet {
+  id: string;
+  pool_id: string;
+  outcome_id: string;
+  team_name: string;
+  driver_name: string | null;
+  amount: number;
+  odds_at_placement: number | null;
+  created_at: string;
+}
+
 export const fetchMarkets = async () => {
   const { data, error } = await supabase
     .from("markets")
@@ -168,6 +197,37 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
           })) ?? []
     })) ?? []
   );
+};
+
+export const fetchPoolsPricing = async (): Promise<PoolPricingRow[]> => {
+  const { data, error } = await supabase.rpc("get_pools_pricing");
+  if (error) throw error;
+  return (data as PoolPricingRow[]) ?? [];
+};
+
+export const fetchPoolPricing = async (poolId: string): Promise<PoolPricingRow[]> => {
+  if (!poolId) throw new Error("poolId is required");
+  const { data, error } = await supabase.rpc("get_pool_pricing", {
+    p_pool_id: poolId
+  });
+  if (error) {
+    console.warn("get_pool_pricing failed, falling back to get_pools_pricing", error);
+    const fallback = await fetchPoolsPricing();
+    return fallback.filter((row) => row.pool_id === poolId);
+  }
+  return (data as PoolPricingRow[]) ?? [];
+};
+
+export const fetchRecentPoolBets = async (
+  poolId: string,
+  limit = 40
+): Promise<RecentPoolBet[]> => {
+  const { data, error } = await supabase.rpc("get_recent_pool_bets", {
+    p_pool_id: poolId,
+    p_limit: limit
+  });
+  if (error) throw error;
+  return (data as RecentPoolBet[]) ?? [];
 };
 
 export const fetchArchivedMarketEvents = async (): Promise<EventWithMarkets[]> => {

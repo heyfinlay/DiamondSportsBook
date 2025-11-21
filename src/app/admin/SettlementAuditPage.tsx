@@ -6,6 +6,7 @@ import {
   type PoolPayout
 } from "@domains/betting/api/settlementAuditApi";
 import { useSession } from "@lib/auth/SessionProvider";
+import { currencySymbol } from "@lib/currency";
 
 const SettlementAuditPage = () => {
   const { user } = useSession();
@@ -61,14 +62,14 @@ const SettlementAuditPage = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold">
-                    Ɖ{Number(settlement.handle || 0).toFixed(2)} Pool
+                    {`${currencySymbol}${Number(settlement.handle || 0).toFixed(2)}`} Pool
                   </p>
                   <p className="text-xs text-white/60">
-                    Ɖ{Number(settlement.rake_amount || 0).toFixed(2)} Rake (
+                    {`${currencySymbol}${Number(settlement.rake_amount || 0).toFixed(2)}`} Rake (
                     {((Number(settlement.rake_amount || 0) / Number(settlement.handle || 1)) * 100).toFixed(1)}%)
                   </p>
                   <p className="text-xs text-white/60">
-                    Ɖ{Number(settlement.distribution_pool || 0).toFixed(2)} Paid
+                    {`${currencySymbol}${Number(settlement.distribution_pool || 0).toFixed(2)}`} Paid
                   </p>
                 </div>
               </div>
@@ -131,11 +132,11 @@ export const PoolPayoutDetailPage = () => {
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Winning Stake</p>
-          <p className="mt-1 text-2xl font-semibold">Ɖ{totalStake.toFixed(2)}</p>
+          <p className="mt-1 text-2xl font-semibold">{`${currencySymbol}${totalStake.toFixed(2)}`}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Paid Out</p>
-          <p className="mt-1 text-2xl font-semibold">Ɖ{totalPayout.toFixed(2)}</p>
+          <p className="mt-1 text-2xl font-semibold">{`${currencySymbol}${totalPayout.toFixed(2)}`}</p>
         </div>
       </section>
 
@@ -168,12 +169,12 @@ export const PoolPayoutDetailPage = () => {
                     <p className="text-xs text-white/40">{payout.user_id.slice(0, 8)}…</p>
                   </td>
                   <td className="py-3 text-white/70">{payout.outcome_label}</td>
-                  <td className="py-3 text-right">Ɖ{Number(payout.stake).toFixed(2)}</td>
+                  <td className="py-3 text-right">{`${currencySymbol}${Number(payout.stake).toFixed(2)}`}</td>
                   <td className="py-3 text-right text-white/70">
                     {Number(payout.share_percent).toFixed(2)}%
                   </td>
                   <td className="py-3 text-right font-semibold text-emerald-300">
-                    Ɖ{Number(payout.payout).toFixed(2)}
+                    {`${currencySymbol}${Number(payout.payout).toFixed(2)}`}
                   </td>
                   <td className="py-3 text-right text-white/70">
                     {Number(payout.effective_odds).toFixed(2)}x
