@@ -1,0 +1,166 @@
+import React from "react";
+import { TrendPill } from "./components/TrendPill";
+import { formatDiamonds, formatOdds, formatPercent } from "./utils/format";
+import type { Pool, PoolStatus } from "./types";
+
+interface MarketPoolsGridProps {
+  pools: Pool[];
+  onSelectPool?: (poolId: string) => void;
+}
+
+const statusLabel: Record<PoolStatus, string> = {
+  open: "Open",
+  closing_soon: "Closing Soon",
+  closed: "Closed",
+  settled: "Settled"
+};
+
+const statusClasses: Record<PoolStatus, string> = {
+  open: "bg-emerald-500/10 text-emerald-300 border-emerald-500/40",
+  closing_soon: "bg-amber-500/10 text-amber-200 border-amber-500/40",
+  closed: "bg-slate-700/60 text-slate-300 border-slate-600/60",
+  settled: "bg-indigo-500/10 text-indigo-200 border-indigo-500/40"
+};
+
+export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
+  return (
+    <section className="w-full bg-slate-950 px-4 py-6 text-slate-50 md:px-6 lg:px-10">
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            DayBreak Grand Prix
+          </p>
+          <h2 className="text-2xl font-semibold leading-tight text-white md:text-3xl">
+            Active Markets
+          </h2>
+        </div>
+        <p className="text-xs text-slate-500">
+          {pools.length} pool{pools.length === 1 ? "" : "s"}
+        </p>
+      </header>
+
+      <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        {pools.map((pool) => {
+          const sorted = [...pool.outcomes].sort((a, b) => b.marketShare - a.marketShare);
+          const favourite = sorted[0]
+            ? sorted.reduce(
+                (lowest, current) =>
+                  current.baselineOdds < lowest.baselineOdds ? current : lowest,
+                sorted[0]
+              )
+            : null;
+          const distributionLabel = `${pool.outcomes.length} outcome${
+            pool.outcomes.length === 1 ? "" : "s"
+          }`;
+          const racePrefix = pool.title.split("·")[0]?.trim() ?? pool.title;
+
+          return (
+            <article
+              key={pool.id}
+              className="flex h-full flex-col rounded-2xl border border-slate-800 bg-slate-900/80 p-4 shadow-[0_0_24px_rgba(8,15,30,0.35)]"
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold leading-tight text-white">
+                    {pool.title}
+                  </h3>
+                  <p className="text-xs text-slate-400">{pool.timeRemainingLabel}</p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[pool.status]}`}
+                >
+                  {statusLabel[pool.status]}
+                </span>
+              </div>
+
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-400">Total Pool</span>
+                  <span className="font-semibold text-white">
+                    Ɖ{formatDiamonds(pool.totalStake)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-slate-400">Bets</span>
+                  <span className="block font-semibold text-white">
+                    {pool.totalBets.toLocaleString("en-US")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.28em] text-slate-400">
+                <span>Market Distribution</span>
+                <span className="text-slate-300">{distributionLabel}</span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {sorted.slice(0, 5).map((outcome) => {
+                  const sharePercent = Math.max(outcome.marketShare * 100, 0);
+                  const isFavourite = outcome.id === favourite?.id;
+                  const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
+                  return (
+                    <div
+                      key={outcome.id}
+                      className="rounded-xl border border-slate-800/80 bg-slate-900/50 px-3 py-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 overflow-hidden">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-white">
+                              {outcome.teamName}
+                            </p>
+                            {isFavourite && (
+                              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                                Favourite
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">{outcome.driverName}</p>
+
+                          <div className="mt-2 h-2 w-full rounded-full bg-slate-800">
+                            <div
+                              className={`h-full rounded-full ${
+                                isFavourite ? "bg-emerald-500" : "bg-sky-500"
+                              }`}
+                              style={{ width: fillWidth }}
+                            />
+                          </div>
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            Staked: Ɖ{formatDiamonds(outcome.diamondsStaked)}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1 text-right">
+                          <p className="text-sm font-semibold text-white">
+                            {formatOdds(outcome.baselineOdds)}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Share: {formatPercent(outcome.marketShare)}
+                          </p>
+                          <TrendPill delta={outcome.trendDelta} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+                <div className="text-xs text-slate-400">
+                  View full market · {racePrefix}
+                </div>
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] text-slate-950 transition hover:bg-emerald-400"
+                  onClick={() => onSelectPool?.(pool.id)}
+                >
+                  View Market
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
