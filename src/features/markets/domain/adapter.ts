@@ -1,4 +1,5 @@
-import type { EventWithMarkets } from "@domains/betting/api/bettingApi";
+import type { EventWithMarkets, PoolPricingRow } from "@domains/betting/api/bettingApi";
+import { getTeamColor } from "../teamColors";
 import type { Pool, PoolStatus, Outcome } from "../types";
 
 // Types that mirror the fetchMarketDetail response. We only rely on the fields we need.
@@ -22,6 +23,11 @@ export interface MarketDetailData {
     id: string;
     label: string;
     pool?: number | null;
+    driverName?: string | null;
+    teamColor?: string | null;
+    numBets?: number;
+    baselineOdds?: number | null;
+    color?: string | null;
   }>;
 }
 
@@ -78,13 +84,19 @@ const mapOutcomes = (
 ): Outcome[] =>
   outcomes.map((outcome) => {
     const staked = Number(outcome.pool ?? 0);
+    const providedOdds = outcome.baselineOdds ?? null;
+    const odds =
+      typeof providedOdds === "number" && providedOdds > 0
+        ? providedOdds
+        : computeOdds(totalStake, staked, rakeFraction);
     return {
       id: outcome.id,
       teamName: outcome.label,
-      driverName: outcome.label,
+      driverName: outcome.driverName ?? outcome.label,
+      teamColor: outcome.teamColor ?? undefined,
       marketShare: totalStake > 0 ? staked / totalStake : 0,
-      baselineOdds: computeOdds(totalStake, staked, rakeFraction),
-      numBets: 0,
+      baselineOdds: odds,
+      numBets: outcome.numBets ?? 0,
       diamondsStaked: staked,
       trendDelta: 0
     };
@@ -97,6 +109,8 @@ const buildPool = ({
   totalStake,
   closeTime,
   updatedAt,
+  activityAt,
+  totalBets = 0,
   rakeFraction,
   outcomes
 }: {
@@ -106,6 +120,8 @@ const buildPool = ({
   totalStake: number;
   closeTime?: string | null;
   updatedAt?: string | null;
+  activityAt?: string | null;
+  totalBets?: number;
   rakeFraction: number;
   outcomes: MarketDetailData["outcomes"];
 }): Pool => {
@@ -122,10 +138,10 @@ const buildPool = ({
     title: name,
     status: uiStatus,
     totalStake,
-    totalBets: 0,
+    totalBets,
     timeRemainingLabel: formatTimeRemaining(closeTime),
     rakePercent: Math.max(rakeFraction, 0) * 100,
-    lastUpdatedLabel: formatLastUpdated(updatedAt),
+    lastUpdatedLabel: formatLastUpdated(activityAt ?? updatedAt),
     outcomes: mapOutcomes(totalStake, rakeFraction, outcomes)
   };
 };
@@ -149,12 +165,15 @@ export const mapEventWithMarketsToUiPools = (events: EventWithMarkets[]): Pool[]
           totalStake: Number(market.total_pool ?? 0),
           closeTime: market.close_time ?? undefined,
           updatedAt: market.settled_at ?? undefined,
+          activityAt: market.settled_at ?? undefined,
+          totalBets: 0,
           rakeFraction,
           outcomes:
             market.outcomes?.map((outcome) => ({
               id: outcome.id,
               label: outcome.label,
-              pool: outcome.pool ?? 0
+              pool: outcome.pool ?? 0,
+              teamColor: getTeamColor(outcome.label)
             })) ?? []
         });
         pools.push(pool);
@@ -164,11 +183,110 @@ export const mapEventWithMarketsToUiPools = (events: EventWithMarkets[]): Pool[]
   return pools;
 };
 
+const groupPricingRows = (rows: PoolPricingRow[]) => {
+  const grouped = new Map<
+    string,
+    {
+      meta: {
+        id: string;
+        name: string;
+        status: string;
+        totalStake: number;
+        totalBets: number;
+        closeTime?: string | null;
+        updatedAt?: string | null;
+        lastActivityAt?: string | null;
+        rakeFraction: number;
+      };
+      outcomes: MarketDetailData["outcomes"];
+    }
+  >();
+
+  rows.forEach((row) => {
+    if (!row.pool_id || !row.outcome_id) return;
+    if (!grouped.has(row.pool_id)) {
+      grouped.set(row.pool_id, {
+        meta: {
+          id: row.pool_id,
+          name: row.pool_name,
+          status: row.pool_status,
+          totalStake: Number(row.total_stake ?? 0),
+          totalBets: Number(row.total_bets ?? 0),
+          closeTime: row.close_time,
+          updatedAt: row.updated_at,
+          lastActivityAt: row.last_activity_at,
+          rakeFraction: Number(row.rake_percent ?? 0)
+        },
+        outcomes: []
+      });
+    }
+
+    grouped.get(row.pool_id)!.outcomes.push({
+      id: row.outcome_id,
+      label: row.outcome_label,
+      pool: Number(row.outcome_stake ?? 0),
+      driverName: row.driver_name ?? row.outcome_label,
+      teamColor: getTeamColor(row.outcome_label),
+      numBets: Number(row.outcome_bets ?? 0),
+      baselineOdds: row.baseline_odds ? Number(row.baseline_odds) : null
+    });
+  });
+
+  return grouped;
+};
+
+export const mapPricingRowsToPools = (rows: PoolPricingRow[]): Pool[] => {
+  const grouped = Array.from(groupPricingRows(rows).values()).sort((a, b) => {
+    const aClose = a.meta.closeTime ? new Date(a.meta.closeTime).getTime() : Number.POSITIVE_INFINITY;
+    const bClose = b.meta.closeTime ? new Date(b.meta.closeTime).getTime() : Number.POSITIVE_INFINITY;
+    return aClose - bClose;
+  });
+
+  return grouped.map(({ meta, outcomes }) =>
+    buildPool({
+      id: meta.id,
+      name: meta.name,
+      status: meta.status,
+      totalStake: meta.totalStake,
+      totalBets: meta.totalBets,
+      closeTime: meta.closeTime,
+      updatedAt: meta.updatedAt,
+      activityAt: meta.lastActivityAt,
+      rakeFraction: meta.rakeFraction,
+      outcomes
+    })
+  );
+};
+
+export const mapPricingRowsToPool = (rows: PoolPricingRow[]): Pool | null => {
+  if (!rows.length) return null;
+  const grouped = groupPricingRows(rows);
+  const first = grouped.values().next().value;
+  if (!first) return null;
+  return buildPool({
+    id: first.meta.id,
+    name: first.meta.name,
+    status: first.meta.status,
+    totalStake: first.meta.totalStake,
+    totalBets: first.meta.totalBets,
+    closeTime: first.meta.closeTime,
+    updatedAt: first.meta.updatedAt,
+    activityAt: first.meta.lastActivityAt,
+    rakeFraction: first.meta.rakeFraction,
+    outcomes: first.outcomes
+  });
+};
+
 export const mapMarketDetailToUiPool = (detail: MarketDetailData | null): Pool | null => {
   if (!detail?.market) return null;
   const { market, outcomes } = detail;
   const totalStake = Number(market.total_pool ?? 0);
   const rakeFraction = Number(market.rake_percent ?? market.event?.takeout ?? 0);
+  const enrichedOutcomes =
+    outcomes?.map((outcome: MarketDetailData["outcomes"][number] & { color?: string | null }) => ({
+      ...outcome,
+      teamColor: outcome.teamColor ?? outcome.color ?? getTeamColor(outcome.label)
+    })) ?? [];
 
   return buildPool({
     id: market.id,
@@ -177,7 +295,9 @@ export const mapMarketDetailToUiPool = (detail: MarketDetailData | null): Pool |
     totalStake,
     closeTime: market.close_time ?? undefined,
     updatedAt: market.updated_at ?? market.settled_at ?? undefined,
+    activityAt: market.updated_at ?? market.settled_at ?? undefined,
+    totalBets: 0,
     rakeFraction,
-    outcomes: outcomes ?? []
+    outcomes: enrichedOutcomes
   });
 };

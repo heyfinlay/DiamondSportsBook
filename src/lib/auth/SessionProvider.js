@@ -35,12 +35,33 @@ export const SessionProvider = ({ children }) => {
         });
         return { error };
     };
-    const signUp = async (email, password) => {
-        const { error } = await supabase.auth.signUp({
+    const signUp = async ({ email, password, username, icNumber }) => {
+        const trimmedUsername = username.trim();
+        const trimmedIc = icNumber.trim();
+        const { data, error } = await supabase.auth.signUp({
             email,
-            password
+            password,
+            options: {
+                data: {
+                    username: trimmedUsername,
+                    ic_number: trimmedIc
+                }
+            }
         });
-        return { error };
+        if (error) {
+            return { error };
+        }
+        const userId = data.user?.id;
+        if (userId) {
+            const { error: profileError } = await supabase
+                .from("profiles")
+                .upsert({ id: userId, username: trimmedUsername, ic_phone_number: trimmedIc }, { onConflict: "id" });
+            if (profileError) {
+                console.error(profileError);
+                return { error: new Error(profileError.message) };
+            }
+        }
+        return { error: null };
     };
     const signOut = async () => {
         const { error } = await supabase.auth.signOut();

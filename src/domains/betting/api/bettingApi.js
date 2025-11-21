@@ -103,6 +103,29 @@ export const fetchMarketEvents = async () => {
         })) ?? []
     })) ?? []);
 };
+export const fetchPoolsPricing = async () => {
+    const { data, error } = await supabase.rpc("get_pools_pricing");
+    if (error)
+        throw error;
+    return data ?? [];
+};
+export const fetchPoolPricing = async (poolId) => {
+    const { data, error } = await supabase.rpc("get_pool_pricing", {
+        p_pool_id: poolId
+    });
+    if (error)
+        throw error;
+    return data ?? [];
+};
+export const fetchRecentPoolBets = async (poolId, limit = 40) => {
+    const { data, error } = await supabase.rpc("get_recent_pool_bets", {
+        p_pool_id: poolId,
+        p_limit: limit
+    });
+    if (error)
+        throw error;
+    return data ?? [];
+};
 export const fetchArchivedMarketEvents = async () => {
     const { data, error } = await supabase
         .from("events")

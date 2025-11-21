@@ -1,3 +1,5 @@
+import { currencySymbol } from "@lib/currency";
+
 const trimTrailingZeros = (input: string) =>
   input.replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
 
@@ -12,6 +14,10 @@ const formatWithSuffix = (value: number) => {
 export function formatDiamonds(value: number): string {
   if (!Number.isFinite(value)) return "0";
   return formatWithSuffix(value);
+}
+
+export function formatCurrency(value: number): string {
+  return `${currencySymbol}${formatDiamonds(value)}`;
 }
 
 export function formatPercent(fraction: number): string {

@@ -1,22 +1,33 @@
-import { fetchMarketDetail, fetchMarketEvents } from "@domains/betting/api/bettingApi";
 import {
-  mapEventWithMarketsToUiPools,
-  mapMarketDetailToUiPool,
-  type MarketDetailData
-} from "./domain/adapter";
+  fetchPoolPricing,
+  fetchPoolsPricing,
+  fetchRecentPoolBets
+} from "@domains/betting/api/bettingApi";
+import { mapPricingRowsToPool, mapPricingRowsToPools } from "./domain/adapter";
+import { getTeamColor } from "./teamColors";
 import type { LiveBet, Pool } from "./types";
 
 export const fetchUiPools = async (): Promise<Pool[]> => {
-  const events = await fetchMarketEvents();
-  return mapEventWithMarketsToUiPools(events);
+  const rows = await fetchPoolsPricing();
+  return mapPricingRowsToPools(rows);
 };
 
 export const fetchUiPoolById = async (poolId: string): Promise<Pool | null> => {
-  const detail = await fetchMarketDetail(poolId);
-  return mapMarketDetailToUiPool(detail as unknown as MarketDetailData);
+  const rows = await fetchPoolPricing(poolId);
+  return mapPricingRowsToPool(rows);
 };
 
-export const fetchUiLiveBetsForPool = async (_poolId: string): Promise<LiveBet[]> => {
-  // Live bet feed is not exposed publicly yet; return an empty list so the UI renders gracefully.
-  return [];
+export const fetchUiLiveBetsForPool = async (poolId: string): Promise<LiveBet[]> => {
+  const bets = await fetchRecentPoolBets(poolId);
+  return bets.map((bet) => ({
+    id: bet.id,
+    poolId: bet.pool_id,
+    outcomeId: bet.outcome_id,
+    teamName: bet.team_name,
+    driverName: bet.driver_name ?? undefined,
+     teamColor: getTeamColor(bet.team_name),
+    amount: Number(bet.amount ?? 0),
+    placedAt: bet.created_at,
+    oddsAtPlacement: Number(bet.odds_at_placement ?? 0)
+  }));
 };

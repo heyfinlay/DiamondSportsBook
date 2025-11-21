@@ -1,139 +1,58 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchMarketDetail, previewWager, placeWager } from "@domains/betting/api/bettingApi";
+import { placeWager } from "@domains/betting/api/bettingApi";
 import { useBettingRealtime } from "@domains/betting/hooks/useBettingRealtime";
-import { useSession } from "@lib/auth/SessionProvider";
-import { supabase } from "@lib/supabaseClient";
+import { BetSlipDrawer } from "../../features/markets/BetSlipDrawer";
+import { PoolAnalytics } from "../../features/markets/PoolAnalytics";
+import { PoolDetails } from "../../features/markets/PoolDetails";
+import { fetchUiLiveBetsForPool, fetchUiPoolById } from "../../features/markets/api";
+import { USE_MARKET_LAYOUT_V2 } from "../../features/markets/flags";
+import { formatCurrency } from "../../features/markets/utils/format";
+// v2 Markets detail page: maps v1 pool/outcome totals into the new UI components.
 const MarketDetailPage = () => {
     const { marketId } = useParams();
     const queryClient = useQueryClient();
-    const { user } = useSession();
-    const [selectedOutcome, setSelectedOutcome] = useState(null);
-    const [stake, setStake] = useState("100");
-    const [previewData, setPreviewData] = useState(null);
-    const [statusMessage, setStatusMessage] = useState(null);
-    const [wagerError, setWagerError] = useState(null);
+    const [betSlipOpen, setBetSlipOpen] = useState(false);
+    const [selectedOutcomeId, setSelectedOutcomeId] = useState(null);
     useBettingRealtime(marketId);
-    const marketQuery = useQuery({
-        queryKey: ["market-detail", marketId],
-        queryFn: () => fetchMarketDetail(marketId),
+    const poolQuery = useQuery({
+        queryKey: ["markets:v2-pool", marketId],
+        queryFn: () => fetchUiPoolById(marketId),
         enabled: !!marketId
     });
-    const wagerHistoryQuery = useQuery({
-        queryKey: ["wager-history", marketId],
-        queryFn: () => fetchWagerHistory(marketId),
-        enabled: !!marketId && !!user?.id
+    const liveBetsQuery = useQuery({
+        queryKey: ["markets:v2-live-bets", marketId],
+        queryFn: () => fetchUiLiveBetsForPool(marketId),
+        enabled: !!marketId
     });
-    const previewMutation = useMutation({
-        mutationFn: ({ marketId, outcomeId, stake }) => previewWager(marketId, outcomeId, stake),
-        onMutate: () => setStatusMessage(null),
-        onSuccess: (result) => {
-            setPreviewData(result);
-            setStatusMessage(null);
-        },
-        onError: (error) => setStatusMessage(error.message)
-    });
-    const placeWagerMutation = useMutation({
-        mutationFn: ({ marketId, outcomeId, stake, idempotencyKey }) => placeWager(marketId, outcomeId, stake, idempotencyKey),
-        onMutate: () => {
-            setStatusMessage(null);
-            setWagerError(null);
-        },
+    const placeBetMutation = useMutation({
+        mutationFn: ({ poolId, outcomeId, stake }) => placeWager(poolId, outcomeId, stake, crypto.randomUUID()),
         onSuccess: () => {
-            setStatusMessage("Wager placed successfully.");
-            queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
-            queryClient.invalidateQueries({ queryKey: ["wager-history", marketId] });
-            queryClient.invalidateQueries({ queryKey: ["market-detail", marketId] });
-            setPreviewData(null);
-        },
-        onError: (error) => setWagerError(error.message)
+            queryClient.invalidateQueries({ queryKey: ["markets:v2-pool", marketId] });
+            queryClient.invalidateQueries({ queryKey: ["markets:v2-live-bets", marketId] });
+            setBetSlipOpen(false);
+        }
     });
-    const market = marketQuery.data?.market;
-    const outcomes = marketQuery.data?.outcomes ?? [];
-    const selectedOutcomeDetail = useMemo(() => outcomes.find((o) => o.id === selectedOutcome), [outcomes, selectedOutcome]);
-    const handlePreview = () => {
-        if (!marketId || !selectedOutcome) {
-            setStatusMessage("Select an outcome.");
-            return;
-        }
-        const amount = Number(stake);
-        if (Number.isNaN(amount) || amount <= 0) {
-            setStatusMessage("Enter a valid stake.");
-            return;
-        }
-        previewMutation.mutate({
-            marketId,
-            outcomeId: selectedOutcome,
-            stake: amount
-        });
-    };
-    const handlePlaceWager = () => {
-        if (!marketId || !selectedOutcome) {
-            setWagerError("Select an outcome first.");
-            return;
-        }
-        const amount = Number(stake);
-        if (Number.isNaN(amount) || amount <= 0) {
-            setWagerError("Enter a valid stake.");
-            return;
-        }
-        placeWagerMutation.mutate({
-            marketId,
-            outcomeId: selectedOutcome,
-            stake: amount,
-            idempotencyKey: crypto.randomUUID()
-        });
-    };
+    const pool = poolQuery.data ?? null;
     if (!marketId) {
         return _jsx("p", { className: "text-white/70", children: "Market not found." });
     }
-    return (_jsxs("div", { className: "space-y-8", children: [_jsxs("header", { className: "flex flex-wrap items-start justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm uppercase tracking-widest text-white/60", children: "Market" }), _jsx("h1", { className: "text-3xl font-semibold", children: market?.name ?? "Loading" }), _jsx("p", { className: "text-white/60", children: market?.event?.title }), _jsx("p", { className: "text-sm text-white/50", children: market?.description })] }), _jsxs("div", { className: "rounded-3xl border border-white/10 bg-black/30 px-6 py-4 text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Total Pool" }), _jsxs("p", { className: "text-2xl font-semibold", children: ["\u0189", market?.total_pool.toLocaleString() ?? "—"] })] })] }), _jsxs("section", { className: "grid gap-8 lg:grid-cols-[2fr,1fr]", children: [_jsxs("div", { className: "space-y-4", children: [_jsx("div", { className: "grid gap-4 sm:grid-cols-2", children: outcomes.map((outcome) => (_jsxs("button", { onClick: () => {
-                                        setSelectedOutcome(outcome.id);
-                                        setPreviewData(null);
-                                        setStatusMessage(null);
-                                    }, className: `rounded-3xl border px-5 py-4 text-left transition hover:bg-white/10 ${selectedOutcome === outcome.id
-                                        ? "border-brand bg-brand/20"
-                                        : "border-white/10 bg-white/5"}`, children: [_jsx("p", { className: "text-lg font-semibold", children: outcome.label }), _jsxs("p", { className: "text-sm text-white/60", children: ["Pool \u0189", outcome.pool.toFixed(0)] })] }, outcome.id))) }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsx("h2", { className: "text-xl font-semibold", children: "My Wagers" }), _jsxs("div", { className: "mt-4 space-y-3", children: [wagerHistoryQuery.isLoading && (_jsx("p", { className: "text-sm text-white/60", children: "Loading wager history\u2026" })), wagerHistoryQuery.data?.map((wager) => (_jsxs("article", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm", children: [_jsxs("p", { className: "font-semibold", children: ["\u0189", wager.stake.toFixed(2), " on ", wager.outcome_label] }), _jsxs("p", { className: "text-xs text-white/60", children: ["Odds ", wager.effective_odds.toFixed(2), " \u00B7", " ", new Date(wager.created_at).toLocaleString()] }), _jsx("p", { className: `text-xs uppercase ${statusColor(wager.status)}`, children: wager.status })] }, wager.id))), wagerHistoryQuery.data && wagerHistoryQuery.data.length === 0 && (_jsx("p", { className: "text-sm text-white/60", children: "No wagers yet \u2014 select an outcome and place a bet." }))] })] })] }), _jsxs("aside", { className: "rounded-3xl border border-white/10 bg-black/40 p-6 shadow-2xl shadow-black/30", children: [_jsx("h2", { className: "text-xl font-semibold", children: "Bet Slip" }), _jsx("p", { className: "mt-2 text-sm text-white/60", children: "Select an outcome to preview odds & payout." }), statusMessage && (_jsx("p", { className: "mt-2 text-sm text-brand", children: statusMessage })), wagerError && (_jsx("p", { className: "mt-2 text-sm text-red-400", children: wagerError })), _jsxs("form", { className: "mt-6 space-y-4", onSubmit: (event) => event.preventDefault(), children: [_jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Stake" }), _jsx("input", { type: "number", placeholder: "100", value: stake, onChange: (event) => setStake(event.target.value), className: "mt-2 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white focus:border-brand focus:outline-none" })] }), _jsxs("div", { className: "grid grid-cols-2 gap-3 text-sm", children: [_jsx(Stat, { label: "Baseline", value: formatOdds(previewData?.baselineOdds) }), _jsx(Stat, { label: "Effective", value: formatOdds(previewData?.effectiveOdds) }), _jsx(Stat, { label: "Price Impact", value: previewData
-                                                    ? `${(previewData.priceImpact * 100).toFixed(2)}%`
-                                                    : "—" }), _jsx(Stat, { label: "Payout", value: previewData ? `Ɖ${previewData.estimatedPayout.toFixed(2)}` : "—" })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { type: "button", className: "flex-1 rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold uppercase tracking-widest text-white", onClick: handlePreview, disabled: !selectedOutcome || previewMutation.isPending, children: previewMutation.isPending ? "Previewing…" : "Preview" }), _jsx("button", { type: "button", className: "flex-1 rounded-2xl bg-brand py-3 text-center text-base font-semibold uppercase tracking-widest text-black disabled:opacity-40", onClick: handlePlaceWager, disabled: !selectedOutcome || placeWagerMutation.isPending, children: placeWagerMutation.isPending ? "Placing…" : "Place Wager" })] }), selectedOutcomeDetail && (_jsxs("p", { className: "text-xs text-white/50", children: ["You selected ", selectedOutcomeDetail.label] }))] })] })] })] }));
-};
-const Stat = ({ label, value }) => (_jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 p-4", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: label }), _jsx("p", { className: "mt-1 text-lg font-semibold", children: value })] }));
-const formatOdds = (value) => {
-    if (value === null || value === undefined || Number.isNaN(value))
-        return "—";
-    return value.toFixed(2);
-};
-const statusColor = (status) => {
-    if (status === "won")
-        return "text-green-400";
-    if (status === "lost")
-        return "text-red-400";
-    return "text-white/60";
-};
-const fetchWagerHistory = async (marketId) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user)
-        return [];
-    const { data, error } = await supabase
-        .from("wagers")
-        .select("id, stake, status, effective_odds, created_at, outcome:outcomes(label)")
-        .eq("user_id", user.id)
-        .eq("market_id", marketId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-    if (error)
-        throw error;
-    return (data?.map((wager) => ({
-        id: wager.id,
-        stake: Number(wager.stake),
-        status: wager.status,
-        effective_odds: Number(wager.effective_odds),
-        created_at: wager.created_at,
-        outcome_label: Array.isArray(wager.outcome)
-            ? wager.outcome[0]?.label ?? "Unknown"
-            : wager.outcome?.label ?? "Unknown"
-    })) ?? []);
+    if (poolQuery.isLoading) {
+        return _jsx("p", { className: "text-sm text-neutral-400", children: "Loading market\u2026" });
+    }
+    if (!pool) {
+        return _jsx("p", { className: "text-sm text-neutral-400", children: "Pool not available." });
+    }
+    const handleOutcomeSelect = (outcomeId) => {
+        setSelectedOutcomeId(outcomeId);
+    };
+    const handleOpenBetSlip = (poolId, outcomeId) => {
+        setSelectedOutcomeId(outcomeId);
+        setBetSlipOpen(true);
+    };
+    const headerContent = USE_MARKET_LAYOUT_V2 ? (_jsxs("header", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Market" }), _jsx("h1", { className: "mt-2 text-3xl font-semibold text-white", children: pool.title }), _jsx("p", { className: "text-sm text-white/60", children: pool.timeRemainingLabel }), _jsxs("p", { className: "text-xs text-white/40", children: ["Updated ", pool.lastUpdatedLabel] })] })) : (_jsxs("header", { className: "flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Pool" }), _jsx("h1", { className: "text-3xl font-semibold text-white", children: pool.title }), _jsx("p", { className: "text-sm text-white/60", children: pool.timeRemainingLabel })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Total Pool" }), _jsx("p", { className: "text-2xl font-semibold text-white", children: formatCurrency(pool.totalStake) }), _jsxs("p", { className: "text-xs text-white/50", children: ["Rake ", pool.rakePercent.toFixed(1), "%"] })] })] }));
+    return (_jsxs("div", { className: "space-y-8", children: [headerContent, _jsxs("section", { className: "flex flex-col gap-6", children: [_jsx(PoolDetails, { pool: pool, liveBets: liveBetsQuery.data ?? [], onOutcomeSelect: handleOutcomeSelect, onOpenBetSlip: handleOpenBetSlip }), _jsx(PoolAnalytics, { pool: pool, liveBets: liveBetsQuery.data ?? [] })] }), _jsx(BetSlipDrawer, { isOpen: betSlipOpen, pool: pool, outcomes: pool.outcomes, selectedOutcomeId: selectedOutcomeId, onClose: () => setBetSlipOpen(false), onSelectOutcome: handleOutcomeSelect, onPlaceBet: ({ poolId, outcomeId, stake }) => placeBetMutation.mutate({ poolId, outcomeId, stake }) })] }));
 };
 export default MarketDetailPage;

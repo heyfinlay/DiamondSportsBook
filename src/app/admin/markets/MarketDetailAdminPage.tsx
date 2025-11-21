@@ -22,6 +22,7 @@ import {
   type WalletActivityRow
 } from "@domains/betting/api/marketAdminApi";
 import { useToast } from "@app/components/ToastProvider";
+import { currencySymbol } from "@lib/currency";
 
 const tabs = [
   { key: "overview", label: "Overview" },
@@ -113,7 +114,7 @@ const MarketDetailAdminPage = () => {
         </div>
         <div className="rounded-3xl border border-white/10 bg-black/30 px-6 py-4 text-right">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Handle</p>
-          <p className="text-2xl font-semibold">Ɖ{totalHandle.toLocaleString()}</p>
+          <p className="text-2xl font-semibold">{`${currencySymbol}${totalHandle.toLocaleString()}`}</p>
           <p className="text-xs text-white/60">Status: {market.status}</p>
         </div>
       </header>
@@ -213,10 +214,10 @@ const OverviewTab = ({
   return (
     <section className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
-        <KpiCard label="Handle" value={`Ɖ${totalHandle.toLocaleString()}`} />
+        <KpiCard label="Handle" value={`${currencySymbol}${totalHandle.toLocaleString()}`} />
         <KpiCard label="Total Wagers" value={totalWagers.toString()} />
         <KpiCard label="Pending Wagers" value={pendingWagers.toString()} />
-        <KpiCard label="Net Rake" value={`Ɖ${totalRake.toFixed(2)}`} />
+        <KpiCard label="Net Rake" value={`${currencySymbol}${totalRake.toFixed(2)}`} />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {pools.map((pool) => (
@@ -226,7 +227,7 @@ const OverviewTab = ({
                 <p className="text-xs uppercase tracking-[0.3em] text-white/50">{pool.status}</p>
                 <h3 className="text-lg font-semibold text-white">{pool.name}</h3>
               </div>
-              <p className="text-sm text-white/60">Ɖ{pool.total_pool.toLocaleString()}</p>
+              <p className="text-sm text-white/60">{`${currencySymbol}${pool.total_pool.toLocaleString()}`}</p>
             </header>
             <p className="mt-2 text-xs text-white/60">{pool.description}</p>
             <p className="mt-2 text-xs text-white/40">Rake {(pool.rake_percent * 100).toFixed(1)}%</p>
@@ -408,7 +409,7 @@ const PoolManager = ({ pool, onRefresh }: { pool: MarketPool; onRefresh: () => v
                       {outcome.label}
                     </div>
                   </td>
-                  <td>Ɖ{outcome.pool.toFixed(2)}</td>
+                  <td>{`${currencySymbol}${outcome.pool.toFixed(2)}`}</td>
                   <td>{share.toFixed(1)}%</td>
                   <td>{implied}</td>
                   <td>
@@ -459,9 +460,9 @@ const PoolManager = ({ pool, onRefresh }: { pool: MarketPool; onRefresh: () => v
       {previewData && (
         <div className="mt-4 rounded-2xl border border-white/10 bg-black/50 p-4 text-sm text-white/80">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Settlement Preview</p>
-          <p>Handle Ɖ{formatPreviewValue(previewData.handle)}</p>
-          <p>Rake Ɖ{formatPreviewValue(previewData.rake_amount)}</p>
-          <p>Distribution Ɖ{formatPreviewValue(previewData.distribution_pool)}</p>
+          <p>Handle {`${currencySymbol}${formatPreviewValue(previewData.handle)}`}</p>
+          <p>Rake {`${currencySymbol}${formatPreviewValue(previewData.rake_amount)}`}</p>
+          <p>Distribution {`${currencySymbol}${formatPreviewValue(previewData.distribution_pool)}`}</p>
         </div>
       )}
     </article>
@@ -490,9 +491,9 @@ const WalletTab = ({
   return (
     <section className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
-        <KpiCard label="Handle" value={`Ɖ${totalHandle.toLocaleString()}`} />
+        <KpiCard label="Handle" value={`${currencySymbol}${totalHandle.toLocaleString()}`} />
         <KpiCard label="Pending Wagers" value={pendingWagers.toString()} />
-        <KpiCard label="Net Rake" value={`Ɖ${totalRake.toFixed(2)}`} />
+        <KpiCard label="Net Rake" value={`${currencySymbol}${totalRake.toFixed(2)}`} />
       </div>
       <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -519,7 +520,10 @@ const WalletTab = ({
               <article key={row.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
                 <p className="font-semibold">{row.kind}</p>
                 <p className="text-xs text-white/60">User {row.user_id.slice(0, 8)}…</p>
-                <p className="text-lg font-semibold">{row.amount >= 0 ? "+" : ""}Ɖ{row.amount.toFixed(2)}</p>
+                <p className="text-lg font-semibold">
+                  {row.amount >= 0 ? "+" : ""}
+                  {`${currencySymbol}${row.amount.toFixed(2)}`}
+                </p>
               </article>
             ))}
           </div>
@@ -580,7 +584,7 @@ const ParticipantsTab = ({
                   <td className="py-2">{wager.user_name ?? wager.user_id.slice(0, 8)}</td>
                   <td>{wager.pool_name}</td>
                   <td>{wager.outcome_label}</td>
-                  <td>Ɖ{wager.stake.toFixed(2)}</td>
+                  <td>{`${currencySymbol}${wager.stake.toFixed(2)}`}</td>
                   <td>{wager.status}</td>
                   <td>{new Date(wager.created_at).toLocaleString()}</td>
                 </tr>
@@ -727,7 +731,7 @@ const PoolConfigModal = ({
                 <span className="text-white/40">Status:</span> {pool.status}
               </p>
               <p className="text-white/60">
-                <span className="text-white/40">Total Pool:</span> Ɖ{pool.total_pool.toLocaleString()}
+                <span className="text-white/40">Total Pool:</span> {`${currencySymbol}${pool.total_pool.toLocaleString()}`}
               </p>
               <p className="text-white/60">
                 <span className="text-white/40">Rake:</span> {(pool.rake_percent * 100).toFixed(1)}%

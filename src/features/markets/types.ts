@@ -4,6 +4,7 @@ export interface Outcome {
   id: string;
   teamName: string;
   driverName: string;
+  teamColor?: string;
   marketShare: number; // 0–1
   baselineOdds: number; // e.g. 3.6 => x3.6
   numBets: number;
@@ -29,6 +30,7 @@ export interface LiveBet {
   outcomeId: string;
   teamName: string;
   driverName?: string;
+  teamColor?: string;
   amount: number;
   placedAt: string; // ISO timestamp
   oddsAtPlacement: number;

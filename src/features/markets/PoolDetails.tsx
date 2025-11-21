@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { TrendPill } from "./components/TrendPill";
 import {
-  formatDiamonds,
+  formatCurrency,
   formatOdds,
   formatPercent,
   impliedProbabilityFromOdds
@@ -29,12 +29,7 @@ const statusClasses: Record<PoolStatus, string> = {
   settled: "bg-indigo-500/10 text-indigo-200 border-indigo-500/40"
 };
 
-export function PoolDetails({
-  pool,
-  liveBets: _liveBets,
-  onOutcomeSelect,
-  onOpenBetSlip
-}: PoolDetailsProps) {
+export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetailsProps) {
   const [selectedOutcomeId, setSelectedOutcomeId] = useState<string | null>(null);
 
   const favouriteOutcomeId = useMemo(() => {
@@ -70,18 +65,21 @@ export function PoolDetails({
         </div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-white/50">Pool Size</p>
-          <p className="mt-1 text-lg font-semibold">Ɖ{formatDiamonds(pool.totalStake)}</p>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-white/50">Bets</p>
-          <p className="mt-1 text-lg font-semibold">{pool.totalBets.toLocaleString("en-US")}</p>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.25em] text-white/50">Rake</p>
-          <p className="mt-1 text-lg font-semibold">{formatPercent(pool.rakePercent / 100)}</p>
+      <div className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Pool Stats</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-white/50">Pool Size</p>
+            <p className="mt-1 text-lg font-semibold">{formatCurrency(pool.totalStake)}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-white/50">Total Bets</p>
+            <p className="mt-1 text-lg font-semibold">{pool.totalBets.toLocaleString("en-US")}</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-white/50">Rake</p>
+            <p className="mt-1 text-lg font-semibold">{formatPercent(pool.rakePercent / 100)}</p>
+          </div>
         </div>
       </div>
 
@@ -91,6 +89,9 @@ export function PoolDetails({
           const sharePercent = Math.max(outcome.marketShare * 100, 0);
           const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
           const isFavourite = favouriteOutcomeId === outcome.id;
+          const accentStyle = outcome.teamColor
+            ? { borderLeftColor: outcome.teamColor, borderLeftWidth: "4px" }
+            : undefined;
 
           return (
             <button
@@ -102,10 +103,18 @@ export function PoolDetails({
                   ? "border-emerald-400/60 bg-white/10"
                   : "border-white/10 bg-white/5 hover:border-white/20"
               }`}
+              style={accentStyle}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
+                    {outcome.teamColor && (
+                      <span
+                        className="h-2.5 w-2.5 rounded-full border border-white/20"
+                        style={{ backgroundColor: outcome.teamColor }}
+                        aria-hidden="true"
+                      />
+                    )}
                     <p className="text-base font-semibold">{outcome.teamName}</p>
                     {isFavourite && (
                       <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
@@ -132,8 +141,8 @@ export function PoolDetails({
                   <p className="font-semibold">{outcome.numBets.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-white/40">Staked</p>
-                  <p className="font-semibold">Ɖ{formatDiamonds(outcome.diamondsStaked)}</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/40">Amount Bet</p>
+                  <p className="font-semibold">{formatCurrency(outcome.diamondsStaked)}</p>
                 </div>
               </div>
 

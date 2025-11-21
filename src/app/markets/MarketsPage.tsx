@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import { fetchUiPools } from "../../features/markets/api";
+import { currencyLabel } from "@lib/currency";
 
 const MarketsPage = () => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ const MarketsPage = () => {
   });
 
   const pools = poolsQuery.data ?? [];
+  const capitalizedCurrencyLabel = currencyLabel.charAt(0).toUpperCase() + currencyLabel.slice(1);
 
   return (
     <div className="flex flex-col gap-8">
@@ -20,16 +22,16 @@ const MarketsPage = () => {
         <span className="text-xs uppercase tracking-[0.35em] text-[#9FF7D3]">Diamond Sports Book</span>
         <h1 className="text-4xl font-semibold text-white sm:text-5xl">Live Markets</h1>
         <p className="max-w-2xl text-sm text-neutral-300 sm:text-base">
-          All DBGP betting uses a live parimutuel system. Your payout depends on the total Diamonds staked across each outcome.
+          All DBGP betting uses a live parimutuel system. Your payout depends on the total {currencyLabel} bet across each outcome.
         </p>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#9FF7D3]">How It Works</p>
           <p className="mt-2 text-sm text-neutral-300">
-            Markets update in real time as Diamonds move across the pool. Odds and payout estimates will rise or fall until the market closes and locks your final price.
+            Markets update in real time as {currencyLabel} move across the pool. Odds and payout estimates will rise or fall until the market closes and locks your final price.
           </p>
         </div>
         <p className="text-[0.7rem] uppercase tracking-[0.3em] text-neutral-500">
-          All wagers settled in Diamonds (in-game currency). Parody product; no real-world stakes.
+          All wagers settle in {capitalizedCurrencyLabel} (in-game currency). Parody product; no real-world stakes.
         </p>
       </header>
 

@@ -9,13 +9,22 @@ import {
 import type { Session, User, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@lib/supabaseClient";
 
+type SessionActionResult = { error: AuthError | Error | null };
+
+interface SignUpParams {
+  email: string;
+  password: string;
+  username: string;
+  icNumber: string;
+}
+
 interface SessionContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<SessionActionResult>;
+  signUp: (params: SignUpParams) => Promise<SessionActionResult>;
+  signOut: () => Promise<SessionActionResult>;
 }
 
 const SessionContext = createContext<SessionContextValue>({
@@ -52,7 +61,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<SessionActionResult> => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -60,15 +69,49 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp = async ({
+    email,
+    password,
+    username,
+    icNumber
+  }: SignUpParams): Promise<SessionActionResult> => {
+    const trimmedUsername = username.trim();
+    const trimmedIc = icNumber.trim();
+
+    const { data, error } = await supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        data: {
+          username: trimmedUsername,
+          ic_number: trimmedIc
+        }
+      }
     });
-    return { error };
+
+    if (error) {
+      return { error };
+    }
+
+    const userId = data.user?.id;
+    if (userId) {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(
+          { id: userId, username: trimmedUsername, ic_phone_number: trimmedIc },
+          { onConflict: "id" }
+        );
+
+      if (profileError) {
+        console.error(profileError);
+        return { error: new Error(profileError.message) };
+      }
+    }
+
+    return { error: null };
   };
 
-  const signOut = async () => {
+  const signOut = async (): Promise<SessionActionResult> => {
     const { error } = await supabase.auth.signOut();
     return { error };
   };

@@ -48,6 +48,33 @@ export interface EventWithMarkets {
         }>;
     }>;
 }
+export interface PoolPricingRow {
+    pool_id: string;
+    pool_name: string;
+    pool_status: string;
+    rake_percent: number | null;
+    close_time: string | null;
+    updated_at: string | null;
+    total_stake: number | null;
+    total_bets: number | null;
+    last_activity_at: string | null;
+    outcome_id: string;
+    outcome_label: string;
+    driver_name: string | null;
+    outcome_stake: number | null;
+    outcome_bets: number | null;
+    baseline_odds: number | null;
+}
+export interface RecentPoolBet {
+    id: string;
+    pool_id: string;
+    outcome_id: string;
+    team_name: string;
+    driver_name: string | null;
+    amount: number;
+    odds_at_placement: number | null;
+    created_at: string;
+}
 export declare const fetchMarkets: () => Promise<{
     id: any;
     name: any;
@@ -61,6 +88,9 @@ export declare const fetchMarkets: () => Promise<{
     };
 }[]>;
 export declare const fetchMarketEvents: () => Promise<EventWithMarkets[]>;
+export declare const fetchPoolsPricing: () => Promise<PoolPricingRow[]>;
+export declare const fetchPoolPricing: (poolId: string) => Promise<PoolPricingRow[]>;
+export declare const fetchRecentPoolBets: (poolId: string, limit?: number) => Promise<RecentPoolBet[]>;
 export declare const fetchArchivedMarketEvents: () => Promise<EventWithMarkets[]>;
 export interface OutcomeQuote {
     id: string;

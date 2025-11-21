@@ -10,6 +10,7 @@ import {
 } from "@domains/wallet/api/walletApi";
 import { useSession } from "@lib/auth/SessionProvider";
 import { useToast } from "@app/components/ToastProvider";
+import { currencySymbol } from "@lib/currency";
 
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
@@ -146,7 +147,7 @@ const AdminDashboard = () => {
             >
               <div>
                 <p className="text-sm font-semibold">
-                  Ɖ{deposit.amount.toFixed(2)}
+                  {`${currencySymbol}${deposit.amount.toFixed(2)}`}
                 </p>
                 <p className="text-xs text-white/60">
                   {deposit.display_name ||
@@ -187,7 +188,7 @@ const AdminDashboard = () => {
             >
               <div>
                 <p className="text-sm font-semibold">
-                  Ɖ{withdrawal.amount.toFixed(2)}
+                  {`${currencySymbol}${withdrawal.amount.toFixed(2)}`}
                 </p>
                 <p className="text-xs text-white/60">
                   {withdrawal.display_name ||
@@ -258,7 +259,7 @@ const AdminDashboard = () => {
               </div>
               <p className="text-lg font-semibold">
                 {entry.amount > 0 ? "+" : ""}
-                Ɖ{entry.amount.toFixed(2)}
+                {`${currencySymbol}${entry.amount.toFixed(2)}`}
               </p>
             </article>
           ))}

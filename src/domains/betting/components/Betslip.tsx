@@ -6,6 +6,7 @@ import { useWalletStore } from "@domains/wallet/store/walletStore";
 import { useWalletBalance } from "@domains/wallet/hooks/useWalletBalance";
 import { useSession } from "@lib/auth/SessionProvider";
 import { useToast } from "@app/components/ToastProvider";
+import { currencyLabel, currencySymbol } from "@lib/currency";
 
 const QUICK_STAKES = [
   { label: "100", value: 100 },
@@ -94,7 +95,7 @@ export const Betslip = () => {
       toast({
         variant: "success",
         title: "Wager placed",
-        description: "Your Diamonds are locked in. Good luck!"
+        description: `Your ${currencyLabel} are locked in. Good luck!`
       });
       queryClient.invalidateQueries({ queryKey: ["wallet-balance"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["wallet-transactions"], exact: false });
@@ -152,12 +153,12 @@ export const Betslip = () => {
   const statusMessage = useMemo(() => {
     if (!hasSelection) return "Select an outcome to begin.";
     if (!user) return "Sign in to place wagers.";
-    if (betslip.stake > balance) return "Insufficient Diamonds.";
+    if (betslip.stake > balance) return `Insufficient ${currencyLabel}.`;
     if (betslip.stake < betslip.minStake) {
-      return `Minimum stake Ɖ${betslip.minStake.toLocaleString()}`;
+      return `Minimum stake ${currencySymbol}${betslip.minStake.toLocaleString()}`;
     }
     if (betslip.maxStake > 0 && betslip.stake > betslip.maxStake) {
-      return `Maximum stake Ɖ${betslip.maxStake.toLocaleString()}`;
+      return `Maximum stake ${currencySymbol}${betslip.maxStake.toLocaleString()}`;
     }
     return null;
   }, [
@@ -229,7 +230,7 @@ export const Betslip = () => {
                   } disabled:opacity-40`}
                   onClick={() => handleQuickStake(stakeOption.value)}
                 >
-                  Ɖ{stakeOption.label}
+                  {`${currencySymbol}${stakeOption.label}`}
                 </button>
               ))}
             </div>
@@ -242,7 +243,7 @@ export const Betslip = () => {
             <input
               type="text"
               inputMode="numeric"
-              placeholder="Enter Diamonds"
+              placeholder={`Enter ${currencyLabel}`}
               className="mt-2 w-full rounded-2xl border border-white/20 bg-black/40 px-4 py-3 text-white placeholder:text-white/30 focus:border-brand focus:outline-none"
               value={inputValue}
               onChange={(event) => handleStakeInput(event.target.value)}
@@ -255,7 +256,7 @@ export const Betslip = () => {
               Balance
             </span>
             <span className="text-lg font-semibold">
-              Ɖ{formatDiamonds(balance)}
+              {`${currencySymbol}${formatDiamonds(balance)}`}
             </span>
           </div>
 
@@ -271,7 +272,7 @@ export const Betslip = () => {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                 <p className="text-xs uppercase tracking-[0.3em] text-white/50">Est. Payout</p>
                 <p className="mt-1 text-lg font-semibold">
-                  Ɖ{betslip.preview.estimatedPayout.toFixed(2)}
+                  {`${currencySymbol}${betslip.preview.estimatedPayout.toFixed(2)}`}
                 </p>
               </div>
             </div>
