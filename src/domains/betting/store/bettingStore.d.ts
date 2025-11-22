@@ -19,6 +19,9 @@ interface BetslipState {
     eventTitle: string | null;
     outcomeId: string | null;
     outcomeLabel: string | null;
+    teamName: string | null;
+    driverName: string | null;
+    teamColor: string | null;
     minStake: number;
     maxStake: number;
     stake: number;

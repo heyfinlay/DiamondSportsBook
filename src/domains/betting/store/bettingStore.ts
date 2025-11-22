@@ -24,6 +24,9 @@ interface BetslipState {
   eventTitle: string | null;
   outcomeId: string | null;
   outcomeLabel: string | null;
+  teamName: string | null;
+  driverName: string | null;
+  teamColor: string | null;
   minStake: number;
   maxStake: number;
   stake: number;
@@ -56,6 +59,9 @@ const initialBetslipState: BetslipState = {
   eventTitle: null,
   outcomeId: null,
   outcomeLabel: null,
+  teamName: null,
+  driverName: null,
+  teamColor: null,
   minStake: 0,
   maxStake: 0,
   stake: 0,

@@ -6,6 +6,7 @@ import { useWalletStore } from "@domains/wallet/store/walletStore";
 import { useWalletBalance } from "@domains/wallet/hooks/useWalletBalance";
 import { useSession } from "@lib/auth/SessionProvider";
 import { useToast } from "@app/components/ToastProvider";
+import { buildOutcomeIdentity } from "@domains/betting/utils/outcomeDisplay";
 
 const QUICK_STAKES = [
   { label: "100", value: 100 },
@@ -50,6 +51,21 @@ export const Betslip = () => {
   }, [betslip.stake]);
 
   const hasSelection = Boolean(betslip.outcomeId && betslip.marketId && betslip.isOpen);
+  const outcomeIdentity = useMemo(() => {
+    if (!betslip.outcomeId) return null;
+    return buildOutcomeIdentity({
+      teamName: betslip.teamName,
+      driverName: betslip.driverName,
+      fallbackLabel: betslip.outcomeLabel ?? "Selected outcome",
+      teamColor: betslip.teamColor
+    });
+  }, [
+    betslip.driverName,
+    betslip.outcomeId,
+    betslip.outcomeLabel,
+    betslip.teamColor,
+    betslip.teamName
+  ]);
 
   const {
     mutate: requestPreview,
@@ -200,8 +216,23 @@ export const Betslip = () => {
             {betslip.eventTitle && (
               <p className="text-xs text-white/50">{betslip.eventTitle}</p>
             )}
-            {betslip.outcomeLabel && (
-              <p className="text-sm text-white/70">{betslip.outcomeLabel}</p>
+            {betslip.outcomeId && outcomeIdentity && (
+              <div className="mt-3 flex items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: outcomeIdentity.color }}
+                />
+                <div className="flex flex-col leading-tight">
+                  <span className="text-sm font-semibold text-white">
+                    {outcomeIdentity.primaryLabel}
+                  </span>
+                  {outcomeIdentity.secondaryLabel && (
+                    <span className="text-xs text-white/60">
+                      {outcomeIdentity.secondaryLabel}
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <button

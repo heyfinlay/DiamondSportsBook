@@ -14,6 +14,15 @@ export interface MarketSummary {
         takeout: number;
     };
 }
+export interface MarketOutcome {
+    id: string;
+    label: string;
+    pool: number;
+    color: string | null;
+    driverName: string;
+    teamName: string | null;
+    teamColor: string | null;
+}
 export interface EventWithMarkets {
     id: string;
     title: string;
@@ -40,12 +49,7 @@ export interface EventWithMarkets {
         min_stake: number;
         max_stake: number;
         close_time: string | null;
-        outcomes: Array<{
-            id: string;
-            label: string;
-            pool: number;
-            color: string | null;
-        }>;
+        outcomes: MarketOutcome[];
     }>;
 }
 export declare const fetchMarkets: () => Promise<{
@@ -62,11 +66,7 @@ export declare const fetchMarkets: () => Promise<{
 }[]>;
 export declare const fetchMarketEvents: () => Promise<EventWithMarkets[]>;
 export declare const fetchArchivedMarketEvents: () => Promise<EventWithMarkets[]>;
-export interface OutcomeQuote {
-    id: string;
-    label: string;
-    pool: number;
-}
+export type OutcomeQuote = MarketOutcome;
 export declare const fetchMarketDetail: (marketId: string) => Promise<{
     market: {
         id: any;
@@ -80,12 +80,7 @@ export declare const fetchMarketDetail: (marketId: string) => Promise<{
         max_stake: number;
         event: any;
     };
-    outcomes: {
-        id: any;
-        label: any;
-        pool: number;
-        color: any;
-    }[];
+    outcomes: MarketOutcome[];
 }>;
 export declare const previewWager: (marketId: string, outcomeId: string, stake: number) => Promise<{
     baselineOdds: number;
@@ -110,5 +105,8 @@ export interface UserWager {
     market_name: string;
     market_type: string;
     event_title: string;
+    outcome_driver_name: string;
+    outcome_team_name: string | null;
+    outcome_team_color: string | null;
 }
 export declare const fetchUserWagers: (userId: string, limit?: number) => Promise<UserWager[]>;

@@ -4,6 +4,7 @@ import { fetchMarketEvents, type EventWithMarkets } from "@domains/betting/api/b
 import { useBettingStore } from "@domains/betting/store/bettingStore";
 import { useToast } from "@app/components/ToastProvider";
 import { previewWager } from "@domains/betting/api/bettingApi";
+import { buildOutcomeIdentity } from "@domains/betting/utils/outcomeDisplay";
 
 const DEFAULT_STAKE = 100;
 
@@ -62,12 +63,16 @@ const MarketsPage = () => {
     const initialStake = market.min_stake
       ? Math.max(market.min_stake, DEFAULT_STAKE)
       : DEFAULT_STAKE;
+    const teamColor = outcome.teamColor ?? outcome.color ?? null;
     openBetslip({
       marketId: market.id,
       marketName: market.name,
       eventTitle: event.title,
       outcomeId: outcome.id,
       outcomeLabel: outcome.label,
+      teamName: outcome.teamName ?? null,
+      driverName: outcome.driverName ?? null,
+      teamColor,
       minStake: market.min_stake,
       maxStake: market.max_stake,
       stake: initialStake
@@ -164,17 +169,38 @@ const MarketsPage = () => {
                       {market.total_pool.toLocaleString()}
                     </p>
                     <ul className="flex flex-wrap gap-2 text-xs text-neutral-300">
-                      {market.outcomes.slice(0, 4).map((outcome) => (
-                        <li key={outcome.id}>
-                          <button
-                            type="button"
-                            className="rounded-full border border-white/10 px-3 py-1 transition hover:border-brand hover:text-brand"
-                            onClick={() => handleOutcomeSelect(event, market, outcome)}
-                          >
-                            {outcome.label}
-                          </button>
-                        </li>
-                      ))}
+                      {market.outcomes.slice(0, 4).map((outcome) => {
+                        const identity = buildOutcomeIdentity({
+                          teamName: outcome.teamName ?? null,
+                          driverName: outcome.driverName,
+                          fallbackLabel: outcome.label,
+                          teamColor: outcome.teamColor ?? outcome.color ?? null
+                        });
+                        return (
+                          <li key={outcome.id} className="min-w-[10rem]">
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-2xl border border-white/10 px-3 py-2 text-left transition hover:border-brand hover:text-white"
+                              onClick={() => handleOutcomeSelect(event, market, outcome)}
+                            >
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: identity.color }}
+                              />
+                              <span className="flex flex-col text-xs">
+                                <span className="font-semibold text-white">
+                                  {identity.primaryLabel}
+                                </span>
+                                {identity.secondaryLabel && (
+                                  <span className="text-[11px] text-neutral-400">
+                                    {identity.secondaryLabel}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
                       {market.outcomes.length > 4 && (
                         <li className="rounded-full border border-white/10 px-3 py-1 text-neutral-500">
                           +{market.outcomes.length - 4} more

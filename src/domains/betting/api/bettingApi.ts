@@ -17,6 +17,16 @@ export interface MarketSummary {
   };
 }
 
+export interface MarketOutcome {
+  id: string;
+  label: string;
+  pool: number;
+  color: string | null;
+  driverName: string;
+  teamName: string | null;
+  teamColor: string | null;
+}
+
 export interface EventWithMarkets {
   id: string;
   title: string;
@@ -44,12 +54,7 @@ export interface EventWithMarkets {
     min_stake: number;
     max_stake: number;
     close_time: string | null;
-    outcomes: Array<{
-      id: string;
-      label: string;
-      pool: number;
-      color: string | null;
-    }>;
+    outcomes: MarketOutcome[];
   }>;
 }
 
@@ -109,7 +114,13 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
           id,
           label,
           pool,
-          color
+          color,
+          metadata,
+          driver:timing_drivers(
+            name,
+            team_name,
+            primary_color
+          )
         )
       )
     `
@@ -158,13 +169,7 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
             min_stake: Number(market.min_stake ?? 0),
             max_stake: Number(market.max_stake ?? 0),
             close_time: market.close_time ?? null,
-            outcomes:
-              market.outcomes?.map((outcome) => ({
-                id: outcome.id,
-                label: outcome.label,
-                pool: Number(outcome.pool ?? 0),
-                color: outcome.color ?? null
-              })) ?? []
+            outcomes: (market.outcomes ?? []).map((outcome: any) => mapOutcomeRow(outcome))
           })) ?? []
     })) ?? []
   );
@@ -205,7 +210,13 @@ export const fetchArchivedMarketEvents = async (): Promise<EventWithMarkets[]> =
           id,
           label,
           pool,
-          color
+          color,
+          metadata,
+          driver:timing_drivers(
+            name,
+            team_name,
+            primary_color
+          )
         )
       )
     `
@@ -255,13 +266,7 @@ export const fetchArchivedMarketEvents = async (): Promise<EventWithMarkets[]> =
           min_stake: Number(market.min_stake ?? 0),
           max_stake: Number(market.max_stake ?? 0),
           close_time: market.close_time ?? null,
-          outcomes:
-            market.outcomes?.map((outcome: any) => ({
-              id: outcome.id,
-              label: outcome.label,
-              pool: Number(outcome.pool ?? 0),
-              color: outcome.color ?? null
-            })) ?? []
+          outcomes: (market.outcomes ?? []).map((outcome: any) => mapOutcomeRow(outcome))
         })) ?? []
     });
   }
@@ -269,11 +274,7 @@ export const fetchArchivedMarketEvents = async (): Promise<EventWithMarkets[]> =
   return results;
 };
 
-export interface OutcomeQuote {
-  id: string;
-  label: string;
-  pool: number;
-}
+export type OutcomeQuote = MarketOutcome;
 
 export const fetchMarketDetail = async (marketId: string) => {
   const { data, error } = await supabase
@@ -291,7 +292,20 @@ export const fetchMarketDetail = async (marketId: string) => {
 
   const { data: outcomes, error: outcomesError } = await supabase
     .from("outcomes")
-    .select("id, label, pool, color")
+    .select(
+      `
+      id,
+      label,
+      pool,
+      color,
+      metadata,
+      driver:timing_drivers(
+        name,
+        team_name,
+        primary_color
+      )
+    `
+    )
     .eq("market_id", marketId);
 
   if (outcomesError) throw outcomesError;
@@ -309,13 +323,7 @@ export const fetchMarketDetail = async (marketId: string) => {
       max_stake: Number(data.max_stake),
       event: extractSingle(data.event)
     },
-    outcomes:
-      outcomes?.map((outcome) => ({
-        id: outcome.id,
-        label: outcome.label,
-        pool: Number(outcome.pool),
-        color: outcome.color ?? null
-      })) ?? []
+    outcomes: (outcomes ?? []).map((outcome: any) => mapOutcomeRow(outcome))
   };
 };
 
@@ -368,6 +376,9 @@ export interface UserWager {
   market_name: string;
   market_type: string;
   event_title: string;
+  outcome_driver_name: string;
+  outcome_team_name: string | null;
+  outcome_team_color: string | null;
 }
 
 export const fetchUserWagers = async (userId: string, limit = 20): Promise<UserWager[]> => {
@@ -384,7 +395,17 @@ export const fetchUserWagers = async (userId: string, limit = 20): Promise<UserW
       estimated_payout,
       settled_payout,
       created_at,
-      outcome:outcomes(id, label),
+      outcome:outcomes(
+        id,
+        label,
+        color,
+        metadata,
+        driver:timing_drivers(
+          name,
+          team_name,
+          primary_color
+        )
+      ),
       market:markets(
         id,
         name,
@@ -405,6 +426,15 @@ export const fetchUserWagers = async (userId: string, limit = 20): Promise<UserW
       const market = Array.isArray(row.market) ? row.market[0] : row.market;
       const event = market?.event;
       const normalizedEvent = Array.isArray(event) ? event[0] : event;
+      const outcomeRow = outcome as RawOutcomeRow | null;
+      const participant = outcomeRow
+        ? deriveParticipantDetails({
+            label: outcomeRow.label ?? "Unknown outcome",
+            metadata: outcomeRow.metadata ?? {},
+            color: outcomeRow.color ?? null,
+            driver: outcomeRow.driver ?? null
+          })
+        : { driverName: "Unknown outcome", teamName: null, teamColor: null };
       return {
         id: row.id,
         market_id: row.market_id,
@@ -416,6 +446,9 @@ export const fetchUserWagers = async (userId: string, limit = 20): Promise<UserW
         created_at: row.created_at,
         outcome_id: outcome?.id ?? "",
         outcome_label: outcome?.label ?? "Unknown outcome",
+        outcome_driver_name: participant.driverName,
+        outcome_team_name: participant.teamName,
+        outcome_team_color: participant.teamColor,
         market_name: market?.name ?? "Unknown market",
         market_type: market?.pool_type ?? "",
         event_id: normalizedEvent?.id ?? "",
@@ -431,4 +464,70 @@ const extractSingle = (value: any) => {
     return value[0] ?? null;
   }
   return value;
+};
+
+type RawDriverRow = {
+  name?: string | null;
+  team_name?: string | null;
+  primary_color?: string | null;
+};
+
+type RawOutcomeRow = {
+  id: string;
+  label: string;
+  pool?: number | null;
+  color?: string | null;
+  metadata?: Record<string, unknown> | null;
+  driver?: RawDriverRow | RawDriverRow[] | null;
+};
+
+const mapOutcomeRow = (outcome: RawOutcomeRow): MarketOutcome => {
+  const participant = deriveParticipantDetails(outcome);
+  return {
+    id: outcome.id,
+    label: outcome.label,
+    pool: Number(outcome.pool ?? 0),
+    color: outcome.color ?? null,
+    driverName: participant.driverName,
+    teamName: participant.teamName,
+    teamColor: participant.teamColor
+  };
+};
+
+const deriveParticipantDetails = (
+  outcome: Pick<RawOutcomeRow, "label" | "metadata" | "color" | "driver">
+) => {
+  const driverRow = extractSingle(outcome.driver) as RawDriverRow | null;
+  const metadata = (outcome.metadata ?? {}) as Record<string, unknown>;
+
+  const metadataDriver =
+    getString(metadata.driver_name) ?? getString(metadata.driverName);
+  const metadataTeam =
+    getString(metadata.team_name) ?? getString(metadata.teamName);
+  const metadataColor =
+    getString(metadata.team_color) ??
+    getString(metadata.teamColor) ??
+    getString(metadata.primary_color) ??
+    getString(metadata.primaryColor);
+
+  const driverName =
+    getString(driverRow?.name) ?? metadataDriver ?? outcome.label;
+  const teamName = metadataTeam ?? getString(driverRow?.team_name) ?? null;
+  const teamColor =
+    metadataColor ??
+    getString(driverRow?.primary_color) ??
+    getString(outcome.color) ??
+    null;
+
+  return {
+    driverName,
+    teamName,
+    teamColor
+  };
+};
+
+const getString = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
 };

@@ -9,6 +9,7 @@ import {
 import { useBettingRealtime } from "@domains/betting/hooks/useBettingRealtime";
 import { useSession } from "@lib/auth/SessionProvider";
 import { supabase } from "@lib/supabaseClient";
+import { buildOutcomeIdentity } from "@domains/betting/utils/outcomeDisplay";
 
 const MarketDetailPage = () => {
   const { marketId } = useParams();
@@ -84,6 +85,15 @@ const MarketDetailPage = () => {
     () => outcomes.find((o) => o.id === selectedOutcome),
     [outcomes, selectedOutcome]
   );
+  const selectedOutcomeIdentity = useMemo(() => {
+    if (!selectedOutcomeDetail) return null;
+    return buildOutcomeIdentity({
+      teamName: selectedOutcomeDetail.teamName ?? null,
+      driverName: selectedOutcomeDetail.driverName,
+      fallbackLabel: selectedOutcomeDetail.label,
+      teamColor: selectedOutcomeDetail.teamColor ?? selectedOutcomeDetail.color ?? null
+    });
+  }, [selectedOutcomeDetail]);
 
   const handlePreview = () => {
     if (!marketId || !selectedOutcome) {
@@ -148,26 +158,47 @@ const MarketDetailPage = () => {
       <section className="grid gap-8 lg:grid-cols-[2fr,1fr]">
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            {outcomes.map((outcome) => (
-              <button
-                key={outcome.id}
-                onClick={() => {
-                  setSelectedOutcome(outcome.id);
-                  setPreviewData(null);
-                  setStatusMessage(null);
-                }}
-                className={`rounded-3xl border px-5 py-4 text-left transition hover:bg-white/10 ${
-                  selectedOutcome === outcome.id
-                    ? "border-brand bg-brand/20"
-                    : "border-white/10 bg-white/5"
-                }`}
-              >
-                <p className="text-lg font-semibold">{outcome.label}</p>
-                <p className="text-sm text-white/60">
-                  Pool Ɖ{outcome.pool.toFixed(0)}
-                </p>
-              </button>
-            ))}
+            {outcomes.map((outcome) => {
+              const identity = buildOutcomeIdentity({
+                teamName: outcome.teamName ?? null,
+                driverName: outcome.driverName,
+                fallbackLabel: outcome.label,
+                teamColor: outcome.teamColor ?? outcome.color ?? null
+              });
+              return (
+                <button
+                  key={outcome.id}
+                  onClick={() => {
+                    setSelectedOutcome(outcome.id);
+                    setPreviewData(null);
+                    setStatusMessage(null);
+                  }}
+                  className={`rounded-3xl border px-5 py-4 text-left transition hover:bg-white/10 ${
+                    selectedOutcome === outcome.id
+                      ? "border-brand bg-brand/20"
+                      : "border-white/10 bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: identity.color }}
+                    />
+                    <div className="flex flex-col">
+                      <p className="text-lg font-semibold text-white">
+                        {identity.primaryLabel}
+                      </p>
+                      {identity.secondaryLabel && (
+                        <p className="text-sm text-white/60">{identity.secondaryLabel}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-white/60">
+                    Pool Ɖ{outcome.pool.toFixed(0)}
+                  </p>
+                </button>
+              );
+            })}
           </div>
 
           <section className="rounded-3xl border border-white/10 bg-black/30 p-6">
@@ -176,23 +207,49 @@ const MarketDetailPage = () => {
               {wagerHistoryQuery.isLoading && (
                 <p className="text-sm text-white/60">Loading wager history…</p>
               )}
-              {wagerHistoryQuery.data?.map((wager) => (
-                <article
-                  key={wager.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
-                >
-                  <p className="font-semibold">
-                    Ɖ{wager.stake.toFixed(2)} on {wager.outcome_label}
-                  </p>
-                  <p className="text-xs text-white/60">
-                    Odds {wager.effective_odds.toFixed(2)} ·{" "}
-                    {new Date(wager.created_at).toLocaleString()}
-                  </p>
-                  <p className={`text-xs uppercase ${statusColor(wager.status)}`}>
-                    {wager.status}
-                  </p>
-                </article>
-              ))}
+              {wagerHistoryQuery.data?.map((wager) => {
+                const identity = buildOutcomeIdentity({
+                  teamName: wager.outcome_team_name,
+                  driverName: wager.outcome_driver_name,
+                  fallbackLabel: wager.outcome_label,
+                  teamColor: wager.outcome_team_color
+                });
+                return (
+                  <article
+                    key={wager.id}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: identity.color }}
+                        />
+                        <div className="flex flex-col">
+                          <p className="font-semibold text-white">
+                            {identity.primaryLabel}
+                          </p>
+                          {identity.secondaryLabel && (
+                            <p className="text-xs text-white/60">
+                              {identity.secondaryLabel}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <p className={`text-xs uppercase ${statusColor(wager.status)}`}>
+                        {wager.status}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      Ɖ{wager.stake.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-white/60">
+                      Odds {wager.effective_odds.toFixed(2)} ·{" "}
+                      {new Date(wager.created_at).toLocaleString()}
+                    </p>
+                  </article>
+                );
+              })}
               {wagerHistoryQuery.data && wagerHistoryQuery.data.length === 0 && (
                 <p className="text-sm text-white/60">
                   No wagers yet — select an outcome and place a bet.
@@ -264,10 +321,19 @@ const MarketDetailPage = () => {
                 {placeWagerMutation.isPending ? "Placing…" : "Place Wager"}
               </button>
             </div>
-            {selectedOutcomeDetail && (
-              <p className="text-xs text-white/50">
-                You selected {selectedOutcomeDetail.label}
-              </p>
+            {selectedOutcomeIdentity && (
+              <div className="flex items-center gap-2 text-xs text-white/60">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: selectedOutcomeIdentity.color }}
+                />
+                <span>
+                  You selected {selectedOutcomeIdentity.primaryLabel}
+                  {selectedOutcomeIdentity.secondaryLabel
+                    ? ` · ${selectedOutcomeIdentity.secondaryLabel}`
+                    : ""}
+                </span>
+              </div>
             )}
           </form>
         </aside>
@@ -309,6 +375,9 @@ interface WagerHistoryItem {
   effective_odds: number;
   created_at: string;
   outcome_label: string;
+  outcome_driver_name: string;
+  outcome_team_name: string | null;
+  outcome_team_color: string | null;
 }
 
 const fetchWagerHistory = async (marketId: string): Promise<WagerHistoryItem[]> => {
@@ -319,7 +388,25 @@ const fetchWagerHistory = async (marketId: string): Promise<WagerHistoryItem[]> 
 
   const { data, error } = await supabase
     .from("wagers")
-    .select("id, stake, status, effective_odds, created_at, outcome:outcomes(label)")
+    .select(
+      `
+      id,
+      stake,
+      status,
+      effective_odds,
+      created_at,
+      outcome:outcomes(
+        label,
+        color,
+        metadata,
+        driver:timing_drivers(
+          name,
+          team_name,
+          primary_color
+        )
+      )
+    `
+    )
     .eq("user_id", user.id)
     .eq("market_id", marketId)
     .order("created_at", { ascending: false })
@@ -328,16 +415,44 @@ const fetchWagerHistory = async (marketId: string): Promise<WagerHistoryItem[]> 
   if (error) throw error;
 
   return (
-    data?.map((wager) => ({
-      id: wager.id,
-      stake: Number(wager.stake),
-      status: wager.status,
-      effective_odds: Number(wager.effective_odds),
-      created_at: wager.created_at,
-      outcome_label: Array.isArray(wager.outcome)
-        ? wager.outcome[0]?.label ?? "Unknown"
-        : (wager.outcome as { label?: string } | null)?.label ?? "Unknown"
-    })) ?? []
+    data?.map((wager) => {
+      const outcome = Array.isArray(wager.outcome) ? wager.outcome[0] : wager.outcome;
+      const metadata = (outcome?.metadata ?? {}) as Record<string, any>;
+      const driver = outcome?.driver
+        ? (Array.isArray(outcome.driver) ? outcome.driver[0] : outcome.driver)
+        : null;
+      const driverName =
+        driver?.name ??
+        metadata.driver_name ??
+        metadata.driverName ??
+        outcome?.label ??
+        "Unknown";
+      const teamName =
+        metadata.team_name ??
+        metadata.teamName ??
+        driver?.team_name ??
+        null;
+      const teamColor =
+        metadata.team_color ??
+        metadata.teamColor ??
+        metadata.primary_color ??
+        metadata.primaryColor ??
+        driver?.primary_color ??
+        outcome?.color ??
+        null;
+
+      return {
+        id: wager.id,
+        stake: Number(wager.stake),
+        status: wager.status,
+        effective_odds: Number(wager.effective_odds),
+        created_at: wager.created_at,
+        outcome_label: outcome?.label ?? "Unknown",
+        outcome_driver_name: driverName,
+        outcome_team_name: teamName ?? null,
+        outcome_team_color: teamColor ?? null
+      };
+    }) ?? []
   );
 };
 
