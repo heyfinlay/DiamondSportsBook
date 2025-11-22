@@ -7,6 +7,7 @@ import {
   impliedProbabilityFromOdds
 } from "./utils/format";
 import type { Outcome, Pool } from "./types";
+import { OutcomeIdentity } from "./components/OutcomeIdentity";
 
 interface BetSlipDrawerProps {
   isOpen: boolean;
@@ -158,10 +159,14 @@ export function BetSlipDrawer({
                   </div>
                   <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/70 p-3">
                     <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Selected Outcome</p>
-                    <p className="mt-1 text-base font-semibold leading-tight text-white">
-                      {selectedOutcome.teamName}
-                    </p>
-                    <p className="text-xs text-slate-400">{selectedOutcome.driverName}</p>
+                    <OutcomeIdentity
+                      teamName={selectedOutcome.teamName}
+                      driverName={selectedOutcome.driverName}
+                      teamColor={selectedOutcome.teamColor}
+                      className="mt-1"
+                      primaryClassName="text-base font-semibold leading-tight text-white"
+                      secondaryClassName="text-xs text-slate-400"
+                    />
                     <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-slate-200">
                       <div>
                         <p className="text-xs text-slate-400">Odds</p>
@@ -198,19 +203,13 @@ export function BetSlipDrawer({
                           }`}
                           onClick={() => onSelectOutcome(outcome.id)}
                         >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              {outcome.teamColor && (
-                                <span
-                                  className="h-2 w-2 rounded-full border border-white/20"
-                                  style={{ backgroundColor: outcome.teamColor }}
-                                  aria-hidden="true"
-                                />
-                              )}
-                              <p className="font-semibold">{outcome.teamName}</p>
-                            </div>
-                            <p className="text-[11px] text-slate-400">{outcome.driverName}</p>
-                          </div>
+                          <OutcomeIdentity
+                            teamName={outcome.teamName}
+                            driverName={outcome.driverName}
+                            teamColor={outcome.teamColor}
+                            primaryClassName="font-semibold"
+                            secondaryClassName="text-[11px] text-slate-400"
+                          />
                           <div className="text-right">
                             <p className="text-xs text-slate-400">Odds</p>
                             <p className="font-semibold text-white">

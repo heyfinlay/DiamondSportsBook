@@ -1,5 +1,6 @@
 import React from "react";
 import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
+import { OutcomeIdentity } from "./components/OutcomeIdentity";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 import type { Pool, PoolStatus } from "./types";
@@ -92,17 +93,14 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                     <div key={outcome.id} className="rounded-xl border border-white/5 bg-white/5 px-3 py-2">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            {outcome.teamColor && (
-                              <span
-                                className="h-2 w-2 rounded-full border border-white/20"
-                                style={{ backgroundColor: outcome.teamColor }}
-                                aria-hidden="true"
-                              />
-                            )}
-                            <p className="truncate text-sm font-semibold text-white">{outcome.teamName}</p>
-                          </div>
-                          <p className="text-xs text-white/50">{outcome.driverName}</p>
+                          <OutcomeIdentity
+                            teamName={outcome.teamName}
+                            driverName={outcome.driverName}
+                            teamColor={outcome.teamColor}
+                            className="items-start"
+                            primaryClassName="truncate text-sm font-semibold text-white"
+                            secondaryClassName="text-xs text-white/50"
+                          />
 
                           <div className="mt-2 h-2 w-full rounded-full bg-white/10">
                             <div

@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
+import { OutcomeIdentity } from "./components/OutcomeIdentity";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 const statusLabel = {
@@ -25,7 +26,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }) {
                                     const isFavourite = outcome.id === favouriteId;
                                     const isBestPayout = outcome.id === bestPayoutId;
                                     const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
-                                    return (_jsx("div", { className: "rounded-xl border border-white/5 bg-white/5 px-3 py-2", children: _jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "flex-1 overflow-hidden", children: [_jsxs("div", { className: "flex items-center gap-2", children: [outcome.teamColor && (_jsx("span", { className: "h-2 w-2 rounded-full border border-white/20", style: { backgroundColor: outcome.teamColor }, "aria-hidden": "true" })), _jsx("p", { className: "truncate text-sm font-semibold text-white", children: outcome.teamName })] }), _jsx("p", { className: "text-xs text-white/50", children: outcome.driverName }), _jsx("div", { className: "mt-2 h-2 w-full rounded-full bg-white/10", children: _jsx("div", { className: "h-full rounded-full", style: {
+                                    return (_jsx("div", { className: "rounded-xl border border-white/5 bg-white/5 px-3 py-2", children: _jsxs("div", { className: "flex items-start justify-between gap-3", children: [_jsxs("div", { className: "flex-1 overflow-hidden", children: [_jsx(OutcomeIdentity, { teamName: outcome.teamName, driverName: outcome.driverName, teamColor: outcome.teamColor, className: "items-start", primaryClassName: "truncate text-sm font-semibold text-white", secondaryClassName: "text-xs text-white/50" }), _jsx("div", { className: "mt-2 h-2 w-full rounded-full bg-white/10", children: _jsx("div", { className: "h-full rounded-full", style: {
                                                                     width: fillWidth,
                                                                     backgroundColor: outcome.teamColor ?? "#38bdf8"
                                                                 } }) }), _jsxs("p", { className: "mt-1 text-[11px] text-white/50", children: ["Total Bet: ", formatCurrency(outcome.diamondsStaked)] })] }), _jsxs("div", { className: "flex flex-col items-end gap-1 text-right", children: [_jsx("p", { className: "text-sm font-semibold text-white", children: formatOdds(outcome.baselineOdds) }), _jsxs("p", { className: "text-xs text-white/60", children: ["Share: ", formatPercent(outcome.marketShare)] }), _jsx(OutcomeStatusPills, { isFavourite: isFavourite, isBestPayout: isBestPayout })] })] }) }, outcome.id));

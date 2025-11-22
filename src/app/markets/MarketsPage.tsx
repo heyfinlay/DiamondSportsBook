@@ -8,6 +8,8 @@ import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 import { marketKeys } from "@lib/query/keys";
 
+// This screen keeps the v2 grid layout from commit 9208937 while relying on the team metadata-backed pricing feeds from 23eeb03.
+
 const MarketsPage = () => {
   const navigate = useNavigate();
   const { user, loading: sessionLoading } = useSession();

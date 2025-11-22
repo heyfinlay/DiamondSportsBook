@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
+import { OutcomeIdentity } from "./components/OutcomeIdentity";
 import {
   formatCurrency,
   formatOdds,
@@ -106,21 +107,13 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetail
               style={accentStyle}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    {outcome.teamColor && (
-                      <span
-                        className="h-2.5 w-2.5 rounded-full border border-white/20"
-                        style={{ backgroundColor: outcome.teamColor }}
-                        aria-hidden="true"
-                      />
-                    )}
-                    <p className="text-base font-semibold">{outcome.teamName}</p>
-                  </div>
-                  {outcome.driverName && (
-                    <p className="text-sm text-white/60">{outcome.driverName}</p>
-                  )}
-                </div>
+                <OutcomeIdentity
+                  teamName={outcome.teamName}
+                  driverName={outcome.driverName}
+                  teamColor={outcome.teamColor}
+                  primaryClassName="text-base font-semibold"
+                  secondaryClassName="text-sm text-white/60"
+                />
                 <OutcomeStatusPills isFavourite={isFavourite} isBestPayout={isBestPayout} />
               </div>
 

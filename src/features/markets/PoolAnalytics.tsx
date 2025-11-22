@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { OutcomeStatusPills } from "./components/OutcomeStatusPills";
+import { OutcomeIdentity } from "./components/OutcomeIdentity";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import type { LiveBet, Pool } from "./types";
 import { USE_MARKET_LAYOUT_V2 } from "./flags";
@@ -126,8 +127,14 @@ function LiveBetsAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                   {getInitials(bet.teamName)}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">{bet.teamName}</p>
-                  {bet.driverName && <p className="text-xs text-white/60">{bet.driverName}</p>}
+                  <OutcomeIdentity
+                    teamName={bet.teamName}
+                    driverName={bet.driverName}
+                    teamColor={bet.teamColor}
+                    hideSwatch
+                    primaryClassName="text-sm font-semibold text-white"
+                    secondaryClassName="text-xs text-white/60"
+                  />
                   <p className="text-[11px] text-white/40">
                     Bet #{bet.id.slice(0, 8)} · {formatRelativeTime(bet.placedAt)}
                   </p>
@@ -252,16 +259,20 @@ function LegacyPoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                   key={outcome.id}
                   className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:flex-row md:items-center md:justify-between"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-black/30 px-3 py-2">
-                      <p className="text-sm font-semibold text-white">{outcome.teamName}</p>
-                      <p className="text-xs text-white/60">{outcome.driverName}</p>
+                    <div className="flex items-center gap-3">
+                      <OutcomeIdentity
+                        teamName={outcome.teamName}
+                        driverName={outcome.driverName}
+                        teamColor={outcome.teamColor}
+                        className="rounded-xl bg-black/30 px-3 py-2"
+                        primaryClassName="text-sm font-semibold text-white"
+                        secondaryClassName="text-xs text-white/60"
+                      />
+                      <OutcomeStatusPills
+                        isFavourite={isFavourite}
+                        isBestPayout={isBestPayout}
+                      />
                     </div>
-                    <OutcomeStatusPills
-                      isFavourite={isFavourite}
-                      isBestPayout={isBestPayout}
-                    />
-                  </div>
 
                   <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 md:grid-cols-4">
                     <div>
@@ -350,13 +361,24 @@ function LegacyPoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                 className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-sm font-semibold text-white">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
+                    style={
+                      bet.teamColor
+                        ? { backgroundColor: bet.teamColor, color: "#050505" }
+                        : { backgroundColor: "rgba(15,23,42,0.6)" }
+                    }
+                  >
                     {getInitials(bet.teamName)}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{bet.teamName}</p>
-                    {bet.driverName && <p className="text-xs text-white/60">{bet.driverName}</p>}
-                  </div>
+                  <OutcomeIdentity
+                    teamName={bet.teamName}
+                    driverName={bet.driverName}
+                    teamColor={bet.teamColor}
+                    hideSwatch
+                    primaryClassName="text-sm font-semibold text-white"
+                    secondaryClassName="text-xs text-white/60"
+                  />
                 </div>
 
                 <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 sm:grid-cols-3">

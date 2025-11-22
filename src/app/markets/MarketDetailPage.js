@@ -15,6 +15,7 @@ import { AuthCtaBanner } from "./components/AuthCtaBanner";
 import { marketKeys, walletKeys } from "@lib/query/keys";
 import { refetchAfterBet } from "@lib/query/refetchers";
 import { LIVE_BETS_POLL_INTERVAL_MS, MARKET_POLL_INTERVAL_MS } from "@config/realtime";
+// Layout baseline restored from commit 9208937 (markets UI v2) while the team metadata/API work from 23eeb03 stays intact.
 // v2 Markets detail page: maps v1 pool/outcome totals into the new UI components.
 const MarketDetailPage = () => {
     const { marketId } = useParams();
