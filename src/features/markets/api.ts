@@ -25,7 +25,7 @@ export const fetchUiLiveBetsForPool = async (poolId: string): Promise<LiveBet[]>
     outcomeId: bet.outcome_id,
     teamName: bet.team_name,
     driverName: bet.driver_name ?? undefined,
-     teamColor: getTeamColor(bet.team_name),
+    teamColor: bet.team_color ?? getTeamColor(bet.team_name),
     amount: Number(bet.amount ?? 0),
     placedAt: bet.created_at,
     oddsAtPlacement: Number(bet.odds_at_placement ?? 0)

@@ -3,6 +3,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useSession } from "@lib/auth/SessionProvider";
 import { supabase } from "@lib/supabaseClient";
 
+const siteUrl =
+  (import.meta?.env?.VITE_SITE_URL as string | undefined) ||
+  (typeof process !== "undefined"
+    ? (process.env?.NEXT_PUBLIC_SITE_URL as string | undefined)
+    : undefined) ||
+  "http://localhost:3000";
+
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -257,7 +264,7 @@ export function LoginPage() {
       const { error: discordError } = await supabase.auth.signInWithOAuth({
         provider: "discord",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${siteUrl}/auth/callback`
         }
       });
       if (discordError) {

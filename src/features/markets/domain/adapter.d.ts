@@ -21,10 +21,12 @@ export interface MarketDetailData {
         label: string;
         pool?: number | null;
         driverName?: string | null;
+        teamName?: string | null;
         teamColor?: string | null;
         numBets?: number;
         baselineOdds?: number | null;
         color?: string | null;
+        metadata?: Record<string, unknown> | null;
     }>;
 }
 export declare const mapEventWithMarketsToUiPools: (events: EventWithMarkets[]) => Pool[];
