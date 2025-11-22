@@ -249,11 +249,7 @@ function LegacyPoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
           </div>
 
           <div className="space-y-3">
-            {sortedOutcomes.map((outcome, index) => {
-              if (index === 0) {
-                // eslint-disable-next-line no-console
-                console.log("PoolAnalytics outcome sample", outcome);
-              }
+            {sortedOutcomes.map((outcome) => {
               const sharePercent = Math.max(outcome.marketShare * 100, 0);
               const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
               const isFavourite = favouriteId === outcome.id;

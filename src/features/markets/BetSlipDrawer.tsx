@@ -190,11 +190,7 @@ export function BetSlipDrawer({
                 <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                   <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Choose Outcome</p>
                   <div className="mt-2 max-h-52 space-y-2 overflow-y-auto pr-1">
-                    {outcomes.map((outcome, index) => {
-                      if (index === 0) {
-                        // eslint-disable-next-line no-console
-                        console.log("BetSlipDrawer outcome sample", outcome);
-                      }
+                    {outcomes.map((outcome) => {
                       const isActive = outcome.id === selectedOutcomeId;
                       return (
                         <button
