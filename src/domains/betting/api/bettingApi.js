@@ -225,7 +225,7 @@ export const fetchMarketDetail = async (marketId) => {
         throw error;
     const { data: outcomes, error: outcomesError } = await supabase
         .from("outcomes")
-        .select("id, label, pool, color")
+        .select("id, label, pool, color, metadata")
         .eq("market_id", marketId);
     if (outcomesError)
         throw outcomesError;

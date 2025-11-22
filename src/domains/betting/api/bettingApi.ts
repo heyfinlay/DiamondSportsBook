@@ -65,6 +65,8 @@ export interface PoolPricingRow {
   last_activity_at: string | null;
   outcome_id: string;
   outcome_label: string;
+  team_name: string | null;
+  team_color: string | null;
   driver_name: string | null;
   outcome_stake: number | null;
   outcome_bets: number | null;
@@ -76,6 +78,7 @@ export interface RecentPoolBet {
   pool_id: string;
   outcome_id: string;
   team_name: string;
+  team_color: string | null;
   driver_name: string | null;
   amount: number;
   odds_at_placement: number | null;
@@ -344,7 +347,7 @@ export const fetchMarketDetail = async (marketId: string) => {
 
   const { data: outcomes, error: outcomesError } = await supabase
     .from("outcomes")
-    .select("id, label, pool, color")
+    .select("id, label, pool, color, metadata")
     .eq("market_id", marketId);
 
   if (outcomesError) throw outcomesError;

@@ -24,10 +24,12 @@ export interface MarketDetailData {
     label: string;
     pool?: number | null;
     driverName?: string | null;
+    teamName?: string | null;
     teamColor?: string | null;
     numBets?: number;
     baselineOdds?: number | null;
     color?: string | null;
+    metadata?: Record<string, unknown> | null;
   }>;
 }
 
@@ -85,15 +87,16 @@ const mapOutcomes = (
   outcomes.map((outcome) => {
     const staked = Number(outcome.pool ?? 0);
     const providedOdds = outcome.baselineOdds ?? null;
+    const teamName = outcome.teamName ?? outcome.label;
     const odds =
       typeof providedOdds === "number" && providedOdds > 0
         ? providedOdds
         : computeOdds(totalStake, staked, rakeFraction);
     return {
       id: outcome.id,
-      teamName: outcome.label,
+      teamName,
       driverName: outcome.driverName ?? outcome.label,
-      teamColor: outcome.teamColor ?? undefined,
+      teamColor: outcome.teamColor ?? getTeamColor(teamName),
       marketShare: totalStake > 0 ? staked / totalStake : 0,
       baselineOdds: odds,
       numBets: outcome.numBets ?? 0,
@@ -223,10 +226,11 @@ const groupPricingRows = (rows: PoolPricingRow[]) => {
 
     grouped.get(row.pool_id)!.outcomes.push({
       id: row.outcome_id,
-      label: row.outcome_label,
+      label: row.team_name ?? row.outcome_label,
+      teamName: row.team_name ?? row.outcome_label,
       pool: Number(row.outcome_stake ?? 0),
       driverName: row.driver_name ?? row.outcome_label,
-      teamColor: getTeamColor(row.outcome_label),
+      teamColor: row.team_color ?? getTeamColor(row.team_name ?? row.outcome_label),
       numBets: Number(row.outcome_bets ?? 0),
       baselineOdds: row.baseline_odds ? Number(row.baseline_odds) : null
     });
@@ -283,10 +287,28 @@ export const mapMarketDetailToUiPool = (detail: MarketDetailData | null): Pool |
   const totalStake = Number(market.total_pool ?? 0);
   const rakeFraction = Number(market.rake_percent ?? market.event?.takeout ?? 0);
   const enrichedOutcomes =
-    outcomes?.map((outcome: MarketDetailData["outcomes"][number] & { color?: string | null }) => ({
-      ...outcome,
-      teamColor: outcome.teamColor ?? outcome.color ?? getTeamColor(outcome.label)
-    })) ?? [];
+    outcomes?.map((outcome) => {
+      const { metadata, ...rest } = outcome as MarketDetailData["outcomes"][number] & {
+        metadata?: Record<string, unknown> | null;
+      };
+      const meta = (metadata ?? {}) as Record<string, string | undefined>;
+      const teamName = rest.teamName ?? meta["team_name"] ?? rest.label;
+      const driverName = rest.driverName ?? meta["driver_name"] ?? rest.label;
+      const derivedColor =
+        rest.teamColor ??
+        meta["team_color"] ??
+        (teamName ? getTeamColor(teamName) : undefined) ??
+        rest.color ??
+        undefined;
+
+      return {
+        ...rest,
+        label: teamName,
+        teamName,
+        driverName,
+        teamColor: derivedColor
+      };
+    }) ?? [];
 
   return buildPool({
     id: market.id,
