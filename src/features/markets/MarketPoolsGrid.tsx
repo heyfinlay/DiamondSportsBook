@@ -84,7 +84,8 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
               </div>
 
               <div className="flex flex-col gap-3">
-                {sorted.slice(0, 5).map((outcome) => {
+                {sorted.slice(0, 5).map((outcome, i) => {
+                  if (i === 0) console.log("ROW OUTCOME", outcome);
                   const sharePercent = Math.max(outcome.marketShare * 100, 0);
                   const isFavourite = outcome.id === favouriteId;
                   const isBestPayout = outcome.id === bestPayoutId;

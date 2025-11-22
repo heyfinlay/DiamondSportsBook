@@ -84,7 +84,8 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetail
       </div>
 
       <div className="flex flex-col gap-3">
-        {pool.outcomes.map((outcome) => {
+        {pool.outcomes.map((outcome, i) => {
+          if (i === 0) console.log("ROW OUTCOME", outcome);
           const isSelected = selectedOutcomeId === outcome.id;
           const sharePercent = Math.max(outcome.marketShare * 100, 0);
           const fillWidth = `${Math.min(sharePercent, 100).toFixed(1)}%`;
