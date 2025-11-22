@@ -51,7 +51,8 @@ export const fetchMarketEvents = async () => {
           id,
           label,
           pool,
-          color
+          color,
+          metadata
         )
       )
     `)
@@ -98,7 +99,8 @@ export const fetchMarketEvents = async () => {
                 id: outcome.id,
                 label: outcome.label,
                 pool: Number(outcome.pool ?? 0),
-                color: outcome.color ?? null
+                color: outcome.color ?? null,
+                metadata: outcome.metadata ?? null
             })) ?? []
         })) ?? []
     })) ?? []);

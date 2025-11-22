@@ -49,6 +49,7 @@ export interface EventWithMarkets {
       label: string;
       pool: number;
       color: string | null;
+      metadata?: Record<string, unknown> | null;
     }>;
   }>;
 }
@@ -141,7 +142,8 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
           id,
           label,
           pool,
-          color
+          color,
+          metadata
         )
       )
     `
@@ -195,7 +197,8 @@ export const fetchMarketEvents = async (): Promise<EventWithMarkets[]> => {
                 id: outcome.id,
                 label: outcome.label,
                 pool: Number(outcome.pool ?? 0),
-                color: outcome.color ?? null
+                color: outcome.color ?? null,
+                metadata: outcome.metadata ?? null
               })) ?? []
           })) ?? []
     })) ?? []

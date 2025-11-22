@@ -79,6 +79,12 @@ const computeOdds = (totalPool: number, outcomePool: number, rakeFraction: numbe
   return Number.isFinite(odds) ? odds : 0;
 };
 
+const getString = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+};
+
 const mapOutcomes = (
   totalStake: number,
   rakeFraction: number,
@@ -172,12 +178,28 @@ export const mapEventWithMarketsToUiPools = (events: EventWithMarkets[]): Pool[]
           totalBets: 0,
           rakeFraction,
           outcomes:
-            market.outcomes?.map((outcome) => ({
-              id: outcome.id,
-              label: outcome.label,
-              pool: outcome.pool ?? 0,
-              teamColor: getTeamColor(outcome.label)
-            })) ?? []
+            market.outcomes?.map((outcome) => {
+              const meta = (outcome.metadata ?? {}) as Record<string, string | undefined>;
+              const metaTeamName = getString(meta["team_name"]);
+              const metaDriverName = getString(meta["driver_name"]);
+              const metaColor = getString(meta["team_color"]);
+              const teamName = metaTeamName ?? null;
+              const driverName = metaDriverName ?? outcome.label;
+              const derivedColor =
+                metaColor ??
+                outcome.color ??
+                (teamName ? getTeamColor(teamName) : getTeamColor(outcome.label));
+
+              return {
+                id: outcome.id,
+                label: teamName ?? outcome.label,
+                pool: Number(outcome.pool ?? 0),
+                teamName,
+                driverName,
+                teamColor: derivedColor,
+                metadata: outcome.metadata ?? null
+              };
+            }) ?? []
         });
         pools.push(pool);
       });

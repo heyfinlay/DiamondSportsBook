@@ -45,6 +45,7 @@ export interface EventWithMarkets {
             label: string;
             pool: number;
             color: string | null;
+            metadata?: Record<string, unknown> | null;
         }>;
     }>;
 }

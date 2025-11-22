@@ -48,6 +48,12 @@ const computeOdds = (totalPool, outcomePool, rakeFraction) => {
     const odds = distributable / outcomePool;
     return Number.isFinite(odds) ? odds : 0;
 };
+const getString = (value) => {
+    if (typeof value !== "string")
+        return null;
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+};
 const mapOutcomes = (totalStake, rakeFraction, outcomes) => outcomes.map((outcome) => {
     const staked = Number(outcome.pool ?? 0);
     const providedOdds = outcome.baselineOdds ?? null;
@@ -104,12 +110,26 @@ export const mapEventWithMarketsToUiPools = (events) => {
                 activityAt: market.settled_at ?? undefined,
                 totalBets: 0,
                 rakeFraction,
-                outcomes: market.outcomes?.map((outcome) => ({
-                    id: outcome.id,
-                    label: outcome.label,
-                    pool: outcome.pool ?? 0,
-                    teamColor: getTeamColor(outcome.label)
-                })) ?? []
+                outcomes: market.outcomes?.map((outcome) => {
+                    const meta = (outcome.metadata ?? {});
+                    const metaTeamName = getString(meta["team_name"]);
+                    const metaDriverName = getString(meta["driver_name"]);
+                    const metaColor = getString(meta["team_color"]);
+                    const teamName = metaTeamName ?? null;
+                    const driverName = metaDriverName ?? outcome.label;
+                    const derivedColor = metaColor ??
+                        outcome.color ??
+                        (teamName ? getTeamColor(teamName) : getTeamColor(outcome.label));
+                    return {
+                        id: outcome.id,
+                        label: teamName ?? outcome.label,
+                        pool: Number(outcome.pool ?? 0),
+                        teamName,
+                        driverName,
+                        teamColor: derivedColor,
+                        metadata: outcome.metadata ?? null
+                    };
+                }) ?? []
             });
             pools.push(pool);
         });
