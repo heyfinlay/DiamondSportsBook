@@ -33,6 +33,7 @@ export function LoginPage() {
       : "/";
   const modeParam = useMemo(() => new URLSearchParams(location.search).get("mode"), [location.search]);
   const [isSignUp, setIsSignUp] = useState(modeParam === "signup");
+  const PROFILE_COMPLETION_GATING_ENABLED = false; // TEMP: disabled profile completion redirect to avoid RLS conflicts for super admins
 
   useEffect(() => {
     setIsSignUp(modeParam === "signup");
@@ -56,12 +57,17 @@ export function LoginPage() {
   const needsProfileCompletion = Boolean(
     user && (!user.user_metadata?.username || !user.user_metadata?.ic_number)
   );
+  const shouldForceProfileCompletion = PROFILE_COMPLETION_GATING_ENABLED && needsProfileCompletion;
 
   useEffect(() => {
-    if (user && !needsProfileCompletion) {
+    if (!PROFILE_COMPLETION_GATING_ENABLED) {
+      // TEMP: skip profile completion enforcement until flow is redesigned
+      return;
+    }
+    if (user && !shouldForceProfileCompletion) {
       navigate(from, { replace: true });
     }
-  }, [from, navigate, needsProfileCompletion, user]);
+  }, [PROFILE_COMPLETION_GATING_ENABLED, from, navigate, shouldForceProfileCompletion, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,7 +135,7 @@ export function LoginPage() {
     }
   }
 
-  if (user && needsProfileCompletion) {
+  if (PROFILE_COMPLETION_GATING_ENABLED && user && needsProfileCompletion) {
     const handleCompleteProfile = async (event: React.FormEvent) => {
       event.preventDefault();
       if (!user) return;
@@ -163,10 +169,8 @@ export function LoginPage() {
 
         const { error: profileError } = await supabase
           .from("profiles")
-          .upsert(
-            { id: user.id, username: trimmedUsername, ic_phone_number: trimmedIc },
-            { onConflict: "id" }
-          );
+          .update({ username: trimmedUsername, ic_phone_number: trimmedIc })
+          .eq("id", user.id);
 
         if (profileError) {
           setError(profileError.message);
