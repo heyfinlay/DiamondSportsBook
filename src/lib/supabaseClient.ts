@@ -1,9 +1,32 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const resolveEnv = (keys: string[]) => {
+  for (const key of keys) {
+    const value = import.meta.env[key as keyof ImportMetaEnv] as string | undefined;
+    if (value) return value;
+  }
+  return undefined;
+};
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+const supabaseUrl = resolveEnv(["VITE_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"]);
+const supabaseAnonKey = resolveEnv([
+  "VITE_SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+]);
+
+if (!supabaseUrl) {
+  throw new Error(
+    "Supabase URL is not defined. Add VITE_SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) to your env."
+  );
+}
+
+if (!supabaseAnonKey) {
+  throw new Error(
+    "Supabase anon key is not defined. Add VITE_SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) to your env."
+  );
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     params: {
       eventsPerSecond: 5
