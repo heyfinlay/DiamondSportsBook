@@ -133,6 +133,12 @@ const timingResultSchema = z.object({
 
 export type TimingResult = z.infer<typeof timingResultSchema>;
 
+const activeSessionSchema = z.object({
+  id: z.string()
+});
+
+export type ActiveTimingSession = z.infer<typeof activeSessionSchema>;
+
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
     .from("timing_sessions")
@@ -428,4 +434,18 @@ export const setActiveSession = async (sessionId: string) => {
   });
 
   if (error) throw error;
+};
+
+export const fetchActiveTimingSession = async (): Promise<ActiveTimingSession | null> => {
+  const { data, error } = await supabase
+    .from("timing_sessions")
+    .select("id")
+    .eq("is_active", true)
+    .order("starts_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") throw error;
+  if (!data) return null;
+  return activeSessionSchema.parse(data);
 };
