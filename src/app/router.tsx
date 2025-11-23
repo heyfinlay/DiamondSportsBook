@@ -14,6 +14,7 @@ import SettlementAuditPage, { PoolPayoutDetailPage } from "./admin/SettlementAud
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 import AuthCallbackPage from "./auth/AuthCallbackPage";
+import UnauthorizedPage from "./UnauthorizedPage";
 
 export const router: ReturnType<typeof createBrowserRouter> = createBrowserRouter([
   {
@@ -85,6 +86,10 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
       {
         path: "auth/callback",
         element: <AuthCallbackPage />
+      },
+      {
+        path: "unauthorized",
+        element: <UnauthorizedPage />
       }
     ]
   }

@@ -6,33 +6,51 @@ interface UserRole {
   role: string
 }
 
+interface RoleQueryResult {
+  roles: UserRole[]
+  profileRole: string | null
+}
+
 /**
  * Hook to check user permissions based on roles in the database
  */
 export function usePermissions() {
   const { user } = useSession()
 
-  const { data: roles = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery<RoleQueryResult>({
     queryKey: ['user-roles', user?.id],
     queryFn: async () => {
-      if (!user?.id) return []
+      if (!user?.id) return { roles: [], profileRole: null }
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
+      const [{ data: roleRows, error: roleError }, { data: profileRow, error: profileError }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', user.id),
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle()
+      ])
 
-      if (error) {
-        console.error('Error fetching user roles:', error)
-        return []
+      if (roleError) {
+        console.error('Error fetching user roles:', roleError)
       }
 
-      return data as UserRole[]
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile role:', profileError)
+      }
+
+      return {
+        roles: (roleRows as UserRole[]) ?? [],
+        profileRole: profileRow?.role ?? null
+      }
     },
     enabled: !!user?.id,
   })
 
-  const roleSet = new Set(roles.map((r) => r.role))
+  const roleSet = new Set<string>((data?.roles ?? []).map((r) => r.role))
+  if (data?.profileRole) {
+    roleSet.add(data.profileRole)
+  }
   const isSportsbookAdmin = roleSet.has('sportsbook_admin')
   const isBettingAdmin = roleSet.has('betting_admin') || isSportsbookAdmin
 

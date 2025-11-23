@@ -20,7 +20,8 @@ const ProtectedRoute = ({ requiredRoles }: ProtectedRouteProps) => {
 
   if (requiredRoles && requiredRoles.length > 0) {
     if (!hasAnyRole(...requiredRoles)) {
-      return <Navigate to="/login" replace />;
+      // Send authenticated users to a neutral page to avoid login loops when they lack access.
+      return <Navigate to="/unauthorized" replace />;
     }
   }
 
