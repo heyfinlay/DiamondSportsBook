@@ -14,7 +14,11 @@ const sessionStateSchema = z.object({
     race_started_at: z.string().nullable().optional(),
     pause_started_at: z.string().nullable().optional(),
     accumulated_pause_ms: z.number().nullable().optional(),
-    session_id: z.string().optional()
+    session_id: z.string().optional(),
+    starts_at: z.string().nullable().optional(),
+    ends_at: z.string().nullable().optional(),
+    ended_at: z.string().nullable().optional(),
+    archived_at: z.string().nullable().optional()
 });
 const driverStandingSchema = z.object({
     driver_id: z.string(),
@@ -72,6 +76,7 @@ const sessionSummarySchema = z.object({
     starts_at: z.string().nullable(),
     created_at: z.string(),
     archived_at: z.string().nullable().optional(),
+    is_active: z.boolean().optional(),
     session_state: z
         .object({
         session_id: z.string(),
@@ -107,7 +112,7 @@ const timingResultSchema = z.object({
 export const fetchSessionDetail = async (sessionId) => {
     const { data: sessionRow, error: sessionError } = await supabase
         .from("timing_sessions")
-        .select("id, name, track_name, laps_target, status")
+        .select("id, name, track_name, laps_target, status, starts_at, ends_at, ended_at, archived_at")
         .eq("id", sessionId)
         .single();
     if (sessionError)
@@ -140,6 +145,7 @@ export const fetchSessions = async () => {
         starts_at,
         created_at,
         archived_at,
+        is_active,
         session_state:timing_session_state(session_id, procedure_phase, flag_status, race_time_ms, is_timing, is_paused)
       `)
         .order("created_at", { ascending: false });
@@ -319,6 +325,15 @@ export const finishSession = async (sessionId) => {
         throw error;
     return fetchTimingResults(sessionId);
 };
+export const forceEndSession = async (payload) => {
+    const { error } = await supabase.rpc("timing_force_end_session", {
+        p_session_id: payload.sessionId,
+        p_status: payload.status ?? null,
+        p_reason: payload.reason ?? null
+    });
+    if (error)
+        throw error;
+};
 export const archiveSession = async (sessionId) => {
     const { error } = await supabase.rpc("timing_archive_session", {
         p_session_id: sessionId
@@ -328,6 +343,13 @@ export const archiveSession = async (sessionId) => {
 };
 export const restoreSession = async (sessionId) => {
     const { error } = await supabase.rpc("timing_restore_session", {
+        p_session_id: sessionId
+    });
+    if (error)
+        throw error;
+};
+export const setActiveSession = async (sessionId) => {
+    const { error } = await supabase.rpc("set_active_session", {
         p_session_id: sessionId
     });
     if (error)

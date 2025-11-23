@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   deleteSessionDeep,
   fetchSessions,
@@ -10,13 +11,11 @@ import {
   setActiveSession,
   type TimingSessionSummary
 } from "@domains/timing/api/timingApi";
-import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
 
 const TimingSessionsPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { canManageRace } = usePermissions();
 
   const sessionsQuery = useQuery({
@@ -28,43 +27,33 @@ const TimingSessionsPage = () => {
   const startMutation = useMutation({
     mutationFn: (sessionId: string) => initializeRace(sessionId),
     onSuccess: () => {
-      toast({ variant: "success", title: "Session started" });
+      toast.success("Session started");
       queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
     },
     onError: (error: Error) =>
-      toast({
-        variant: "error",
-        title: "Unable to start session",
-        description: error.message
-      })
+      toast.error("Unable to start session", { description: error.message })
   });
 
   const finishMutation = useMutation({
     mutationFn: (sessionId: string) => finishSession(sessionId),
     onSuccess: () => {
-      toast({ variant: "success", title: "Race finished", description: "Classification saved." });
+      toast.success("Race finished", { description: "Classification saved." });
       queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
     },
     onError: (error: Error) =>
-      toast({
-        variant: "error",
-        title: "Unable to finish session",
-        description: error.message
-      })
+      toast.error("Unable to finish session", { description: error.message })
   });
 
   const deleteMutation = useMutation({
     mutationFn: (sessionId: string) => deleteSessionDeep(sessionId),
     onSuccess: () => {
-      toast({ variant: "success", title: "Session deleted" });
+      toast.success("Session deleted");
       queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
     },
     onError: (error: Error) => {
       // Check if error message indicates we should archive instead
       const shouldArchive = error.message.includes("Archive") || error.message.includes("archive");
-      toast({
-        variant: "error",
-        title: "Unable to delete session",
+      toast.error("Unable to delete session", {
         description: shouldArchive
           ? "This session has events or timing data and cannot be deleted. Use the Archive button instead to hide it from Live Markets while preserving all data."
           : error.message
@@ -75,37 +64,25 @@ const TimingSessionsPage = () => {
   const archiveMutation = useMutation({
     mutationFn: (sessionId: string) => archiveSession(sessionId),
     onSuccess: () => {
-      toast({
-        variant: "success",
-        title: "Session archived",
+      toast.success("Session archived", {
         description: "The session and its markets will no longer appear on Live Markets."
       });
       queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
     },
     onError: (error: Error) =>
-      toast({
-        variant: "error",
-        title: "Unable to archive session",
-        description: error.message
-      })
+      toast.error("Unable to archive session", { description: error.message })
   });
 
   const restoreMutation = useMutation({
     mutationFn: (sessionId: string) => restoreSession(sessionId),
     onSuccess: () => {
-      toast({
-        variant: "success",
-        title: "Session restored",
+      toast.success("Session restored", {
         description: "The session and its markets are now visible on Live Markets again."
       });
       queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
     },
     onError: (error: Error) =>
-      toast({
-        variant: "error",
-        title: "Unable to restore session",
-        description: error.message
-      })
+      toast.error("Unable to restore session", { description: error.message })
   });
 
   if (!canManageRace) {
@@ -340,9 +317,9 @@ export default TimingSessionsPage;
   const setLiveMutation = useMutation({
     mutationFn: (sessionId: string) => setActiveSession(sessionId),
     onSuccess: () => {
-      toast({ variant: "success", title: "Session marked live" });
+      toast.success("Session marked live");
       queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
     },
     onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to set live session", description: error.message })
+      toast.error("Unable to set live session", { description: error.message })
   });

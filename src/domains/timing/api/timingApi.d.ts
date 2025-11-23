@@ -14,12 +14,16 @@ declare const sessionStateSchema: z.ZodObject<{
     pause_started_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     accumulated_pause_ms: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     session_id: z.ZodOptional<z.ZodString>;
+    starts_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    ends_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    ended_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    archived_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
     name?: string;
-    status?: string;
     track_name?: string;
     laps_target?: number;
+    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -29,12 +33,16 @@ declare const sessionStateSchema: z.ZodObject<{
     pause_started_at?: string;
     accumulated_pause_ms?: number;
     session_id?: string;
+    starts_at?: string;
+    ends_at?: string;
+    ended_at?: string;
+    archived_at?: string;
 }, {
     id?: string;
     name?: string;
-    status?: string;
     track_name?: string;
     laps_target?: number;
+    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -44,6 +52,10 @@ declare const sessionStateSchema: z.ZodObject<{
     pause_started_at?: string;
     accumulated_pause_ms?: number;
     session_id?: string;
+    starts_at?: string;
+    ends_at?: string;
+    ended_at?: string;
+    archived_at?: string;
 }>;
 export type SessionState = z.infer<typeof sessionStateSchema>;
 declare const driverStandingSchema: z.ZodObject<{
@@ -182,16 +194,16 @@ declare const controlEventSchema: z.ZodObject<{
     created_by: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
+    session_id?: string;
     type?: string;
     created_at?: string;
-    session_id?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }, {
     id?: string;
+    session_id?: string;
     type?: string;
     created_at?: string;
-    session_id?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }>;
@@ -206,6 +218,7 @@ declare const sessionSummarySchema: z.ZodObject<{
     starts_at: z.ZodNullable<z.ZodString>;
     created_at: z.ZodString;
     archived_at: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    is_active: z.ZodOptional<z.ZodBoolean>;
     session_state: z.ZodNullable<z.ZodObject<{
         session_id: z.ZodString;
         procedure_phase: z.ZodString;
@@ -231,13 +244,14 @@ declare const sessionSummarySchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id?: string;
     name?: string;
-    status?: string;
-    created_at?: string;
-    starts_at?: string;
     track_name?: string;
-    mode?: string;
-    archived_at?: string;
     laps_target?: number;
+    status?: string;
+    starts_at?: string;
+    archived_at?: string;
+    mode?: string;
+    created_at?: string;
+    is_active?: boolean;
     session_state?: {
         race_time_ms?: number;
         is_timing?: boolean;
@@ -249,13 +263,14 @@ declare const sessionSummarySchema: z.ZodObject<{
 }, {
     id?: string;
     name?: string;
-    status?: string;
-    created_at?: string;
-    starts_at?: string;
     track_name?: string;
-    mode?: string;
-    archived_at?: string;
     laps_target?: number;
+    status?: string;
+    starts_at?: string;
+    archived_at?: string;
+    mode?: string;
+    created_at?: string;
+    is_active?: boolean;
     session_state?: {
         race_time_ms?: number;
         is_timing?: boolean;
@@ -329,9 +344,9 @@ export type TimingResult = z.infer<typeof timingResultSchema>;
 export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     id?: string;
     name?: string;
-    status?: string;
     track_name?: string;
     laps_target?: number;
+    status?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -341,6 +356,10 @@ export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     pause_started_at?: string;
     accumulated_pause_ms?: number;
     session_id?: string;
+    starts_at?: string;
+    ends_at?: string;
+    ended_at?: string;
+    archived_at?: string;
 }>;
 export declare const fetchSessions: () => Promise<TimingSessionSummary[]>;
 export declare const fetchDriverStandings: (sessionId: string) => Promise<{
@@ -415,9 +434,9 @@ export declare const fetchPitEvents: (sessionId: string) => Promise<{
 }[]>;
 export declare const fetchControlEvents: (sessionId: string) => Promise<{
     id?: string;
+    session_id?: string;
     type?: string;
     created_at?: string;
-    session_id?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }[]>;
@@ -461,6 +480,12 @@ export declare const finishSession: (sessionId: string) => Promise<{
     gap_ms?: number;
     gap_laps?: number;
 }[]>;
+export declare const forceEndSession: (payload: {
+    sessionId: string;
+    status?: "finished" | "aborted" | "completed";
+    reason?: string;
+}) => Promise<void>;
 export declare const archiveSession: (sessionId: string) => Promise<void>;
 export declare const restoreSession: (sessionId: string) => Promise<void>;
+export declare const setActiveSession: (sessionId: string) => Promise<void>;
 export {};
