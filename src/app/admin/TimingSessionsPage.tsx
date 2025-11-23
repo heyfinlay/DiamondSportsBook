@@ -7,6 +7,7 @@ import {
   initializeRace,
   archiveSession,
   restoreSession,
+  setActiveSession,
   type TimingSessionSummary
 } from "@domains/timing/api/timingApi";
 import { useToast } from "@app/components/ToastProvider";
@@ -143,6 +144,7 @@ const TimingSessionsPage = () => {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Phase</th>
                 <th className="px-4 py-3">Track</th>
+                <th className="px-4 py-3">Live</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -172,6 +174,8 @@ const TimingSessionsPage = () => {
                   deleting={deleteMutation.isPending}
                   archiving={archiveMutation.isPending}
                   restoring={restoreMutation.isPending}
+                  onSetLive={() => setLiveMutation.mutate(session.id)}
+                  settingLive={setLiveMutation.isPending}
                 />
               ))}
             </tbody>
@@ -196,11 +200,13 @@ const SessionRow = ({
   onDelete,
   onArchive,
   onRestore,
+  onSetLive,
   starting,
   finishing,
   deleting,
   archiving,
-  restoring
+  restoring,
+  settingLive
 }: {
   session: TimingSessionSummary;
   onOpen: () => void;
@@ -209,16 +215,19 @@ const SessionRow = ({
   onDelete: () => void;
   onArchive: () => void;
   onRestore: () => void;
+  onSetLive: () => void;
   starting: boolean;
   finishing: boolean;
   deleting: boolean;
   archiving: boolean;
   restoring: boolean;
+  settingLive: boolean;
 }) => {
   const phase = session.session_state?.procedure_phase ?? "setup";
   const flag = session.session_state?.flag_status ?? "green";
   const isFinished = session.status === "finished" || session.status === "completed" || phase === "finished";
   const isArchived = session.archived_at != null;
+  const isLive = Boolean(session.is_active);
 
   return (
     <tr className="border-t border-white/10">
@@ -249,6 +258,23 @@ const SessionRow = ({
         <p className="text-xs text-white/60">
           Starts {session.starts_at ? new Date(session.starts_at).toLocaleString() : "TBD"}
         </p>
+      </td>
+      <td className="px-4 py-3">
+        {isLive ? (
+          <span className="rounded-full border border-emerald-400/60 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-200">
+            Live
+          </span>
+        ) : (
+          !isArchived && (
+            <button
+              className="rounded-full border border-white/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-white hover:border-white/60 disabled:opacity-40"
+              onClick={onSetLive}
+              disabled={settingLive}
+            >
+              {settingLive ? "Setting…" : "Set as live"}
+            </button>
+          )
+        )}
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap justify-end gap-2">
@@ -311,3 +337,12 @@ const SessionRow = ({
 };
 
 export default TimingSessionsPage;
+  const setLiveMutation = useMutation({
+    mutationFn: (sessionId: string) => setActiveSession(sessionId),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Session marked live" });
+      queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
+    },
+    onError: (error: Error) =>
+      toast({ variant: "error", title: "Unable to set live session", description: error.message })
+  });
