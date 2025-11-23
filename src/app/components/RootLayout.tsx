@@ -2,22 +2,20 @@ import { Outlet, NavLink } from "react-router-dom";
 import WalletSummary from "./WalletSummary";
 import { cn } from "@lib/utils/cn";
 import { useProfile } from "@domains/identity/hooks/useProfile";
-import { useActiveTimingSession } from "@domains/timing/hooks/useActiveTimingSession";
 import { ToastProvider } from "./ToastProvider";
 import { Betslip } from "@domains/betting/components/Betslip";
 
+const navItems = [
+  { to: "/", label: "Markets" },
+  { to: "/live/demo", label: "Live Timing" },
+  { to: "/account", label: "Account" }
+];
+
 const RootLayout = () => {
   const profileQuery = useProfile();
-  const activeSessionQuery = useActiveTimingSession();
   const role = profileQuery.data?.role ?? "spectator";
   const canControl = role === "race_control" || role === "super_admin";
   const canAdmin = role === "betting_admin" || role === "sportsbook_admin" || role === "super_admin";
-  const liveHref = activeSessionQuery.data?.id ? `/live/${activeSessionQuery.data.id}` : "/live/demo";
-  const navItems = [
-    { to: "/", label: "Markets" },
-    { to: liveHref, label: "Live Timing" },
-    { to: "/account", label: "Account" }
-  ];
 
   const filteredNav = [
     ...navItems,

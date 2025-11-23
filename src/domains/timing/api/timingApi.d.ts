@@ -341,14 +341,6 @@ declare const timingResultSchema: z.ZodObject<{
     gap_laps?: number;
 }>;
 export type TimingResult = z.infer<typeof timingResultSchema>;
-declare const activeSessionSchema: z.ZodObject<{
-    id: z.ZodString;
-}, "strip", z.ZodTypeAny, {
-    id?: string;
-}, {
-    id?: string;
-}>;
-export type ActiveTimingSession = z.infer<typeof activeSessionSchema>;
 export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     id?: string;
     name?: string;
@@ -496,5 +488,4 @@ export declare const forceEndSession: (payload: {
 export declare const archiveSession: (sessionId: string) => Promise<void>;
 export declare const restoreSession: (sessionId: string) => Promise<void>;
 export declare const setActiveSession: (sessionId: string) => Promise<void>;
-export declare const fetchActiveTimingSession: () => Promise<ActiveTimingSession | null>;
 export {};
