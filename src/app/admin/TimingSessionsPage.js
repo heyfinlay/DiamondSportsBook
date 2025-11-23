@@ -20,11 +20,7 @@ const TimingSessionsPage = () => {
             toast({ variant: "success", title: "Session started" });
             queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
         },
-        onError: (error) => toast({
-            variant: "error",
-            title: "Unable to start session",
-            description: error.message
-        })
+        onError: (error) => toast({ variant: "error", title: "Unable to start session", description: error.message })
     });
     const finishMutation = useMutation({
         mutationFn: (sessionId) => finishSession(sessionId),
@@ -32,11 +28,7 @@ const TimingSessionsPage = () => {
             toast({ variant: "success", title: "Race finished", description: "Classification saved." });
             queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
         },
-        onError: (error) => toast({
-            variant: "error",
-            title: "Unable to finish session",
-            description: error.message
-        })
+        onError: (error) => toast({ variant: "error", title: "Unable to finish session", description: error.message })
     });
     const deleteMutation = useMutation({
         mutationFn: (sessionId) => deleteSessionDeep(sessionId),
@@ -66,11 +58,7 @@ const TimingSessionsPage = () => {
             });
             queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
         },
-        onError: (error) => toast({
-            variant: "error",
-            title: "Unable to archive session",
-            description: error.message
-        })
+        onError: (error) => toast({ variant: "error", title: "Unable to archive session", description: error.message })
     });
     const restoreMutation = useMutation({
         mutationFn: (sessionId) => restoreSession(sessionId),
@@ -82,11 +70,15 @@ const TimingSessionsPage = () => {
             });
             queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
         },
-        onError: (error) => toast({
-            variant: "error",
-            title: "Unable to restore session",
-            description: error.message
-        })
+        onError: (error) => toast({ variant: "error", title: "Unable to restore session", description: error.message })
+    });
+    const setLiveMutation = useMutation({
+        mutationFn: (sessionId) => setActiveSession(sessionId),
+        onSuccess: () => {
+            toast({ variant: "success", title: "Session marked live" });
+            queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
+        },
+        onError: (error) => toast({ variant: "error", title: "Unable to set live session", description: error.message })
     });
     if (!canManageRace) {
         return (_jsx("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70", children: "Race control permissions are required to manage timing sessions." }));
@@ -114,11 +106,3 @@ const SessionRow = ({ session, onOpen, onStart, onFinish, onDelete, onArchive, o
                             }, disabled: finishing, children: finishing ? "Finishing…" : "Finish" })), isFinished && !isArchived && (_jsx("button", { className: "rounded-full border border-yellow-400/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-yellow-300 disabled:opacity-40 hover:bg-yellow-400/10", onClick: onArchive, disabled: archiving, children: archiving ? "Archiving…" : "Archive" })), isArchived && (_jsx("button", { className: "rounded-full border border-green-400/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-green-300 disabled:opacity-40 hover:bg-green-400/10", onClick: onRestore, disabled: restoring, children: restoring ? "Restoring…" : "Restore" })), _jsx("button", { className: "rounded-full border border-red-400/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-red-300 disabled:opacity-40", onClick: onDelete, disabled: deleting, children: "Delete" })] }) })] }));
 };
 export default TimingSessionsPage;
-const setLiveMutation = useMutation({
-    mutationFn: (sessionId) => setActiveSession(sessionId),
-    onSuccess: () => {
-        toast({ variant: "success", title: "Session marked live" });
-        queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
-    },
-    onError: (error) => toast({ variant: "error", title: "Unable to set live session", description: error.message })
-});
