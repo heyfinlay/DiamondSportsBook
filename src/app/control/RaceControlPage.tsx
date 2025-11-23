@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  archiveSession,
   createSession,
   deleteSessionDeep,
   fetchControlEvents,
@@ -10,6 +11,7 @@ import {
   fetchSessionDetail,
   fetchTimingResults,
   finishSession,
+  forceEndSession,
   getRaceTime,
   initializeRace,
   logLap,
@@ -29,6 +31,7 @@ import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
 import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
+import { sessionHasEnded } from "@domains/timing/utils/sessionLifecycle";
 import { findDriverByNumberHotkey } from "./driverHotkeys";
 
 const FLAG_OPTIONS = [
@@ -78,12 +81,13 @@ const RaceControlPage = () => {
   const resultsQuery = useQuery({
     queryKey: ["timing-results", sessionId],
     queryFn: () => fetchTimingResults(sessionId!),
-    enabled: !!sessionId && (sessionQuery.data?.phase === "finished" || sessionQuery.data?.status === "finished")
+    enabled: !!sessionId && sessionHasEnded(sessionQuery.data)
   });
 
   const session = sessionQuery.data;
-  const isFinished = Boolean(session?.phase === "finished" || session?.status === "finished");
-  const controlsLocked = isFinished;
+  const isFinished = sessionHasEnded(session);
+  const isArchived = Boolean(session?.archived_at);
+  const controlsLocked = isFinished || isArchived;
 
   const drivers = driversQuery.data ?? [];
   const driversSortedForDisplay = useMemo(() => {
@@ -199,6 +203,35 @@ const RaceControlPage = () => {
     }
   });
 
+  const forceEndSessionMutation = useMutation({
+    mutationFn: (payload: { reason?: string; status?: "finished" | "aborted" | "completed" }) =>
+      forceEndSession({ sessionId: sessionId!, status: payload.status, reason: payload.reason }),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Session ended", description: "Race clock stopped." });
+      queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["timing-results", sessionId] });
+    },
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to end session", description: error.message });
+    }
+  });
+
+  const archiveSessionMutation = useMutation({
+    mutationFn: () => archiveSession(sessionId!),
+    onSuccess: () => {
+      toast({ variant: "success", title: "Session archived" });
+      queryClient.invalidateQueries({ queryKey: ["timing-session", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["timing-sessions"] });
+    },
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to archive session", description: error.message });
+    }
+  });
+
   const driverStatusMutation = useMutation({
     mutationFn: ({ driverId, status }: { driverId: string; status: string }) =>
       updateDriverStatus(driverId, status),
@@ -218,8 +251,16 @@ const RaceControlPage = () => {
       toast({ variant: "success", title: "Session deleted" });
       navigate("/control");
     },
-    onError: (error: Error) =>
-      toast({ variant: "error", title: "Unable to delete session", description: error.message })
+    onError: (error: Error) => {
+      const shouldArchive = error.message.includes("Archive") || error.message.includes("archive");
+      toast({
+        variant: "error",
+        title: "Unable to delete session",
+        description: shouldArchive
+          ? "This session already has data linked to it. Archive the session instead to hide it while preserving timing history."
+          : error.message
+      });
+    }
   });
 
   const finishSessionMutation = useMutation({
@@ -296,17 +337,32 @@ const RaceControlPage = () => {
 
   const raceClock = useRaceClock(sessionId, session);
 
-  const guardFinished = (message: string) => {
+  const handleForceEndSession = () => {
+    if (!sessionId || isFinished) return;
+    const confirmed = window.confirm("Force end this session and stop the race clock? This will not generate classification results.");
+    if (!confirmed) return;
+    const reasonInput = window.prompt("Reason for ending the session?", "Manual override")?.trim();
+    forceEndSessionMutation.mutate({ reason: reasonInput || undefined });
+  };
+
+  const handleArchiveSession = () => {
+    if (!sessionId || !isFinished || isArchived) return;
+    const confirmed = window.confirm("Archive this session? It will no longer appear in live control lists but data remains accessible.");
+    if (!confirmed) return;
+    archiveSessionMutation.mutate();
+  };
+
+  const guardSessionLocked = (message: string) => {
     toast({
       variant: "error",
-      title: "Session finished",
+      title: isArchived ? "Session archived" : "Session ended",
       description: message
     });
   };
 
   const handleLap = (driverId: string) => {
     if (controlsLocked) {
-      guardFinished("Results are locked. No further laps can be logged.");
+      guardSessionLocked("Results are locked. No further laps can be logged.");
       return;
     }
     logLapMutation.mutate({ driverId });
@@ -314,7 +370,7 @@ const RaceControlPage = () => {
 
   const handleRetire = (driverId: string) => {
     if (controlsLocked) {
-      guardFinished("Driver statuses are locked after the checkered flag.");
+      guardSessionLocked("Driver statuses are locked after the checkered flag.");
       return;
     }
     driverStatusMutation.mutate({ driverId, status: "retired" });
@@ -333,14 +389,19 @@ const RaceControlPage = () => {
           const confirmed = window.confirm("Finish race and lock the results?");
           if (confirmed) finishSessionMutation.mutate();
         }}
+        onForceEnd={handleForceEndSession}
         onDelete={() => {
           const confirmed = window.confirm("Delete this session and all timing data?");
           if (confirmed) deleteSessionMutation.mutate(sessionId);
         }}
-        disableStart={initializeRaceMutation.isPending || isFinished}
-        flagLoading={flagMutation.isPending || isFinished}
+        onArchive={handleArchiveSession}
+        disableStart={initializeRaceMutation.isPending || isFinished || isArchived}
+        flagLoading={flagMutation.isPending || isFinished || isArchived}
         finishing={finishSessionMutation.isPending}
+        forceEnding={forceEndSessionMutation.isPending}
+        archiving={archiveSessionMutation.isPending}
         isFinished={isFinished}
+        isArchived={isArchived}
       />
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
@@ -426,11 +487,16 @@ const RaceControlHeader = ({
   onResume,
   onFlag,
   onFinish,
+  onForceEnd,
+  onArchive,
   disableStart,
   flagLoading,
   onDelete,
   finishing,
-  isFinished
+  forceEnding,
+  archiving,
+  isFinished,
+  isArchived
 }: {
   session?: SessionState;
   raceClock: number;
@@ -438,16 +504,23 @@ const RaceControlHeader = ({
   onPause: () => void;
   onResume: () => void;
   onFlag: (flag: string) => void;
+  onFinish: () => void;
+  onForceEnd: () => void;
+  onArchive: () => void;
   disableStart?: boolean;
   flagLoading?: boolean;
   onDelete: () => void;
-  onFinish: () => void;
   finishing?: boolean;
+  forceEnding?: boolean;
+  archiving?: boolean;
   isFinished?: boolean;
+  isArchived?: boolean;
 }) => {
   const currentFlag = session?.track_status ?? "green";
   const isPaused = Boolean(session?.is_paused);
   const phase = session?.phase ?? "setup";
+  const endedAt = session?.ended_at ? new Date(session.ended_at).toLocaleTimeString() : null;
+  const statusLabel = session?.status ?? "draft";
 
   return (
     <header className="rounded-3xl border border-white/10 bg-black/40 p-6 space-y-4">
@@ -472,6 +545,19 @@ const RaceControlHeader = ({
         <span className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60">
           Flag: {currentFlag}
         </span>
+        <span className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60">
+          Status: {statusLabel}
+        </span>
+        {endedAt && (
+          <span className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/60">
+            Ended: {endedAt}
+          </span>
+        )}
+        {isArchived && (
+          <span className="rounded-full border border-yellow-400/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-yellow-300">
+            Archived
+          </span>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <button
             className="rounded-full bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
@@ -483,7 +569,7 @@ const RaceControlHeader = ({
           <button
             className="rounded-full border border-white/30 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white"
             onClick={isPaused ? onResume : onPause}
-            disabled={isFinished}
+            disabled={isFinished || isArchived}
           >
             {isPaused ? "Resume" : "Pause"}
           </button>
@@ -497,8 +583,26 @@ const RaceControlHeader = ({
             </button>
           ) : (
             <span className="rounded-full border border-emerald-400/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200">
-              Classified
+              {isArchived ? "Archived" : "Classified"}
             </span>
+          )}
+          {!isFinished && (
+            <button
+              className="rounded-full border border-red-400/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-200 disabled:opacity-40"
+              onClick={onForceEnd}
+              disabled={forceEnding}
+            >
+              {forceEnding ? "Stopping…" : "Force End"}
+            </button>
+          )}
+          {isFinished && !isArchived && (
+            <button
+              className="rounded-full border border-yellow-400/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-yellow-200 disabled:opacity-40"
+              onClick={onArchive}
+              disabled={archiving}
+            >
+              {archiving ? "Archiving…" : "Archive Session"}
+            </button>
           )}
           <button
             className="inline-flex items-center gap-2 rounded-full border border-red-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-300"
@@ -516,7 +620,7 @@ const RaceControlHeader = ({
               currentFlag === flag.value ? flag.className : "border-white/20 text-white/70"
             }`}
             onClick={() => onFlag(flag.value)}
-            disabled={flagLoading || isFinished}
+            disabled={flagLoading || isFinished || isArchived}
           >
             {flag.label}
           </button>
@@ -549,7 +653,7 @@ const DriverCaptureGrid = ({
           <h2 className="text-xl font-semibold text-white">Driver Capture Grid</h2>
         </div>
         <p className="text-xs text-white/50">
-          {disabled ? "Session finished — controls locked" : "Focus page + press key to log lap."}
+          {disabled ? "Session ended — controls locked" : "Focus page + press key to log lap."}
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -947,6 +1051,7 @@ const parseDrivers = (input: string) =>
 const useRaceClock = (sessionId: string | undefined, session?: SessionState) => {
   const [time, setTime] = useState(0);
   const baselineRef = useRef<{ ms: number; ts: number }>({ ms: 0, ts: performance.now() });
+  const ended = sessionHasEnded(session);
 
   useEffect(() => {
     const current = session?.race_time_ms ?? 0;
@@ -960,6 +1065,8 @@ const useRaceClock = (sessionId: string | undefined, session?: SessionState) => 
       return;
     }
     let cancelled = false;
+    let interval: number | undefined;
+    let frame: number | undefined;
 
     const syncFromServer = async () => {
       try {
@@ -973,26 +1080,28 @@ const useRaceClock = (sessionId: string | undefined, session?: SessionState) => 
     };
 
     syncFromServer();
-    const interval = window.setInterval(syncFromServer, 1500);
 
-    let frame: number;
-    const tick = () => {
-      const { ms, ts } = baselineRef.current;
-      if (session?.is_paused) {
-        setTime(ms);
-      } else {
-        setTime(ms + (performance.now() - ts));
-      }
+    if (!ended) {
+      interval = window.setInterval(syncFromServer, 1500);
+
+      const tick = () => {
+        const { ms, ts } = baselineRef.current;
+        if (session?.is_paused) {
+          setTime(ms);
+        } else {
+          setTime(ms + (performance.now() - ts));
+        }
+        frame = requestAnimationFrame(tick);
+      };
       frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
+    }
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
-      cancelAnimationFrame(frame);
+      if (interval) clearInterval(interval);
+      if (frame) cancelAnimationFrame(frame);
     };
-  }, [sessionId, session?.is_paused, session?.phase]);
+  }, [sessionId, session?.is_paused, ended]);
 
   return time;
 };
@@ -1054,6 +1163,8 @@ const formatControlEvent = (event: ControlEvent, drivers: Map<string, DriverStan
       return "Race resumed";
     case "race_finished":
       return "Race finished — results locked";
+    case "race_force_finished":
+      return `Race force-ended (${event.payload?.reason ?? "manual"})`;
     case "driver_status_changed":
       return `${driver ? driver.driver_name : "Driver"} status → ${event.payload.status}`;
     case "state_updated":

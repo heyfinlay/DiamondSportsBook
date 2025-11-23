@@ -15,7 +15,11 @@ const sessionStateSchema = z.object({
   race_started_at: z.string().nullable().optional(),
   pause_started_at: z.string().nullable().optional(),
   accumulated_pause_ms: z.number().nullable().optional(),
-  session_id: z.string().optional()
+  session_id: z.string().optional(),
+  starts_at: z.string().nullable().optional(),
+  ends_at: z.string().nullable().optional(),
+  ended_at: z.string().nullable().optional(),
+  archived_at: z.string().nullable().optional()
 });
 
 export type SessionState = z.infer<typeof sessionStateSchema>;
@@ -131,7 +135,7 @@ export type TimingResult = z.infer<typeof timingResultSchema>;
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
     .from("timing_sessions")
-    .select("id, name, track_name, laps_target, status")
+    .select("id, name, track_name, laps_target, status, starts_at, ends_at, ended_at, archived_at")
     .eq("id", sessionId)
     .single();
 
@@ -388,6 +392,16 @@ export const finishSession = async (sessionId: string) => {
 
   if (error) throw error;
   return fetchTimingResults(sessionId);
+};
+
+export const forceEndSession = async (payload: { sessionId: string; status?: "finished" | "aborted" | "completed"; reason?: string }) => {
+  const { error } = await supabase.rpc("timing_force_end_session", {
+    p_session_id: payload.sessionId,
+    p_status: payload.status ?? null,
+    p_reason: payload.reason ?? null
+  });
+
+  if (error) throw error;
 };
 
 export const archiveSession = async (sessionId: string) => {
