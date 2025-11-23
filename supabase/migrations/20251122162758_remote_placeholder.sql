@@ -1,0 +1,3 @@
+-- Placeholder migration to match remote version 20251122162758.
+-- The actual change was applied directly on the remote database.
+-- Keeping this file ensures `supabase db push` can reconcile histories.

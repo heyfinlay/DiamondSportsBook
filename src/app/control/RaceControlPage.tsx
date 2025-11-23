@@ -29,8 +29,7 @@ import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
 import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
-
-const HOTKEYS = ["1","2","3","4","5","6","7","8","9","0","Q","W","E","R","T","Y","U","I","O","P","A","S","D","F","G","H","J","K","L","Z","X","C","V","B","N","M"];
+import { findDriverByNumberHotkey } from "./driverHotkeys";
 
 const FLAG_OPTIONS = [
   { value: "green", label: "Green", className: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" },
@@ -55,7 +54,6 @@ const RaceControlPage = () => {
   });
   const [penaltyForm, setPenaltyForm] = useState({ driverId: "", seconds: "5", reason: "" });
   const [pitForm, setPitForm] = useState({ driverId: "" });
-  const driverHotkeysRef = useRef<Map<string, string>>(new Map());
 
   useTimingRealtime(sessionId);
 
@@ -88,6 +86,21 @@ const RaceControlPage = () => {
   const controlsLocked = isFinished;
 
   const drivers = driversQuery.data ?? [];
+  const driversSortedForDisplay = useMemo(() => {
+    const sorted = [...drivers];
+    sorted.sort((a, b) => {
+      const posA = a.position ?? Number.MAX_SAFE_INTEGER;
+      const posB = b.position ?? Number.MAX_SAFE_INTEGER;
+      if (posA !== posB) return posA - posB;
+
+      const gapA = a.gap_to_leader_ms ?? Number.MAX_SAFE_INTEGER;
+      const gapB = b.gap_to_leader_ms ?? Number.MAX_SAFE_INTEGER;
+      if (gapA !== gapB) return gapA - gapB;
+
+      return a.car_number - b.car_number;
+    });
+    return sorted;
+  }, [drivers]);
   const recordError = (message: string) => {
     if (!sessionId) return;
     logControlError(sessionId, message).catch(() => {
@@ -231,15 +244,6 @@ const RaceControlPage = () => {
   }, [drivers]);
 
   useEffect(() => {
-    const mapping = new Map<string, string>();
-    drivers.forEach((driver, index) => {
-      const key = HOTKEYS[index];
-      if (key) mapping.set(key, driver.driver_id);
-    });
-    driverHotkeysRef.current = mapping;
-  }, [drivers]);
-
-  useEffect(() => {
     if (!sessionId || controlsLocked) return;
 
     const handler = (event: KeyboardEvent) => {
@@ -251,16 +255,16 @@ const RaceControlPage = () => {
         return;
       }
 
-      const driverId = driverHotkeysRef.current.get(event.key.toUpperCase());
-      if (!driverId) return;
+      const driver = findDriverByNumberHotkey(drivers, event.key);
+      if (!driver) return;
 
       event.preventDefault();
-      logLapMutation.mutate({ driverId });
+      logLapMutation.mutate({ driverId: driver.driver_id });
     };
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [logLapMutation, sessionId, controlsLocked]);
+  }, [drivers, logLapMutation, sessionId, controlsLocked]);
 
   if (!sessionId) {
     return (
@@ -341,9 +345,7 @@ const RaceControlPage = () => {
 
       <div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
         <DriverCaptureGrid
-          drivers={drivers}
-          driverMap={driverMap}
-          hotkeysRef={driverHotkeysRef.current}
+          drivers={driversSortedForDisplay}
           onLap={handleLap}
           onPit={(driverId) => setPitForm({ driverId })}
           onPenalty={(driverId) => setPenaltyForm((prev) => ({ ...prev, driverId }))}
@@ -526,8 +528,6 @@ const RaceControlHeader = ({
 
 const DriverCaptureGrid = ({
   drivers,
-  driverMap,
-  hotkeysRef,
   onLap,
   onPit,
   onPenalty,
@@ -535,17 +535,12 @@ const DriverCaptureGrid = ({
   disabled
 }: {
   drivers: DriverStanding[];
-  driverMap: Map<string, DriverStanding>;
-  hotkeysRef: Map<string, string>;
   onLap: (driverId: string) => void;
   onPit: (driverId: string) => void;
   onPenalty: (driverId: string) => void;
   onRetire: (driverId: string) => void;
   disabled?: boolean;
 }) => {
-  const keyMap = new Map<string, string>();
-  Array.from(hotkeysRef.entries()).forEach(([key, driverId]) => keyMap.set(driverId, key));
-
   return (
     <section className="rounded-3xl border border-white/10 bg-black/40 p-5 space-y-3">
       <div className="flex items-center justify-between">
@@ -558,11 +553,12 @@ const DriverCaptureGrid = ({
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {drivers.map((driver) => (
+        {drivers.map((driver, index) => (
           <DriverCard
             key={driver.driver_id}
             driver={driver}
-            hotkey={keyMap.get(driver.driver_id)}
+            displayPosition={index + 1}
+            hotkeyNumber={driver.car_number}
             onLap={onLap}
             onPenalty={onPenalty}
             onPit={onPit}
@@ -582,7 +578,8 @@ const DriverCaptureGrid = ({
 
 const DriverCard = ({
   driver,
-  hotkey,
+  displayPosition,
+  hotkeyNumber,
   onLap,
   onPenalty,
   onPit,
@@ -590,7 +587,8 @@ const DriverCard = ({
   disabled
 }: {
   driver: DriverStanding;
-  hotkey?: string;
+  displayPosition: number;
+  hotkeyNumber?: number;
   onLap: (driverId: string) => void;
   onPenalty: (driverId: string) => void;
   onPit: (driverId: string) => void;
@@ -598,17 +596,22 @@ const DriverCard = ({
   disabled?: boolean;
 }) => (
   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
-    <div className="flex items-start justify-between">
+    <div className="flex items-start justify-between gap-3">
       <div>
-        <p className="text-lg font-semibold text-white">
+        <span className="inline-flex rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/70">
+          P{displayPosition}
+        </span>
+        <p className="mt-1 text-lg font-semibold text-white">
           #{driver.car_number} {driver.driver_name}
         </p>
         <p className="text-xs text-white/60">{driver.team_name}</p>
       </div>
-      {hotkey && (
-        <span className="rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white/80">
-          {hotkey}
-        </span>
+      {hotkeyNumber !== undefined && (
+        <div className="text-right text-xs text-white/70">
+          <p className="rounded-full border border-white/30 px-3 py-1 font-semibold text-white/80">
+            #{hotkeyNumber} • Hotkey {hotkeyNumber}
+          </p>
+        </div>
       )}
     </div>
     <div className="grid grid-cols-3 gap-2 text-center text-xs">
