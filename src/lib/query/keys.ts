@@ -16,3 +16,9 @@ export const timingKeys = {
   pitEvents: (sessionId?: string | null) => ["live-pit-events", sessionId ?? null] as const,
   results: (sessionId?: string | null) => ["live-results", sessionId ?? null] as const
 };
+
+export const standingsKeys = {
+  drivers: (seasonId?: string | null) => ["standings:drivers", seasonId ?? null] as const,
+  teams: (seasonId?: string | null) => ["standings:teams", seasonId ?? null] as const,
+  raceResults: (seasonId?: string | null) => ["standings:race-results", seasonId ?? null] as const
+};

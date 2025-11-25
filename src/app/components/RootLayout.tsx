@@ -4,22 +4,22 @@ import { cn } from "@lib/utils/cn";
 import { useProfile } from "@domains/identity/hooks/useProfile";
 import { ToastProvider } from "./ToastProvider";
 import { Betslip } from "@domains/betting/components/Betslip";
+import CharacterSetupGate from "./CharacterSetupGate";
 
 const navItems = [
   { to: "/", label: "Markets" },
-  { to: "/live/demo", label: "Live Timing" },
+  { to: "/wagers", label: "Wagers" },
+  { to: "/standings", label: "Standings" },
   { to: "/account", label: "Account" }
 ];
 
 const RootLayout = () => {
   const profileQuery = useProfile();
   const role = profileQuery.data?.role ?? "spectator";
-  const canControl = role === "race_control" || role === "super_admin";
   const canAdmin = role === "betting_admin" || role === "sportsbook_admin" || role === "super_admin";
 
   const filteredNav = [
     ...navItems,
-    ...(canControl ? [{ to: "/control/demo", label: "Race Control" }] : []),
     ...(canAdmin
       ? [
           { to: "/admin", label: "Admin" },
@@ -61,6 +61,7 @@ const RootLayout = () => {
           <Outlet />
         </main>
         <Betslip />
+        <CharacterSetupGate />
       </div>
     </ToastProvider>
   );

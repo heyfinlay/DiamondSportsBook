@@ -7,12 +7,14 @@ import { BetSlipDrawer } from "../../features/markets/BetSlipDrawer";
 import { PoolAnalytics } from "../../features/markets/PoolAnalytics";
 import { PoolDetails } from "../../features/markets/PoolDetails";
 import { fetchUiLiveBetsForPool, fetchUiPoolById } from "../../features/markets/api";
+import FinalSettlementsTable from "../../features/markets/components/FinalSettlementsTable";
 import { USE_MARKET_LAYOUT_V2 } from "../../features/markets/flags";
 import { formatCurrency } from "../../features/markets/utils/format";
 import type { Pool } from "../../features/markets/types";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 import { marketKeys, walletKeys } from "@lib/query/keys";
+import { fetchPoolSettlementLedger } from "@domains/betting/api/settlementAuditApi";
 import { refetchAfterBet } from "@lib/query/refetchers";
 import { LIVE_BETS_POLL_INTERVAL_MS, MARKET_POLL_INTERVAL_MS } from "@config/realtime";
 
@@ -41,6 +43,14 @@ const MarketDetailPage = () => {
     queryFn: () => fetchUiLiveBetsForPool(marketId!),
     enabled: !!marketId,
     refetchInterval: LIVE_BETS_POLL_INTERVAL_MS
+  });
+
+  const isPoolSettled = poolQuery.data?.status === "settled";
+
+  const settlementsQuery = useQuery({
+    queryKey: ["pool-ledger", marketId],
+    queryFn: () => fetchPoolSettlementLedger(marketId!),
+    enabled: !!marketId && isPoolSettled
   });
 
   type PlaceBetVariables = { poolId: string; outcomeId: string; stake: number };
@@ -120,6 +130,63 @@ const MarketDetailPage = () => {
     </header>
   );
 
+  const settlements = settlementsQuery.data ?? [];
+  const winnerRows = settlements.filter((row) => row.payout > 0);
+  const winningOutcomeName = winnerRows[0]?.outcome_label ?? "Winning outcome";
+  const totalPaidOut = winnerRows.reduce((sum, row) => sum + row.payout, 0);
+
+  const renderSettlementsPanel = () => {
+    if (!isPoolSettled) return null;
+    if (settlementsQuery.isLoading) {
+      return (
+        <div className="rounded-3xl border border-white/10 bg-black/30 p-6 text-sm text-white/70">
+          Loading final settlements…
+        </div>
+      );
+    }
+    if (settlementsQuery.isError) {
+      return (
+        <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-100">
+          <p>We couldn&rsquo;t load the settlement ledger.</p>
+          <button
+            type="button"
+            className="mt-3 rounded-full border border-red-300/60 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em]"
+            onClick={() => settlementsQuery.refetch()}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <section className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Pool</p>
+            <p className="mt-1 text-2xl font-semibold text-white">
+              {formatCurrency(pool.totalStake)}
+            </p>
+            <p className="text-xs text-white/50">Combined stakes across all outcomes</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Winning Outcome</p>
+            <p className="mt-1 text-lg font-semibold text-white">{winningOutcomeName}</p>
+            <p className="text-xs text-white/50">{winnerRows.length} winning bets</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Paid to winners</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-300">
+              {formatCurrency(totalPaidOut)}
+            </p>
+            <p className="text-xs text-white/50">After rake distribution</p>
+          </div>
+        </div>
+        <FinalSettlementsTable rows={settlements} />
+      </section>
+    );
+  };
+
   return (
     <div className="space-y-8">
       {headerContent}
@@ -133,7 +200,11 @@ const MarketDetailPage = () => {
           onOpenBetSlip={handleOpenBetSlip}
         />
 
-        <PoolAnalytics pool={pool} liveBets={liveBetsQuery.data ?? []} />
+        {isPoolSettled ? (
+          renderSettlementsPanel()
+        ) : (
+          <PoolAnalytics pool={pool} liveBets={liveBetsQuery.data ?? []} />
+        )}
       </section>
 
       <BetSlipDrawer

@@ -4,7 +4,9 @@ import LiveTimingPage from "./live/LiveTimingPage";
 import RaceControlPage from "./control/RaceControlPage";
 import MarketsPage from "./markets/MarketsPage";
 import MarketDetailPage from "./markets/MarketDetailPage";
+import StandingsPage from "./standings/page";
 import AccountPage from "./account/AccountPage";
+import AccountSettingsPage from "./account/AccountSettingsPage";
 import AdminDashboard from "./admin/AdminDashboard";
 import MarketManagementPage from "./admin/markets/MarketManagementPage";
 import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
@@ -14,6 +16,8 @@ import SettlementAuditPage, { PoolPayoutDetailPage } from "./admin/SettlementAud
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 import AuthCallbackPage from "./auth/AuthCallbackPage";
+import WagersPage from "./wagers/WagersPage";
+import WagerDetailPage from "./wagers/WagerDetailPage";
 
 export const router: ReturnType<typeof createBrowserRouter> = createBrowserRouter([
   {
@@ -29,6 +33,10 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
         element: <MarketsPage />
       },
       {
+        path: "active-markets",
+        element: <MarketsPage />
+      },
+      {
         path: "market/:marketId",
         element: <MarketDetailPage />
       },
@@ -37,8 +45,29 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
         element: <LiveTimingPage />
       },
       {
+        path: "standings",
+        element: <StandingsPage />
+      },
+      {
         path: "account",
         element: <AccountPage />
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: "account/settings",
+            element: <AccountSettingsPage />
+          },
+          {
+            path: "wagers",
+            element: <WagersPage />
+          },
+          {
+            path: "wagers/:wagerId",
+            element: <WagerDetailPage />
+          }
+        ]
       },
       {
         element: <ProtectedRoute requiredRoles={["race_control", "super_admin"]} />,

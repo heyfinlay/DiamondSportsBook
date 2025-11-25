@@ -102,6 +102,7 @@ export interface PendingDeposit {
   user_id: string;
   display_name: string | null;
   username: string | null;
+  ic_number: string | null;
   ic_phone_number: string | null;
 }
 
@@ -115,7 +116,7 @@ export const fetchPendingDeposits = async () => {
       account_id,
       wallet_accounts!inner(
         user_id,
-        profiles(display_name, username, ic_phone_number)
+        profiles(display_name, username, ic_phone_number, ic_number)
       )
     `)
     .eq("status", "requested")
@@ -139,6 +140,7 @@ export const fetchPendingDeposits = async () => {
         user_id: userId,
         display_name: profileData?.display_name || null,
         username: profileData?.username || null,
+        ic_number: profileData?.ic_number || null,
         ic_phone_number: profileData?.ic_phone_number || null
       };
     }) ?? []
@@ -153,6 +155,7 @@ export interface PendingWithdrawal {
   user_id: string;
   display_name: string | null;
   username: string | null;
+  ic_number: string | null;
   ic_phone_number: string | null;
 }
 
@@ -166,7 +169,7 @@ export const fetchPendingWithdrawals = async () => {
       account_id,
       wallet_accounts!inner(
         user_id,
-        profiles(display_name, username, ic_phone_number)
+        profiles(display_name, username, ic_phone_number, ic_number)
       )
     `)
     .eq("status", "requested")
@@ -190,6 +193,7 @@ export const fetchPendingWithdrawals = async () => {
         user_id: userId,
         display_name: profileData?.display_name || null,
         username: profileData?.username || null,
+        ic_number: profileData?.ic_number || null,
         ic_phone_number: profileData?.ic_phone_number || null
       };
     }) ?? []

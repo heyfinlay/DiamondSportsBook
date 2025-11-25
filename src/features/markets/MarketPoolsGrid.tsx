@@ -48,6 +48,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
           }`;
           const racePrefix = pool.title.split("·")[0]?.trim() ?? pool.title;
 
+          const leadingOutcome = sorted[0];
           return (
             <article
               key={pool.id}
@@ -67,15 +68,47 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
                 </span>
               </div>
 
-              <div className="mb-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
-                <div className="flex flex-col">
-                  <span className="text-xs text-white/50">Total Pool</span>
-                  <span className="font-semibold">{formatCurrency(pool.totalStake)}</span>
+              <div className="mb-3 grid gap-3 text-sm text-white sm:grid-cols-2">
+                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-white/50">Total Pool</span>
+                    <span className="font-semibold">{formatCurrency(pool.totalStake)}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-white/50">Bets</span>
+                    <span className="block font-semibold">
+                      {pool.totalBets.toLocaleString("en-US")}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-white/50">Bets</span>
-                  <span className="block font-semibold">{pool.totalBets.toLocaleString("en-US")}</span>
-                </div>
+                {leadingOutcome ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50">
+                      <span>Leading Outcome</span>
+                      <span>{formatPercent(leadingOutcome.marketShare)}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <OutcomeIdentity
+                        teamName={leadingOutcome.teamName}
+                        driverName={leadingOutcome.driverName}
+                        teamColor={leadingOutcome.teamColor}
+                        hideSwatch
+                        primaryClassName="text-sm font-semibold text-white"
+                        secondaryClassName="text-xs text-white/60"
+                      />
+                      <div className="text-right">
+                        <p className="text-xs text-white/50">Odds</p>
+                        <p className="text-sm font-semibold text-white">
+                          {formatOdds(leadingOutcome.baselineOdds)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/5 px-3 py-2 text-sm text-white/60">
+                    Market will show leaders once bets arrive.
+                  </div>
+                )}
               </div>
 
               <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.28em] text-white/50">

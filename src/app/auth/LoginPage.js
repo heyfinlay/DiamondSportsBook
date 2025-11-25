@@ -148,7 +148,7 @@ export function LoginPage() {
                 }
                 const { error: profileError } = await supabase
                     .from("profiles")
-                    .update({ username: trimmedUsername, ic_phone_number: trimmedIc })
+                    .update({ username: trimmedUsername, ic_number: trimmedIc, ic_phone_number: trimmedIc })
                     .eq("id", user.id);
                 if (profileError) {
                     setError(profileError.message);

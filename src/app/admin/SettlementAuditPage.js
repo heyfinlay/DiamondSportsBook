@@ -1,9 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
-import { fetchPoolPayouts, fetchRecentSettlements } from "@domains/betting/api/settlementAuditApi";
+import { fetchRecentSettlements, fetchPoolSettlementLedger, fetchSettlementSummary } from "@domains/betting/api/settlementAuditApi";
 import { useSession } from "@lib/auth/SessionProvider";
 import { currencySymbol } from "@lib/currency";
+import { formatCurrency } from "../../features/markets/utils/format";
+import FinalSettlementsTable from "../../features/markets/components/FinalSettlementsTable";
 const SettlementAuditPage = () => {
     const { user } = useSession();
     const settlementsQuery = useQuery({
@@ -23,16 +25,22 @@ export default SettlementAuditPage;
 export const PoolPayoutDetailPage = () => {
     const { poolId } = useParams();
     const { user } = useSession();
-    const payoutsQuery = useQuery({
-        queryKey: ["pool-payouts", poolId],
-        queryFn: () => fetchPoolPayouts(poolId),
+    const ledgerQuery = useQuery({
+        queryKey: ["pool-ledger", poolId],
+        queryFn: () => fetchPoolSettlementLedger(poolId),
+        enabled: !!poolId && !!user
+    });
+    const summaryQuery = useQuery({
+        queryKey: ["pool-summary", poolId],
+        queryFn: () => fetchSettlementSummary(poolId),
         enabled: !!poolId && !!user
     });
     if (!user) {
         return (_jsx("div", { className: "rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70", children: "Sign in to view payout details." }));
     }
-    const payouts = payoutsQuery.data || [];
+    const payouts = ledgerQuery.data || [];
     const totalPayout = payouts.reduce((sum, p) => sum + Number(p.payout), 0);
-    const totalStake = payouts.reduce((sum, p) => sum + Number(p.stake), 0);
-    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("header", { children: [_jsx(Link, { to: "/admin/settlements", className: "text-sm uppercase tracking-[0.3em] text-white/60 hover:text-white", children: "\u2190 Back to Settlements" }), _jsx("h1", { className: "mt-2 text-3xl font-semibold", children: "Payout Details" }), _jsxs("p", { className: "text-sm text-white/60", children: ["Pool ID: ", poolId] })] }), _jsxs("section", { className: "grid gap-4 sm:grid-cols-3", children: [_jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Winners" }), _jsx("p", { className: "mt-1 text-2xl font-semibold", children: payouts.length })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Total Winning Stake" }), _jsx("p", { className: "mt-1 text-2xl font-semibold", children: `${currencySymbol}${totalStake.toFixed(2)}` })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Total Paid Out" }), _jsx("p", { className: "mt-1 text-2xl font-semibold", children: `${currencySymbol}${totalPayout.toFixed(2)}` })] })] }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/40 p-6", children: [_jsx("h2", { className: "text-xl font-semibold", children: "Payouts" }), payoutsQuery.isLoading && (_jsx("p", { className: "mt-4 text-sm text-white/60", children: "Loading payouts\u2026" })), _jsxs("div", { className: "mt-4 overflow-x-auto", children: [_jsxs("table", { className: "w-full text-sm", children: [_jsx("thead", { children: _jsxs("tr", { className: "border-b border-white/10 text-left", children: [_jsx("th", { className: "pb-2 font-semibold text-white/60", children: "User" }), _jsx("th", { className: "pb-2 font-semibold text-white/60", children: "Outcome" }), _jsx("th", { className: "pb-2 text-right font-semibold text-white/60", children: "Stake" }), _jsx("th", { className: "pb-2 text-right font-semibold text-white/60", children: "Share %" }), _jsx("th", { className: "pb-2 text-right font-semibold text-white/60", children: "Payout" }), _jsx("th", { className: "pb-2 text-right font-semibold text-white/60", children: "Effective Odds" }), _jsx("th", { className: "pb-2 text-right font-semibold text-white/60", children: "Settled At" })] }) }), _jsx("tbody", { children: payouts.map((payout) => (_jsxs("tr", { className: "border-b border-white/5", children: [_jsxs("td", { className: "py-3", children: [_jsx("p", { className: "font-semibold", children: payout.user_display_name || `User ${payout.user_id.slice(0, 8)}…` }), _jsxs("p", { className: "text-xs text-white/40", children: [payout.user_id.slice(0, 8), "\u2026"] })] }), _jsx("td", { className: "py-3 text-white/70", children: payout.outcome_label }), _jsx("td", { className: "py-3 text-right", children: `${currencySymbol}${Number(payout.stake).toFixed(2)}` }), _jsxs("td", { className: "py-3 text-right text-white/70", children: [Number(payout.share_percent).toFixed(2), "%"] }), _jsx("td", { className: "py-3 text-right font-semibold text-emerald-300", children: `${currencySymbol}${Number(payout.payout).toFixed(2)}` }), _jsxs("td", { className: "py-3 text-right text-white/70", children: [Number(payout.effective_odds).toFixed(2), "x"] }), _jsx("td", { className: "py-3 text-right text-xs text-white/60", children: new Date(payout.settled_at).toLocaleString() })] }, payout.payout_id))) })] }), payouts.length === 0 && !payoutsQuery.isLoading && (_jsx("p", { className: "mt-4 text-sm text-white/60", children: "No payouts found for this pool." }))] })] })] }));
+    const winners = payouts.filter((row) => row.payout > 0);
+    const summary = summaryQuery.data;
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("header", { children: [_jsx(Link, { to: "/admin/settlements", className: "text-sm uppercase tracking-[0.3em] text-white/60 hover:text-white", children: "\u2190 Back to Settlements" }), _jsx("h1", { className: "mt-2 text-3xl font-semibold", children: "Payout Details" }), _jsxs("p", { className: "text-sm text-white/60", children: ["Pool ID: ", poolId] })] }), _jsxs("section", { className: "grid gap-4 md:grid-cols-4", children: [_jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Handle" }), _jsx("p", { className: "mt-1 text-2xl font-semibold", children: formatCurrency(Number(summary?.handle ?? 0)) })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Rake" }), _jsx("p", { className: "mt-1 text-2xl font-semibold", children: formatCurrency(Number(summary?.rake_amount ?? 0)) })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Paid to winners" }), _jsx("p", { className: "mt-1 text-2xl font-semibold text-emerald-300", children: formatCurrency(totalPayout) })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Winners" }), _jsx("p", { className: "mt-1 text-2xl font-semibold", children: winners.length })] })] }), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/40 p-6", children: [_jsx("h2", { className: "text-xl font-semibold", children: "Settlement Ledger" }), ledgerQuery.isLoading ? (_jsx("p", { className: "mt-4 text-sm text-white/60", children: "Loading settlement ledger\u2026" })) : (_jsx(FinalSettlementsTable, { rows: payouts, emptyLabel: "No ledger entries found." })), summary && (_jsxs("p", { className: "mt-4 text-xs text-white/60", children: ["Confirmed ", new Date(summary.approved_at).toLocaleString(), " by", " ", summary.approved_by ? summary.approved_by.slice(0, 8) + "…" : "system"] }))] })] }));
 };

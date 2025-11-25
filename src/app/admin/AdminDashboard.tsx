@@ -150,10 +150,14 @@ const AdminDashboard = () => {
                   {`${currencySymbol}${deposit.amount.toFixed(2)}`}
                 </p>
                 <p className="text-xs text-white/60">
+                  Character:{" "}
                   {deposit.display_name ||
                     deposit.username ||
                     `User ${deposit.user_id.slice(0, 8)}…`}
-                  {deposit.ic_phone_number && ` · ${deposit.ic_phone_number}`}
+                </p>
+                <p className="text-xs text-white/60">IC #: {deposit.ic_number ?? "—"}</p>
+                <p className="text-xs text-white/60">
+                  Phone: {deposit.ic_phone_number ?? "—"}
                 </p>
                 <p className="text-xs text-white/40">
                   UUID: {deposit.user_id.slice(0, 8)}… ·{" "}
@@ -191,10 +195,14 @@ const AdminDashboard = () => {
                   {`${currencySymbol}${withdrawal.amount.toFixed(2)}`}
                 </p>
                 <p className="text-xs text-white/60">
+                  Character:{" "}
                   {withdrawal.display_name ||
                     withdrawal.username ||
                     `User ${withdrawal.user_id.slice(0, 8)}…`}
-                  {withdrawal.ic_phone_number && ` · ${withdrawal.ic_phone_number}`}
+                </p>
+                <p className="text-xs text-white/60">IC #: {withdrawal.ic_number ?? "—"}</p>
+                <p className="text-xs text-white/60">
+                  Phone: {withdrawal.ic_phone_number ?? "—"}
                 </p>
                 <p className="text-xs text-white/40">
                   UUID: {withdrawal.user_id.slice(0, 8)}… ·{" "}

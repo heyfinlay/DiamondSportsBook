@@ -329,6 +329,78 @@ export const fetchUserWagers = async (userId, limit = 20) => {
         };
     }) ?? []);
 };
+export const fetchWagerById = async (wagerId) => {
+    if (!wagerId)
+        return null;
+    const { data, error } = await supabase
+        .from("wagers")
+        .select(`
+      id,
+      user_id,
+      market_id,
+      outcome_id,
+      stake,
+      status,
+      effective_odds,
+      estimated_payout,
+      settled_payout,
+      created_at,
+      outcome:outcomes(id, label),
+      market:markets(
+        id,
+        name,
+        pool_type,
+        total_pool,
+        rake_percent,
+        close_time,
+        event:events(id, title)
+      )
+    `)
+        .eq("id", wagerId)
+        .maybeSingle();
+    if (error)
+        throw error;
+    if (!data)
+        return null;
+    const outcomeRow = Array.isArray(data.outcome) ? data.outcome[0] : data.outcome;
+    const marketRow = Array.isArray(data.market) ? data.market[0] : data.market;
+    const eventRow = marketRow?.event;
+    const normalizedEvent = Array.isArray(eventRow) ? eventRow[0] : eventRow;
+    return {
+        id: data.id,
+        user_id: data.user_id,
+        market_id: data.market_id,
+        outcome_id: data.outcome_id,
+        stake: Number(data.stake ?? 0),
+        status: data.status,
+        effective_odds: Number(data.effective_odds ?? 0),
+        estimated_payout: Number(data.estimated_payout ?? 0),
+        settled_payout: data.settled_payout ? Number(data.settled_payout) : null,
+        created_at: data.created_at,
+        market: marketRow
+            ? {
+                id: marketRow.id,
+                name: marketRow.name,
+                pool_type: marketRow.pool_type,
+                total_pool: Number(marketRow.total_pool ?? 0),
+                rake_percent: Number(marketRow.rake_percent ?? 0),
+                close_time: marketRow.close_time ?? null,
+                event: normalizedEvent
+                    ? {
+                        id: normalizedEvent.id,
+                        title: normalizedEvent.title
+                    }
+                    : null
+            }
+            : null,
+        outcome: outcomeRow
+            ? {
+                id: outcomeRow.id,
+                label: outcomeRow.label
+            }
+            : null
+    };
+};
 const extractSingle = (value) => {
     if (!value)
         return null;

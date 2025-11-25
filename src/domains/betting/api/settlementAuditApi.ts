@@ -26,6 +26,25 @@ export interface UserPayout {
   settled_at: string;
 }
 
+export interface PoolLedgerEntry {
+  wager_id: string;
+  user_id: string;
+  character_name: string | null;
+  username: string | null;
+  outcome_id: string;
+  outcome_label: string;
+  stake: number;
+  status: string;
+  effective_odds: number;
+  payout: number;
+  share_percent: number;
+  settled_at: string;
+  placed_at: string;
+  distribution_pool: number;
+  total_winning_stake: number;
+  payout_per_unit: number;
+}
+
 /**
  * Fetch all payouts for a specific pool/market.
  * Requires sportsbook_admin or betting_admin permission.
@@ -127,4 +146,61 @@ export async function fetchSettlementPayoutsRaw(poolId: string) {
   }
 
   return data || [];
+}
+
+export async function fetchSettlementSummary(poolId: string) {
+  const { data, error } = await supabase
+    .from("pending_settlements")
+    .select(
+      `
+      pool_id,
+      handle,
+      rake_amount,
+      distribution_pool,
+      payout_per_unit,
+      approved_at,
+      approved_by,
+      winning_outcome_id,
+      outcomes:winning_outcome_id(label)
+    `
+    )
+    .eq("pool_id", poolId)
+    .eq("status", "settled")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch settlement summary: ${error.message}`);
+  }
+
+  return data || null;
+}
+export async function fetchPoolSettlementLedger(poolId: string): Promise<PoolLedgerEntry[]> {
+  const { data, error } = await supabase.rpc("settlement_get_pool_ledger", {
+    p_pool_id: poolId
+  });
+
+  if (error) {
+    throw new Error(`Failed to fetch settlement ledger: ${error.message}`);
+  }
+
+  return (
+    data?.map((row) => ({
+      wager_id: row.wager_id,
+      user_id: row.user_id,
+      character_name: row.character_name ?? null,
+      username: row.username ?? null,
+      outcome_id: row.outcome_id,
+      outcome_label: row.outcome_label ?? "Outcome",
+      stake: Number(row.stake ?? 0),
+      status: row.status ?? "pending",
+      effective_odds: Number(row.effective_odds ?? 0),
+      payout: Number(row.payout ?? 0),
+      share_percent: Number(row.share_percent ?? 0),
+      settled_at: row.settled_at ?? row.placed_at,
+      placed_at: row.placed_at ?? row.settled_at ?? new Date().toISOString(),
+      distribution_pool: Number(row.distribution_pool ?? 0),
+      total_winning_stake: Number(row.total_winning_stake ?? 0),
+      payout_per_unit: Number(row.payout_per_unit ?? 0)
+    })) ?? []
+  );
 }

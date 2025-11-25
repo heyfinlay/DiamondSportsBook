@@ -5,7 +5,9 @@ import LiveTimingPage from "./live/LiveTimingPage";
 import RaceControlPage from "./control/RaceControlPage";
 import MarketsPage from "./markets/MarketsPage";
 import MarketDetailPage from "./markets/MarketDetailPage";
+import StandingsPage from "./standings/page";
 import AccountPage from "./account/AccountPage";
+import AccountSettingsPage from "./account/AccountSettingsPage";
 import AdminDashboard from "./admin/AdminDashboard";
 import MarketManagementPage from "./admin/markets/MarketManagementPage";
 import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
@@ -15,6 +17,8 @@ import SettlementAuditPage, { PoolPayoutDetailPage } from "./admin/SettlementAud
 import ProtectedRoute from "./components/ProtectedRoute";
 import { LoginPage } from "./auth/LoginPage";
 import AuthCallbackPage from "./auth/AuthCallbackPage";
+import WagersPage from "./wagers/WagersPage";
+import WagerDetailPage from "./wagers/WagerDetailPage";
 export const router = createBrowserRouter([
     {
         path: "/login",
@@ -29,6 +33,10 @@ export const router = createBrowserRouter([
                 element: _jsx(MarketsPage, {})
             },
             {
+                path: "active-markets",
+                element: _jsx(MarketsPage, {})
+            },
+            {
                 path: "market/:marketId",
                 element: _jsx(MarketDetailPage, {})
             },
@@ -37,8 +45,29 @@ export const router = createBrowserRouter([
                 element: _jsx(LiveTimingPage, {})
             },
             {
+                path: "standings",
+                element: _jsx(StandingsPage, {})
+            },
+            {
                 path: "account",
                 element: _jsx(AccountPage, {})
+            },
+            {
+                element: _jsx(ProtectedRoute, {}),
+                children: [
+                    {
+                        path: "account/settings",
+                        element: _jsx(AccountSettingsPage, {})
+                    },
+                    {
+                        path: "wagers",
+                        element: _jsx(WagersPage, {})
+                    },
+                    {
+                        path: "wagers/:wagerId",
+                        element: _jsx(WagerDetailPage, {})
+                    }
+                ]
             },
             {
                 element: _jsx(ProtectedRoute, { requiredRoles: ["race_control", "super_admin"] }),

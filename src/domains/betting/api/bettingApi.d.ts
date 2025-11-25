@@ -146,3 +146,32 @@ export interface UserWager {
     event_title: string;
 }
 export declare const fetchUserWagers: (userId: string, limit?: number) => Promise<UserWager[]>;
+export interface WagerDetail {
+    id: string;
+    user_id: string;
+    market_id: string;
+    outcome_id: string;
+    stake: number;
+    status: string;
+    effective_odds: number;
+    estimated_payout: number;
+    settled_payout: number | null;
+    created_at: string;
+    market: {
+        id: string;
+        name: string;
+        pool_type: string;
+        total_pool: number;
+        rake_percent: number;
+        close_time: string | null;
+        event: {
+            id: string;
+            title: string;
+        } | null;
+    } | null;
+    outcome: {
+        id: string;
+        label: string;
+    } | null;
+}
+export declare const fetchWagerById: (wagerId: string) => Promise<WagerDetail | null>;

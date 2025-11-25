@@ -14,3 +14,8 @@ export declare const timingKeys: {
     pitEvents: (sessionId?: string | null) => readonly ["live-pit-events", string];
     results: (sessionId?: string | null) => readonly ["live-results", string];
 };
+export declare const standingsKeys: {
+    drivers: (seasonId?: string | null) => readonly ["standings:drivers", string];
+    teams: (seasonId?: string | null) => readonly ["standings:teams", string];
+    raceResults: (seasonId?: string | null) => readonly ["standings:race-results", string];
+};

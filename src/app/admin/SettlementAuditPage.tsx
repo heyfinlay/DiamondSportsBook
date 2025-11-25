@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import {
-  fetchPoolPayouts,
   fetchRecentSettlements,
-  type PoolPayout
+  fetchPoolSettlementLedger,
+  fetchSettlementSummary
 } from "@domains/betting/api/settlementAuditApi";
 import { useSession } from "@lib/auth/SessionProvider";
 import { currencySymbol } from "@lib/currency";
+import { formatCurrency } from "../../features/markets/utils/format";
+import FinalSettlementsTable from "../../features/markets/components/FinalSettlementsTable";
 
 const SettlementAuditPage = () => {
   const { user } = useSession();
@@ -93,9 +95,15 @@ export const PoolPayoutDetailPage = () => {
   const { poolId } = useParams<{ poolId: string }>();
   const { user } = useSession();
 
-  const payoutsQuery = useQuery({
-    queryKey: ["pool-payouts", poolId],
-    queryFn: () => fetchPoolPayouts(poolId!),
+  const ledgerQuery = useQuery({
+    queryKey: ["pool-ledger", poolId],
+    queryFn: () => fetchPoolSettlementLedger(poolId!),
+    enabled: !!poolId && !!user
+  });
+
+  const summaryQuery = useQuery({
+    queryKey: ["pool-summary", poolId],
+    queryFn: () => fetchSettlementSummary(poolId!),
     enabled: !!poolId && !!user
   });
 
@@ -107,9 +115,10 @@ export const PoolPayoutDetailPage = () => {
     );
   }
 
-  const payouts = payoutsQuery.data || [];
+  const payouts = ledgerQuery.data || [];
   const totalPayout = payouts.reduce((sum, p) => sum + Number(p.payout), 0);
-  const totalStake = payouts.reduce((sum, p) => sum + Number(p.stake), 0);
+  const winners = payouts.filter((row) => row.payout > 0);
+  const summary = summaryQuery.data;
 
   return (
     <div className="space-y-6">
@@ -125,71 +134,44 @@ export const PoolPayoutDetailPage = () => {
       </header>
 
       {/* Summary */}
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Handle</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {formatCurrency(Number(summary?.handle ?? 0))}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Rake</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {formatCurrency(Number(summary?.rake_amount ?? 0))}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Paid to winners</p>
+          <p className="mt-1 text-2xl font-semibold text-emerald-300">
+            {formatCurrency(totalPayout)}
+          </p>
+        </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Winners</p>
-          <p className="mt-1 text-2xl font-semibold">{payouts.length}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Winning Stake</p>
-          <p className="mt-1 text-2xl font-semibold">{`${currencySymbol}${totalStake.toFixed(2)}`}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Paid Out</p>
-          <p className="mt-1 text-2xl font-semibold">{`${currencySymbol}${totalPayout.toFixed(2)}`}</p>
+          <p className="mt-1 text-2xl font-semibold">{winners.length}</p>
         </div>
       </section>
 
-      {/* Payout List */}
       <section className="rounded-3xl border border-white/10 bg-black/40 p-6">
-        <h2 className="text-xl font-semibold">Payouts</h2>
-        {payoutsQuery.isLoading && (
-          <p className="mt-4 text-sm text-white/60">Loading payouts…</p>
+        <h2 className="text-xl font-semibold">Settlement Ledger</h2>
+        {ledgerQuery.isLoading ? (
+          <p className="mt-4 text-sm text-white/60">Loading settlement ledger…</p>
+        ) : (
+          <FinalSettlementsTable rows={payouts} emptyLabel="No ledger entries found." />
         )}
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-left">
-                <th className="pb-2 font-semibold text-white/60">User</th>
-                <th className="pb-2 font-semibold text-white/60">Outcome</th>
-                <th className="pb-2 text-right font-semibold text-white/60">Stake</th>
-                <th className="pb-2 text-right font-semibold text-white/60">Share %</th>
-                <th className="pb-2 text-right font-semibold text-white/60">Payout</th>
-                <th className="pb-2 text-right font-semibold text-white/60">Effective Odds</th>
-                <th className="pb-2 text-right font-semibold text-white/60">Settled At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payouts.map((payout: PoolPayout) => (
-                <tr key={payout.payout_id} className="border-b border-white/5">
-                  <td className="py-3">
-                    <p className="font-semibold">
-                      {payout.user_display_name || `User ${payout.user_id.slice(0, 8)}…`}
-                    </p>
-                    <p className="text-xs text-white/40">{payout.user_id.slice(0, 8)}…</p>
-                  </td>
-                  <td className="py-3 text-white/70">{payout.outcome_label}</td>
-                  <td className="py-3 text-right">{`${currencySymbol}${Number(payout.stake).toFixed(2)}`}</td>
-                  <td className="py-3 text-right text-white/70">
-                    {Number(payout.share_percent).toFixed(2)}%
-                  </td>
-                  <td className="py-3 text-right font-semibold text-emerald-300">
-                    {`${currencySymbol}${Number(payout.payout).toFixed(2)}`}
-                  </td>
-                  <td className="py-3 text-right text-white/70">
-                    {Number(payout.effective_odds).toFixed(2)}x
-                  </td>
-                  <td className="py-3 text-right text-xs text-white/60">
-                    {new Date(payout.settled_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {payouts.length === 0 && !payoutsQuery.isLoading && (
-            <p className="mt-4 text-sm text-white/60">No payouts found for this pool.</p>
-          )}
-        </div>
+        {summary && (
+          <p className="mt-4 text-xs text-white/60">
+            Confirmed {new Date(summary.approved_at).toLocaleString()} by{" "}
+            {summary.approved_by ? summary.approved_by.slice(0, 8) + "…" : "system"}
+          </p>
+        )}
       </section>
     </div>
   );
