@@ -1,7 +1,7 @@
 export type DriverStanding = {
     driver_id: string;
     driver_name: string;
-    team_id: string;
+    team_id: string | null;
     team_name: string;
     team_color: string;
     season_id: string;
@@ -27,20 +27,24 @@ export type TeamStanding = {
     diff_to_leader: number | null;
 };
 export type RaceResult = {
+    result_id: string;
     session_id: string;
+    season_id: string;
     round_number: number;
     race_name: string;
-    circuit_name: string;
-    race_date: string;
+    circuit_name: string | null;
+    race_date: string | null;
+    finish_position: number | null;
     position_display: string;
     driver_id: string;
     driver_name: string;
+    car_number: number | null;
     team_id: string;
     team_name: string;
     team_color: string;
-    grid_position: number;
+    grid_position: number | null;
     gap_to_leader: string | null;
-    status: string;
+    status: string | null;
     points_awarded: number;
     fastest_lap: boolean;
 };

@@ -120,6 +120,12 @@ const AdminDashboard = () => {
             Settlement Audit
           </Link>
           <Link
+            to="/admin/championship"
+            className="inline-block rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white hover:border-white/60"
+          >
+            Championship
+          </Link>
+          <Link
             to="/admin/timing-sessions"
             className="inline-block rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white hover:border-white/60"
           >
@@ -156,9 +162,6 @@ const AdminDashboard = () => {
                     `User ${deposit.user_id.slice(0, 8)}…`}
                 </p>
                 <p className="text-xs text-white/60">IC #: {deposit.ic_number ?? "—"}</p>
-                <p className="text-xs text-white/60">
-                  Phone: {deposit.ic_phone_number ?? "—"}
-                </p>
                 <p className="text-xs text-white/40">
                   UUID: {deposit.user_id.slice(0, 8)}… ·{" "}
                   {new Date(deposit.requested_at).toLocaleString()}
@@ -201,9 +204,6 @@ const AdminDashboard = () => {
                     `User ${withdrawal.user_id.slice(0, 8)}…`}
                 </p>
                 <p className="text-xs text-white/60">IC #: {withdrawal.ic_number ?? "—"}</p>
-                <p className="text-xs text-white/60">
-                  Phone: {withdrawal.ic_phone_number ?? "—"}
-                </p>
                 <p className="text-xs text-white/40">
                   UUID: {withdrawal.user_id.slice(0, 8)}… ·{" "}
                   {new Date(withdrawal.requested_at).toLocaleString()}

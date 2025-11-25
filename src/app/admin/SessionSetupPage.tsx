@@ -1,7 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@lib/supabaseClient";
+import {
+  fetchChampionshipSeasons,
+  fetchChampionshipTeams,
+  type ChampionshipTeam
+} from "@domains/championship/api/championshipApi";
 
 interface DriverConfig {
   number: number;
@@ -10,6 +15,9 @@ interface DriverConfig {
   team_name?: string;
   primary_color?: string;
   secondary_color?: string;
+  status?: string;
+  driver_entry_id?: string;
+  season_id?: string;
 }
 
 interface Team {
@@ -21,6 +29,14 @@ interface Team {
   secondary_hex: string;
   primary_driver: string | null;
 }
+
+type TeamOption = {
+  key: string;
+  name: string;
+  abbrev?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+};
 
 interface SessionFormState {
   name: string;
@@ -47,8 +63,8 @@ const SessionSetupPage = () => {
     type: "success" | "error";
   } | null>(null);
 
-  // Fetch teams from database
-  const teamsQuery = useQuery({
+  // Fetch legacy teams (fallback)
+  const legacyTeamsQuery = useQuery({
     queryKey: ["teams"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,27 +77,83 @@ const SessionSetupPage = () => {
     }
   });
 
+  const seasonsQuery = useQuery({
+    queryKey: ["championship-seasons"],
+    queryFn: fetchChampionshipSeasons
+  });
+
+  const activeSeason = useMemo(() => {
+    const seasons = seasonsQuery.data ?? [];
+    if (!seasons.length) return null;
+    return seasons.find((season) => season.status === "active") ?? seasons[0];
+  }, [seasonsQuery.data]);
+
+  const championshipTeamsQuery = useQuery({
+    queryKey: ["championship-teams", activeSeason?.id],
+    queryFn: () => fetchChampionshipTeams(activeSeason!.id),
+    enabled: Boolean(activeSeason?.id)
+  });
+
+  const officialTeamOptions = useMemo<TeamOption[]>(() => {
+    if (!championshipTeamsQuery.data) return [];
+    return championshipTeamsQuery.data.map((team: ChampionshipTeam) => ({
+      key: team.legacy_team_id ?? team.id,
+      name: team.name,
+      abbrev: team.short_code,
+      primary_color: team.primary_color,
+      secondary_color: team.secondary_color
+    }));
+  }, [championshipTeamsQuery.data]);
+
+  const fallbackTeamOptions = useMemo<TeamOption[]>(() => {
+    if (!legacyTeamsQuery.data) return [];
+    return legacyTeamsQuery.data.map((team) => ({
+      key: team.team_id,
+      name: team.name,
+      abbrev: team.abbrev,
+      primary_color: team.primary_hex,
+      secondary_color: team.secondary_hex
+    }));
+  }, [legacyTeamsQuery.data]);
+
+  const teamOptions = useMemo<TeamOption[]>(() => {
+    const preferred = officialTeamOptions.length ? officialTeamOptions : fallbackTeamOptions;
+    return preferred.filter((team) => Boolean(team.key));
+  }, [officialTeamOptions, fallbackTeamOptions]);
+
   // Fetch DBGP lineup template
-  const dbgpLineupQuery = useQuery({
+  const dbgpLineupQuery = useQuery<Partial<DriverConfig>[]>({
     queryKey: ["dbgp-lineup"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dbgp_lineup");
 
       if (error) throw error;
-      return data as DriverConfig[];
-    }
+      return (data ?? []) as Partial<DriverConfig>[];
+    },
+    enabled: false
   });
+
+  const serializeDrivers = (drivers: DriverConfig[]) =>
+    drivers.map((driver) => ({
+      number: driver.number,
+      name: driver.name,
+      team_id: driver.team_id ?? null,
+      team_name: driver.team_name ?? null,
+      primary_color: driver.primary_color ?? null,
+      secondary_color: driver.secondary_color ?? null
+    }));
 
   // Create session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (params: SessionFormState) => {
+      const payloadDrivers = serializeDrivers(params.drivers);
       const { data, error } = await supabase.rpc("timing_create_session_with_drivers", {
         p_name: params.name,
         p_mode: params.mode,
         p_track_name: params.track_name,
         p_laps_target: params.laps_target ? parseInt(params.laps_target) : null,
         p_starts_at: params.starts_at ? new Date(params.starts_at).toISOString() : null,
-        p_drivers: params.drivers
+        p_drivers: payloadDrivers
       });
 
       if (error) throw error;
@@ -122,17 +194,41 @@ const SessionSetupPage = () => {
     createSessionMutation.mutate(formState);
   };
 
-  const handleLoadDBGPLineup = () => {
-    if (dbgpLineupQuery.data) {
-      setFormState(prev => ({
-        ...prev,
-        drivers: dbgpLineupQuery.data
-      }));
+  const handleLoadDBGPLineup = async () => {
+    const result = await dbgpLineupQuery.refetch();
+    if (result.error) {
       setStatusMessage({
-        text: "DBGP lineup loaded successfully",
-        type: "success"
+        text: result.error.message || "Unable to load the championship lineup.",
+        type: "error"
       });
+      return;
     }
+
+    const lineup = result.data ?? [];
+    if (!lineup.length) {
+      setStatusMessage({
+        text: "No active championship lineup found. Add drivers in Championship Management first.",
+        type: "error"
+      });
+      return;
+    }
+
+    setFormState((prev) => ({
+      ...prev,
+      drivers: lineup.map((driver, index) => ({
+        number: driver.number ?? index + 1,
+        name: driver.name ?? `Driver ${index + 1}`,
+        team_id: driver.team_id ?? undefined,
+        team_name: driver.team_name ?? undefined,
+        primary_color: driver.primary_color ?? "#FFFFFF",
+        secondary_color: driver.secondary_color ?? "#0F0F0F",
+        status: driver.status ?? undefined
+      }))
+    }));
+    setStatusMessage({
+      text: `Loaded ${lineup.length} drivers from ${activeSeason?.name ?? "the championship"} lineup.`,
+      type: "success"
+    });
   };
 
   const handleAddDriver = () => {
@@ -165,24 +261,22 @@ const SessionSetupPage = () => {
     }));
   };
 
-  const handleDriverTeamSelect = (index: number, teamId: string) => {
-    const team = teamsQuery.data?.find(t => t.team_id === teamId);
-    if (team) {
-      setFormState(prev => ({
-        ...prev,
-        drivers: prev.drivers.map((driver, i) =>
-          i === index
-            ? {
-                ...driver,
-                team_id: team.team_id,
-                team_name: team.name,
-                primary_color: team.primary_hex,
-                secondary_color: team.secondary_hex
-              }
-            : driver
-        )
-      }));
-    }
+  const handleDriverTeamSelect = (index: number, teamKey: string) => {
+    const team = teamOptions.find((option) => option.key === teamKey);
+    setFormState((prev) => ({
+      ...prev,
+      drivers: prev.drivers.map((driver, i) =>
+        i === index
+          ? {
+              ...driver,
+              team_id: team?.key ?? undefined,
+              team_name: team?.name ?? undefined,
+              primary_color: team?.primary_color ?? driver.primary_color,
+              secondary_color: team?.secondary_color ?? driver.secondary_color
+            }
+          : driver
+      )
+    }));
   };
 
   const handleClearDrivers = () => {
@@ -322,16 +416,23 @@ const SessionSetupPage = () => {
               <p className="text-sm text-white/60">
                 {formState.drivers.length} driver{formState.drivers.length !== 1 ? "s" : ""}{" "}
                 configured
+                {activeSeason ? ` · ${activeSeason.name}` : ""}
               </p>
+              {activeSeason && !officialTeamOptions.length && (
+                <p className="text-xs text-amber-200">
+                  Add championship teams to prefill colors automatically. Legacy team list is used
+                  until then.
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                className="rounded-2xl bg-brand/20 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-brand hover:bg-brand/30"
-                onClick={handleLoadDBGPLineup}
-                disabled={dbgpLineupQuery.isLoading}
+                className="rounded-2xl bg-brand/20 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-brand hover:bg-brand/30 disabled:opacity-50"
+                onClick={() => void handleLoadDBGPLineup()}
+                disabled={dbgpLineupQuery.isFetching}
               >
-                {dbgpLineupQuery.isLoading ? "Loading…" : "Load DBGP Lineup"}
+                {dbgpLineupQuery.isFetching ? "Loading…" : "Load Championship Lineup"}
               </button>
               <button
                 type="button"
@@ -384,8 +485,19 @@ const SessionSetupPage = () => {
                   </div>
 
                   <div className="md:col-span-3">
-                    <label className="text-xs uppercase tracking-[0.3em] text-white/60">
-                      Driver Name
+                    <label className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/60">
+                      <span>Driver Name</span>
+                      {driver.status && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            driver.status === "reserve"
+                              ? "bg-amber-500/20 text-amber-200"
+                              : "bg-white/10 text-white/60"
+                          }`}
+                        >
+                          {driver.status}
+                        </span>
+                      )}
                     </label>
                     <input
                       type="text"
@@ -403,13 +515,19 @@ const SessionSetupPage = () => {
                     </label>
                     <select
                       className="mt-1 w-full rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-sm"
-                      value={driver.team_id || ""}
+                      value={driver.team_id ?? ""}
                       onChange={(e) => handleDriverTeamSelect(index, e.target.value)}
                     >
                       <option value="">Select team</option>
-                      {teamsQuery.data?.map((team) => (
-                        <option key={team.team_id} value={team.team_id}>
-                          {team.name} ({team.abbrev})
+                      {!teamOptions.length && (
+                        <option value="" disabled>
+                          No teams configured
+                        </option>
+                      )}
+                      {teamOptions.map((team) => (
+                        <option key={team.key} value={team.key}>
+                          {team.name}
+                          {team.abbrev ? ` (${team.abbrev})` : ""}
                         </option>
                       ))}
                     </select>

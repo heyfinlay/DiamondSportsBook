@@ -1,28 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useDriverStandings, useRaceResults, useTeamStandings } from "@domains/standings/api/standingsApi";
+import { fetchChampionshipSeasons } from "@domains/championship/api/championshipApi";
 import DriversStandingsTable from "../../components/standings/DriversStandingsTable";
 import TeamsStandingsTable from "../../components/standings/TeamsStandingsTable";
 import RaceResultsTable from "../../components/standings/RaceResultsTable";
 import StandingsTabs from "../../components/standings/StandingsTabs";
 
-const SEASON_OPTIONS = [
-  {
-    id: "dbgp-2024",
-    label: "DBGP 2024 Season"
-  }
-];
-
-const DEFAULT_SEASON_ID = SEASON_OPTIONS[0].id;
-
 type RoundOption = {
   round_number: number;
   race_name: string;
-  circuit_name: string;
-  race_date: string;
+  circuit_name: string | null;
+  race_date: string | null;
   session_id: string;
 };
 
-const formatDate = (dateString?: string) => {
+const formatDate = (dateString?: string | null) => {
   if (!dateString) return "TBD";
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return dateString;
@@ -39,15 +32,35 @@ const getErrorMessage = (error: unknown) => {
 };
 
 const StandingsPage = () => {
-  const [seasonId, setSeasonId] = useState<string>(DEFAULT_SEASON_ID);
+  const [seasonId, setSeasonId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"drivers" | "teams" | "results">("drivers");
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
+  const seasonsQuery = useQuery({
+    queryKey: ["championship-seasons"],
+    queryFn: fetchChampionshipSeasons
+  });
+  const seasons = seasonsQuery.data ?? [];
 
-  const driversQuery = useDriverStandings(seasonId);
-  const teamsQuery = useTeamStandings(seasonId);
-  const raceResultsQuery = useRaceResults(seasonId);
+  useEffect(() => {
+    if (!seasons.length) {
+      setSeasonId(null);
+      return;
+    }
+    setSeasonId((prev) => {
+      if (prev && seasons.some((season) => season.id === prev)) {
+        return prev;
+      }
+      const activeSeason = seasons.find((season) => season.status === "active");
+      return activeSeason?.id ?? seasons[0].id;
+    });
+  }, [seasons]);
+
+  const driversQuery = useDriverStandings(seasonId ?? undefined);
+  const teamsQuery = useTeamStandings(seasonId ?? undefined);
+  const raceResultsQuery = useRaceResults(seasonId ?? undefined);
 
   const raceResults = raceResultsQuery.data ?? [];
+  const selectedSeason = seasons.find((season) => season.id === seasonId) ?? null;
 
   const roundOptions = useMemo<RoundOption[]>(() => {
     const map = new Map<number, RoundOption>();
@@ -114,6 +127,14 @@ const StandingsPage = () => {
   );
 
   const renderDriversTab = () => {
+    if (!seasonId) {
+      if (seasonsQuery.isLoading) return renderLoadingState();
+      return (
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
+          Championship data will appear once a season is activated.
+        </div>
+      );
+    }
     if (driversQuery.isLoading) return renderLoadingState();
     if (driversQuery.isError) return renderErrorState(driversQuery.refetch, getErrorMessage(driversQuery.error));
 
@@ -121,6 +142,14 @@ const StandingsPage = () => {
   };
 
   const renderTeamsTab = () => {
+    if (!seasonId) {
+      if (seasonsQuery.isLoading) return renderLoadingState();
+      return (
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
+          Add an active season to view teams standings.
+        </div>
+      );
+    }
     if (teamsQuery.isLoading) return renderLoadingState();
     if (teamsQuery.isError) return renderErrorState(teamsQuery.refetch, getErrorMessage(teamsQuery.error));
 
@@ -128,6 +157,14 @@ const StandingsPage = () => {
   };
 
   const renderRaceResultsTab = () => {
+    if (!seasonId) {
+      if (seasonsQuery.isLoading) return renderLoadingState();
+      return (
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
+          Race results unlock once a championship season is configured.
+        </div>
+      );
+    }
     if (raceResultsQuery.isLoading) return renderLoadingState();
     if (raceResultsQuery.isError) {
       return renderErrorState(raceResultsQuery.refetch, getErrorMessage(raceResultsQuery.error));
@@ -136,7 +173,9 @@ const StandingsPage = () => {
     if (!roundOptions.length) {
       return (
         <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
-          Race results will appear here once the first round is classified.
+          {selectedSeason
+            ? `Race results for ${selectedSeason.name} will appear here once the first round is classified.`
+            : "Select a season to view race results."}
         </div>
       );
     }
@@ -148,14 +187,22 @@ const StandingsPage = () => {
             <label className="text-white/60">Round</label>
             <select
               className="mt-1 rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-white focus:border-white"
-              value={selectedRound ?? roundOptions[roundOptions.length - 1].round_number}
-              onChange={(event) => setSelectedRound(Number(event.target.value))}
+              value={selectedRound ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSelectedRound(value ? Number(value) : null);
+              }}
+              disabled={!roundOptions.length}
             >
-              {roundOptions.map((round) => (
-                <option key={round.round_number} value={round.round_number}>
-                  Round {round.round_number}: {round.race_name}
-                </option>
-              ))}
+              {roundOptions.length ? (
+                roundOptions.map((round) => (
+                  <option key={round.round_number} value={round.round_number}>
+                    Round {round.round_number}: {round.race_name}
+                  </option>
+                ))
+              ) : (
+                <option value="">No classified rounds</option>
+              )}
             </select>
           </div>
           {selectedRoundMeta ? (
@@ -163,7 +210,9 @@ const StandingsPage = () => {
               <div>
                 <p className="text-xs uppercase text-white/60">Race</p>
                 <p className="text-lg font-semibold">{selectedRoundMeta.race_name}</p>
-                <p className="text-sm text-white/60">{selectedRoundMeta.circuit_name}</p>
+                <p className="text-sm text-white/60">
+                  {selectedRoundMeta.circuit_name ?? "Circuit TBA"}
+                </p>
               </div>
               <div className="mt-3 md:mt-0">
                 <p className="text-xs uppercase text-white/60">Date</p>
@@ -193,20 +242,28 @@ const StandingsPage = () => {
             Season
             <select
               className="mt-1 w-full rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-white focus:border-white md:w-60"
-              value={seasonId}
-              onChange={(event) => setSeasonId(event.target.value)}
+              value={seasonId ?? ""}
+              onChange={(event) => setSeasonId(event.target.value || null)}
+              disabled={!seasons.length}
             >
-              {SEASON_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
+              {seasons.length ? (
+                seasons.map((season) => (
+                  <option key={season.id} value={season.id}>
+                    {season.name}
+                    {season.year ? ` (${season.year})` : ""}
+                  </option>
+                ))
+              ) : (
+                <option value="">No seasons available</option>
+              )}
             </select>
           </label>
           <div className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-medium text-white/80">
             {latestRaceInfo
               ? `${latestRaceInfo.race_name} – Round ${latestRaceInfo.round_number}`
-              : "Awaiting first race"}
+              : selectedSeason
+                ? "Awaiting first race"
+                : "No season selected"}
           </div>
         </div>
       </div>

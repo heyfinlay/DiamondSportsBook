@@ -20,7 +20,6 @@ const AccountSettingsPage = () => {
   const [characterName, setCharacterName] = useState("");
   const [username, setUsername] = useState("");
   const [icNumber, setIcNumber] = useState("");
-  const [icPhoneNumber, setIcPhoneNumber] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,7 +29,6 @@ const AccountSettingsPage = () => {
       setCharacterName(profileQuery.data.display_name ?? "");
       setUsername(profileQuery.data.username ?? "");
       setIcNumber(profileQuery.data.ic_number ?? "");
-      setIcPhoneNumber(profileQuery.data.ic_phone_number ?? "");
     }
     if (user?.email) {
       setEmailInput(user.email);
@@ -42,8 +40,7 @@ const AccountSettingsPage = () => {
       updateUserProfile(user?.id ?? "", {
         display_name: characterName.trim() || undefined,
         username: username.trim() || undefined,
-        ic_number: icNumber.trim() || undefined,
-        ic_phone_number: icPhoneNumber.trim() || undefined
+        ic_number: icNumber.trim() || undefined
       }),
     onSuccess: () => {
       toast({ variant: "success", title: "Profile updated" });
@@ -185,18 +182,6 @@ const AccountSettingsPage = () => {
               placeholder="Required for onboarding"
             />
           </div>
-          <div className="md:col-span-1">
-            <label className="text-xs uppercase tracking-[0.3em] text-white/50">
-              IC Phone Number
-            </label>
-            <input
-              type="text"
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-              value={icPhoneNumber}
-              onChange={(event) => setIcPhoneNumber(event.target.value)}
-              placeholder="Needed for deposits/withdrawals"
-            />
-          </div>
           <div className="md:col-span-2 flex flex-wrap gap-3 pt-2">
             <button
               type="submit"
@@ -207,12 +192,11 @@ const AccountSettingsPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setCharacterName(profileQuery.data?.display_name ?? "");
-                setUsername(profileQuery.data?.username ?? "");
-                setIcNumber(profileQuery.data?.ic_number ?? "");
-                setIcPhoneNumber(profileQuery.data?.ic_phone_number ?? "");
-              }}
+          onClick={() => {
+            setCharacterName(profileQuery.data?.display_name ?? "");
+            setUsername(profileQuery.data?.username ?? "");
+            setIcNumber(profileQuery.data?.ic_number ?? "");
+          }}
               className="rounded-2xl border border-white/20 px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-white/5"
             >
               Reset

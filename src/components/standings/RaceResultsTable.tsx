@@ -5,7 +5,7 @@ type RaceResultsTableProps = {
 };
 
 const formatGap = (result: RaceResult) => {
-  if (result.position_display === "1") return "—";
+  if (result.finish_position === 1 || result.position_display === "1") return "—";
   if (result.gap_to_leader) return result.gap_to_leader;
   return result.status ?? "—";
 };
@@ -35,18 +35,26 @@ const RaceResultsTable = ({ data }: RaceResultsTableProps) => {
         </thead>
         <tbody>
           {data.map((result) => {
+            const displayPosition =
+              result.position_display ||
+              (result.finish_position ? String(result.finish_position) : "—");
+            const normalizedDisplay = displayPosition.toUpperCase();
             const retired =
-              ["DNF", "DSQ"].includes(result.position_display.toUpperCase()) ||
+              ["DNF", "DSQ"].includes(normalizedDisplay) ||
               result.status?.toUpperCase().includes("DNF") ||
               result.status?.toUpperCase().includes("DSQ");
+            const pointsDisplay =
+              Number.isInteger(result.points_awarded)
+                ? result.points_awarded.toFixed(0)
+                : result.points_awarded.toFixed(1);
 
             return (
               <tr
-                key={`${result.session_id}-${result.driver_id}`}
+                key={result.result_id ?? `${result.session_id}-${result.driver_id}`}
                 className={retired ? "opacity-60" : "hover:bg-white/5"}
               >
                 <td className="px-4 py-3 text-sm font-semibold text-white/80">
-                  {result.position_display}
+                  {displayPosition}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col">
@@ -66,11 +74,13 @@ const RaceResultsTable = ({ data }: RaceResultsTableProps) => {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-white/70">{result.team_name}</td>
-                <td className="px-4 py-3 text-right text-white/70">{result.grid_position}</td>
+                <td className="px-4 py-3 text-right text-white/70">
+                  {result.grid_position ?? "—"}
+                </td>
                 <td className="px-4 py-3 text-right text-white/70">{formatGap(result)}</td>
-                <td className="px-4 py-3 text-right text-white/70">{result.status}</td>
+                <td className="px-4 py-3 text-right text-white/70">{result.status ?? "—"}</td>
                 <td className="px-4 py-3 text-right text-base font-semibold text-white">
-                  {result.points_awarded}
+                  {pointsDisplay.replace(/\.0$/, "")}
                 </td>
               </tr>
             );

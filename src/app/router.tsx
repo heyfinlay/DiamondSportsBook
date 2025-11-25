@@ -8,6 +8,7 @@ import StandingsPage from "./standings/page";
 import AccountPage from "./account/AccountPage";
 import AccountSettingsPage from "./account/AccountSettingsPage";
 import AdminDashboard from "./admin/AdminDashboard";
+import AdminChampionshipPage from "./admin/ChampionshipPage";
 import MarketManagementPage from "./admin/markets/MarketManagementPage";
 import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
 import SessionSetupPage from "./admin/SessionSetupPage";
@@ -100,6 +101,10 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           {
             path: "admin/settlements/:poolId",
             element: <PoolPayoutDetailPage />
+          },
+          {
+            path: "admin/championship",
+            element: <AdminChampionshipPage />
           },
           {
             path: "dashboard/admin/markets",

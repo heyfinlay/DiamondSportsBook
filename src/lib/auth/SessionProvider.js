@@ -42,9 +42,8 @@ export const SessionProvider = ({ children }) => {
         }
         if (icNumber) {
             updates.ic_number = icNumber;
-            updates.ic_phone_number = icNumber;
         }
-        if (!updates.username && !updates.ic_phone_number) {
+        if (!updates.username && !updates.ic_number) {
             return;
         }
         const syncProfile = async () => {
@@ -99,7 +98,7 @@ export const SessionProvider = ({ children }) => {
         if (userId) {
             const { error: profileError } = await supabase
                 .from("profiles")
-                .upsert({ id: userId, username: trimmedUsername, ic_number: trimmedIc, ic_phone_number: trimmedIc }, { onConflict: "id" });
+                .upsert({ id: userId, username: trimmedUsername, ic_number: trimmedIc }, { onConflict: "id" });
             if (profileError) {
                 console.error(profileError);
                 return { error: new Error(profileError.message) };

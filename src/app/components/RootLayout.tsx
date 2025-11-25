@@ -23,6 +23,7 @@ const RootLayout = () => {
     ...(canAdmin
       ? [
           { to: "/admin", label: "Admin" },
+          { to: "/admin/championship", label: "Championship" },
           { to: "/dashboard/admin/markets", label: "Markets Admin" }
         ]
       : [])

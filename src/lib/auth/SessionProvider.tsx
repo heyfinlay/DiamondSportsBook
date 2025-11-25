@@ -74,7 +74,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       id: string;
       username?: string;
       ic_number?: string | null;
-      ic_phone_number?: string | null;
     } = { id: user.id };
 
     if (derivedUsername) {
@@ -83,10 +82,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
     if (icNumber) {
       updates.ic_number = icNumber;
-      updates.ic_phone_number = icNumber;
     }
 
-    if (!updates.username && !updates.ic_phone_number) {
+    if (!updates.username && !updates.ic_number) {
       return;
     }
 
@@ -158,10 +156,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     if (userId) {
       const { error: profileError } = await supabase
         .from("profiles")
-        .upsert(
-          { id: userId, username: trimmedUsername, ic_number: trimmedIc, ic_phone_number: trimmedIc },
-          { onConflict: "id" }
-        );
+        .upsert({ id: userId, username: trimmedUsername, ic_number: trimmedIc }, { onConflict: "id" });
 
       if (profileError) {
         console.error(profileError);

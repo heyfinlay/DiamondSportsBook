@@ -34,7 +34,6 @@ export interface PendingDeposit {
     display_name: string | null;
     username: string | null;
     ic_number: string | null;
-    ic_phone_number: string | null;
 }
 export declare const fetchPendingDeposits: () => Promise<{
     id: any;
@@ -45,7 +44,6 @@ export declare const fetchPendingDeposits: () => Promise<{
     display_name: any;
     username: any;
     ic_number: any;
-    ic_phone_number: any;
 }[]>;
 export interface PendingWithdrawal {
     id: string;
@@ -56,7 +54,6 @@ export interface PendingWithdrawal {
     display_name: string | null;
     username: string | null;
     ic_number: string | null;
-    ic_phone_number: string | null;
 }
 export declare const fetchPendingWithdrawals: () => Promise<{
     id: any;
@@ -67,7 +64,6 @@ export declare const fetchPendingWithdrawals: () => Promise<{
     display_name: any;
     username: any;
     ic_number: any;
-    ic_phone_number: any;
 }[]>;
 export declare const approveDeposit: (depositId: string) => Promise<void>;
 export declare const approveWithdrawal: (withdrawalId: string) => Promise<void>;

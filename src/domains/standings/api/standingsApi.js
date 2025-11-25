@@ -30,6 +30,7 @@ const fetchRaceResults = async (seasonId) => {
         .select("*")
         .eq("season_id", seasonId)
         .order("round_number", { ascending: true })
+        .order("finish_position", { ascending: true, nullsFirst: false })
         .order("position_display", { ascending: true });
     if (error)
         throw error;

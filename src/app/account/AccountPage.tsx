@@ -110,12 +110,12 @@ const AccountPage = () => {
   const handleDeposit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Check for IC phone number requirement
-    if (!profileQuery.data?.ic_phone_number) {
+    // Require IC number on file before handling money
+    if (!profileQuery.data?.ic_number) {
       toast({
         variant: "error",
-        title: "Phone number required",
-        description: "Add your IC phone number from Account Settings before requesting a deposit."
+        title: "IC number required",
+        description: "Add your IC number from Account Settings before requesting a deposit."
       });
       return;
     }
@@ -135,12 +135,11 @@ const AccountPage = () => {
   const handleWithdrawal = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Check for IC phone number requirement
-    if (!profileQuery.data?.ic_phone_number) {
+    if (!profileQuery.data?.ic_number) {
       toast({
         variant: "error",
-        title: "Phone number required",
-        description: "Add your IC phone number from Account Settings before requesting a withdrawal."
+        title: "IC number required",
+        description: "Add your IC number from Account Settings before requesting a withdrawal."
       });
       return;
     }
@@ -174,9 +173,6 @@ const AccountPage = () => {
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold text-white">Account</h1>
-            <p className="text-sm text-white/60">
-              Linked email: <span className="font-mono">{user?.email ?? "Loading…"}</span>
-            </p>
           </div>
           <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
             <Link
@@ -195,10 +191,10 @@ const AccountPage = () => {
         </div>
       </section>
 
-      {!profileQuery.isLoading && !profileQuery.data?.ic_phone_number && (
+      {!profileQuery.isLoading && !profileQuery.data?.ic_number && (
         <div className="rounded-3xl border border-amber-400/40 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
           <p>
-            Add your IC phone number in{" "}
+            Add your IC number in{" "}
             <Link to="/account/settings" className="underline">
               Account Settings
             </Link>{" "}
