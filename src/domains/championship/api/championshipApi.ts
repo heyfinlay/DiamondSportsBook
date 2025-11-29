@@ -173,8 +173,12 @@ export const upsertChampionshipRace = async (
   return data as ChampionshipRace;
 };
 
+export type DisplayLabelMode = "position" | "gap_to_leader";
+
 export interface ChampionshipResult {
   id?: string;
+  // Optional reference to a settlement record; championships may compute it later.
+  championship_result_id?: string | null;
   race_id: string;
   driver_id: string;
   team_id: string | null;
@@ -185,6 +189,8 @@ export interface ChampionshipResult {
   status: string | null;
   points_awarded: number;
   fastest_lap: boolean;
+  // Controls whether the UI shows the finish position or the gap to leader.
+  display_label_mode?: DisplayLabelMode | null;
 }
 
 export const fetchChampionshipResults = async (raceId: string) => {
@@ -202,6 +208,7 @@ export const fetchChampionshipResults = async (raceId: string) => {
 export const upsertChampionshipResults = async (results: ChampionshipResult[]) => {
   const payload = results.map((row) => ({
     id: row.id ?? undefined,
+    championship_result_id: row.championship_result_id ?? null,
     race_id: row.race_id,
     driver_id: row.driver_id,
     team_id: row.team_id,
@@ -211,7 +218,8 @@ export const upsertChampionshipResults = async (results: ChampionshipResult[]) =
     gap_to_leader: row.gap_to_leader,
     status: row.status,
     points_awarded: row.points_awarded,
-    fastest_lap: row.fastest_lap
+    fastest_lap: row.fastest_lap,
+    display_label_mode: row.display_label_mode ?? "position"
   }));
 
   const { error } = await supabase

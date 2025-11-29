@@ -286,6 +286,18 @@ const RosterManager = ({ seasonId, teams, drivers, isTeamsLoading, isDriversLoad
                                                     }, children: "Remove" })] })] }, driver.id));
                             })] })] })] }));
 };
+const DISPLAY_LABEL_OPTIONS = [
+    {
+        value: "position",
+        label: "Show position",
+        description: "Use the driver's finish position (default) when displaying labels."
+    },
+    {
+        value: "gap_to_leader",
+        label: "Show gap to leader",
+        description: "Show the driver's gap to the leader instead of the finished position."
+    }
+];
 const RaceResultsManager = ({ seasonId, races, isRacesLoading, raceId, onRaceIdChange, results, isResultsLoading, drivers }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
@@ -327,7 +339,8 @@ const RaceResultsManager = ({ seasonId, races, isRacesLoading, raceId, onRaceIdC
                 (row.finish_position ? String(row.finish_position) : row.status ?? null),
             points_awarded: row.points_awarded ?? 0,
             grid_position: row.grid_position ?? null,
-            fastest_lap: Boolean(row.fastest_lap)
+            fastest_lap: Boolean(row.fastest_lap),
+            display_label_mode: row.display_label_mode ?? "position"
         }))),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["championship-results", raceId] });
@@ -394,7 +407,8 @@ const RaceResultsManager = ({ seasonId, races, isRacesLoading, raceId, onRaceIdC
                                             status: "Finished",
                                             gap_to_leader: null,
                                             points_awarded: 0,
-                                            fastest_lap: false
+                                            fastest_lap: false,
+                                            display_label_mode: "position"
                                         }
                                     ]);
                                 }, children: "+ Add classified driver" })] }), isResultsLoading && _jsx("p", { className: "text-sm text-white/60", children: "Loading results\u2026" }), !isResultsLoading && resultsDraft.length === 0 && (_jsx("p", { className: "text-sm text-white/60", children: "No entries yet. Add drivers as they are classified to populate standings." })), _jsx("div", { className: "space-y-3", children: resultsDraft.map((row, index) => {
@@ -426,7 +440,12 @@ const RaceResultsManager = ({ seasonId, races, isRacesLoading, raceId, onRaceIdC
                                                         deleteResultMutation.mutate(target);
                                                     }
                                                     setResultsDraft((prev) => prev.filter((_, i) => i !== index));
-                                                }, children: "Remove" })] }), _jsxs("div", { className: "md:col-span-6 grid gap-3 md:grid-cols-3", children: [_jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Display label" }), _jsx("input", { type: "text", value: row.position_display ?? "", onChange: (event) => setResultsDraft((prev) => prev.map((item, i) => i === index ? { ...item, position_display: event.target.value } : item)), className: "mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-white", placeholder: "1 / DNF / DSQ" })] }), _jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Gap to leader" }), _jsx("input", { type: "text", value: row.gap_to_leader ?? "", onChange: (event) => setResultsDraft((prev) => prev.map((item, i) => i === index ? { ...item, gap_to_leader: event.target.value } : item)), className: "mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-white", placeholder: "+4.320s / +1 Lap" })] }), _jsxs("div", { className: "text-xs text-white/50", children: [_jsx("p", { children: "Team" }), _jsx("p", { className: "text-sm text-white", children: driver?.team_id
+                                                }, children: "Remove" })] }), _jsxs("div", { className: "md:col-span-6 grid gap-3 md:grid-cols-3", children: [_jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Display label" }), _jsx("input", { type: "text", value: row.position_display ?? "", onChange: (event) => setResultsDraft((prev) => prev.map((item, i) => i === index ? { ...item, position_display: event.target.value } : item)), className: "mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-white", placeholder: "1 / DNF / DSQ" }), _jsxs("div", { className: "mt-3 space-y-1", children: [_jsx("label", { className: "text-[10px] uppercase tracking-[0.4em] text-white/50", children: "Display mode" }), _jsx("select", { value: row.display_label_mode ?? "position", onChange: (event) => setResultsDraft((prev) => prev.map((item, i) => i === index
+                                                                    ? {
+                                                                        ...item,
+                                                                        display_label_mode: event.target.value
+                                                                    }
+                                                                    : item)), className: "w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white", children: DISPLAY_LABEL_OPTIONS.map((option) => (_jsx("option", { value: option.value, title: option.description, children: option.label }, option.value))) }), _jsxs("p", { className: "text-[10px] text-white/50", children: ["The dropdown controls the UI mode for the label; it only stores", ' ', _jsx("code", { children: "display_label_mode" }), " and does not require a linked championship result to exist yet."] })] })] }), _jsxs("div", { children: [_jsx("label", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Gap to leader" }), _jsx("input", { type: "text", value: row.gap_to_leader ?? "", onChange: (event) => setResultsDraft((prev) => prev.map((item, i) => i === index ? { ...item, gap_to_leader: event.target.value } : item)), className: "mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-white", placeholder: "+4.320s / +1 Lap" })] }), _jsxs("div", { className: "text-xs text-white/50", children: [_jsx("p", { children: "Team" }), _jsx("p", { className: "text-sm text-white", children: driver?.team_id
                                                             ? `Matches ${drivers.find((d) => d.id === row.driver_id)?.driver_name ?? ""}`
                                                             : "Set via driver" })] })] })] }, row.id ?? `${row.driver_id}-${index}`));
                         }) }), raceId && resultsDraft.length > 0 && (_jsxs("div", { className: "flex gap-3", children: [_jsx("button", { type: "button", className: "rounded-2xl bg-brand px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40", disabled: resultsMutation.isPending, onClick: () => {

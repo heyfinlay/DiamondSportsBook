@@ -51,8 +51,10 @@ export declare const fetchChampionshipRaces: (seasonId: string) => Promise<Champ
 export declare const upsertChampionshipRace: (race: Partial<ChampionshipRace> & {
     season_id: string;
 }) => Promise<ChampionshipRace>;
+export type DisplayLabelMode = "position" | "gap_to_leader";
 export interface ChampionshipResult {
     id?: string;
+    championship_result_id?: string | null;
     race_id: string;
     driver_id: string;
     team_id: string | null;
@@ -63,6 +65,7 @@ export interface ChampionshipResult {
     status: string | null;
     points_awarded: number;
     fastest_lap: boolean;
+    display_label_mode?: DisplayLabelMode | null;
 }
 export declare const fetchChampionshipResults: (raceId: string) => Promise<ChampionshipResult[]>;
 export declare const upsertChampionshipResults: (results: ChampionshipResult[]) => Promise<void>;

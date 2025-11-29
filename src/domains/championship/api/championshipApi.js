@@ -127,6 +127,7 @@ export const fetchChampionshipResults = async (raceId) => {
 export const upsertChampionshipResults = async (results) => {
     const payload = results.map((row) => ({
         id: row.id ?? undefined,
+        championship_result_id: row.championship_result_id ?? null,
         race_id: row.race_id,
         driver_id: row.driver_id,
         team_id: row.team_id,
@@ -136,7 +137,8 @@ export const upsertChampionshipResults = async (results) => {
         gap_to_leader: row.gap_to_leader,
         status: row.status,
         points_awarded: row.points_awarded,
-        fastest_lap: row.fastest_lap
+        fastest_lap: row.fastest_lap,
+        display_label_mode: row.display_label_mode ?? "position"
     }));
     const { error } = await supabase
         .from("championship_results")

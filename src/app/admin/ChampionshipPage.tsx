@@ -8,6 +8,7 @@ import {
   ChampionshipResult,
   ChampionshipSeason,
   ChampionshipTeam,
+  DisplayLabelMode,
   createChampionshipSeason,
   deleteChampionshipDriver,
   deleteChampionshipResult,
@@ -781,6 +782,19 @@ const RosterManager = ({
   );
 };
 
+const DISPLAY_LABEL_OPTIONS: { value: DisplayLabelMode; label: string; description: string }[] = [
+  {
+    value: "position",
+    label: "Show position",
+    description: "Use the driver's finish position (default) when displaying labels."
+  },
+  {
+    value: "gap_to_leader",
+    label: "Show gap to leader",
+    description: "Show the driver's gap to the leader instead of the finished position."
+  }
+];
+
 const RaceResultsManager = ({
   seasonId,
   races,
@@ -848,7 +862,8 @@ const RaceResultsManager = ({
             (row.finish_position ? String(row.finish_position) : row.status ?? null),
           points_awarded: row.points_awarded ?? 0,
           grid_position: row.grid_position ?? null,
-          fastest_lap: Boolean(row.fastest_lap)
+          fastest_lap: Boolean(row.fastest_lap),
+          display_label_mode: row.display_label_mode ?? "position"
         }))
       ),
     onSuccess: () => {
@@ -1031,7 +1046,8 @@ const RaceResultsManager = ({
                   status: "Finished",
                   gap_to_leader: null,
                   points_awarded: 0,
-                  fastest_lap: false
+                  fastest_lap: false,
+                  display_label_mode: "position"
                 }
               ]);
             }}
@@ -1210,6 +1226,38 @@ const RaceResultsManager = ({
                       className="mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-white"
                       placeholder="1 / DNF / DSQ"
                     />
+                    <div className="mt-3 space-y-1">
+                      <label className="text-[10px] uppercase tracking-[0.4em] text-white/50">
+                        Display mode
+                      </label>
+                      <select
+                        value={row.display_label_mode ?? "position"}
+                        onChange={(event) =>
+                          setResultsDraft((prev) =>
+                            prev.map((item, i) =>
+                              i === index
+                                ? {
+                                    ...item,
+                                    display_label_mode: event.target.value as DisplayLabelMode
+                                  }
+                                : item
+                            )
+                          )
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white"
+                      >
+                        {DISPLAY_LABEL_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value} title={option.description}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-white/50">
+                        The dropdown controls the UI mode for the label; it only stores{' '}
+                        <code>display_label_mode</code> and does not require a linked championship
+                        result to exist yet.
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs uppercase tracking-[0.3em] text-white/60">
