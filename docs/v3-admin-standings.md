@@ -20,7 +20,11 @@
    - Create rounds (round #, race name, circuit, date).
    - Classify drivers with finish position, grid slot, status text, gap, points, and fastest-lap flag.
    - Saving results pushes data into `championship_results`, which automatically recomputes the standings views.
-    - The UI now stores `display_label_mode` on the same record so race control can toggle between finish position or “gap to leader” without needing a separate `championship_result_id` lookup.
+   - The UI stores `display_label_mode` on the same record so race control can toggle between finish position or “gap to leader” without any legacy `championship_result_id` references.
+4. **Manual Leaderboard**
+   - A dedicated tab lists current driver and team standings along with computed totals.
+   - Admins can toggle a manual override, set custom points/positions, and persist them via the new override tables.
+   - Overrides immediately update the public `/standings` feed so race control can publish provisional or adjusted leaderboards without touching race classifications.
 
 ## Standings Page
 - The `/standings` page now fetches `championship_seasons` to populate the season selector (defaulting to the active season).
@@ -36,4 +40,4 @@
 ## Data Notes / Follow-ups
 - `ic_phone_number` has been dropped in favor of the canonical `ic_number`; any flows blocking funding now key solely on `ic_number`.
 - If the championship view/RPC is unavailable (e.g., first-time migrations), the lineup RPC returns an empty JSON array; the UI surfaces actionable messaging.
-- The `championship_results` rows now carry `display_label_mode`, and the optional `championship_result_id` lets settlement artifacts attach later without blocking data entry.
+- The `championship_results` rows carry `display_label_mode` while manual leaderboard overrides live in `championship_driver_overrides` and `championship_team_overrides`, each storing `manual_points`, `manual_position`, and `is_manual_override` metadata enforced via admin-only RLS.

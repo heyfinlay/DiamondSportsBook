@@ -54,7 +54,6 @@ export declare const upsertChampionshipRace: (race: Partial<ChampionshipRace> & 
 export type DisplayLabelMode = "position" | "gap_to_leader";
 export interface ChampionshipResult {
     id?: string;
-    championship_result_id?: string | null;
     race_id: string;
     driver_id: string;
     team_id: string | null;
@@ -70,3 +69,23 @@ export interface ChampionshipResult {
 export declare const fetchChampionshipResults: (raceId: string) => Promise<ChampionshipResult[]>;
 export declare const upsertChampionshipResults: (results: ChampionshipResult[]) => Promise<void>;
 export declare const deleteChampionshipResult: (id: string) => Promise<void>;
+export type DriverOverrideInput = {
+    season_id: string;
+    driver_id: string;
+    manual_points?: number | null;
+    manual_position?: number | null;
+    is_manual_override: boolean;
+    notes?: string | null;
+};
+export type TeamOverrideInput = {
+    season_id: string;
+    team_id: string;
+    manual_points?: number | null;
+    manual_position?: number | null;
+    is_manual_override: boolean;
+    notes?: string | null;
+};
+export declare const upsertDriverLeaderboardOverride: (payload: DriverOverrideInput) => Promise<void>;
+export declare const deleteDriverLeaderboardOverride: (seasonId: string, driverId: string) => Promise<void>;
+export declare const upsertTeamLeaderboardOverride: (payload: TeamOverrideInput) => Promise<void>;
+export declare const deleteTeamLeaderboardOverride: (seasonId: string, teamId: string) => Promise<void>;

@@ -17,6 +17,11 @@ export type DriverStanding = {
   dnf_count: number;
   poles: number;
   diff_to_leader: number | null;
+  is_manual_override: boolean;
+  manual_points: number | null;
+  manual_position: number | null;
+  computed_points: number;
+  computed_position: number;
 };
 
 export type TeamStanding = {
@@ -30,6 +35,11 @@ export type TeamStanding = {
   podiums: number;
   starts: number;
   diff_to_leader: number | null;
+  is_manual_override: boolean;
+  manual_points: number | null;
+  manual_position: number | null;
+  computed_points: number;
+  computed_position: number;
 };
 
 export type RaceResult = {
@@ -59,7 +69,7 @@ const DRIVER_STANDINGS_VIEW = "driver_standings_view";
 const TEAM_STANDINGS_VIEW = "team_standings_view";
 const RACE_RESULTS_VIEW = "race_results_view";
 
-const fetchDriverStandings = async (seasonId: string) => {
+export const fetchDriverStandings = async (seasonId: string) => {
   const { data, error } = await supabase
     .from(DRIVER_STANDINGS_VIEW)
     .select("*")
@@ -70,7 +80,7 @@ const fetchDriverStandings = async (seasonId: string) => {
   return (data ?? []) as DriverStanding[];
 };
 
-const fetchTeamStandings = async (seasonId: string) => {
+export const fetchTeamStandings = async (seasonId: string) => {
   const { data, error } = await supabase
     .from(TEAM_STANDINGS_VIEW)
     .select("*")
@@ -81,7 +91,7 @@ const fetchTeamStandings = async (seasonId: string) => {
   return (data ?? []) as TeamStanding[];
 };
 
-const fetchRaceResults = async (seasonId: string) => {
+export const fetchRaceResults = async (seasonId: string) => {
   const { data, error } = await supabase
     .from(RACE_RESULTS_VIEW)
     .select("*")

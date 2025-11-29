@@ -127,7 +127,6 @@ export const fetchChampionshipResults = async (raceId) => {
 export const upsertChampionshipResults = async (results) => {
     const payload = results.map((row) => ({
         id: row.id ?? undefined,
-        championship_result_id: row.championship_result_id ?? null,
         race_id: row.race_id,
         driver_id: row.driver_id,
         team_id: row.team_id,
@@ -148,6 +147,52 @@ export const upsertChampionshipResults = async (results) => {
 };
 export const deleteChampionshipResult = async (id) => {
     const { error } = await supabase.from("championship_results").delete().eq("id", id);
+    if (error)
+        throw error;
+};
+export const upsertDriverLeaderboardOverride = async (payload) => {
+    const { error } = await supabase
+        .from("championship_driver_overrides")
+        .upsert({
+        season_id: payload.season_id,
+        driver_id: payload.driver_id,
+        manual_points: payload.manual_points ?? null,
+        manual_position: payload.manual_position ?? null,
+        is_manual_override: payload.is_manual_override,
+        notes: payload.notes ?? null
+    }, { onConflict: "season_id,driver_id" });
+    if (error)
+        throw error;
+};
+export const deleteDriverLeaderboardOverride = async (seasonId, driverId) => {
+    const { error } = await supabase
+        .from("championship_driver_overrides")
+        .delete()
+        .eq("season_id", seasonId)
+        .eq("driver_id", driverId);
+    if (error)
+        throw error;
+};
+export const upsertTeamLeaderboardOverride = async (payload) => {
+    const { error } = await supabase
+        .from("championship_team_overrides")
+        .upsert({
+        season_id: payload.season_id,
+        team_id: payload.team_id,
+        manual_points: payload.manual_points ?? null,
+        manual_position: payload.manual_position ?? null,
+        is_manual_override: payload.is_manual_override,
+        notes: payload.notes ?? null
+    }, { onConflict: "season_id,team_id" });
+    if (error)
+        throw error;
+};
+export const deleteTeamLeaderboardOverride = async (seasonId, teamId) => {
+    const { error } = await supabase
+        .from("championship_team_overrides")
+        .delete()
+        .eq("season_id", seasonId)
+        .eq("team_id", teamId);
     if (error)
         throw error;
 };

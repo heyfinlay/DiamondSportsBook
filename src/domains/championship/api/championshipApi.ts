@@ -177,8 +177,6 @@ export type DisplayLabelMode = "position" | "gap_to_leader";
 
 export interface ChampionshipResult {
   id?: string;
-  // Optional reference to a settlement record; championships may compute it later.
-  championship_result_id?: string | null;
   race_id: string;
   driver_id: string;
   team_id: string | null;
@@ -208,7 +206,6 @@ export const fetchChampionshipResults = async (raceId: string) => {
 export const upsertChampionshipResults = async (results: ChampionshipResult[]) => {
   const payload = results.map((row) => ({
     id: row.id ?? undefined,
-    championship_result_id: row.championship_result_id ?? null,
     race_id: row.race_id,
     driver_id: row.driver_id,
     team_id: row.team_id,
@@ -231,5 +228,79 @@ export const upsertChampionshipResults = async (results: ChampionshipResult[]) =
 
 export const deleteChampionshipResult = async (id: string) => {
   const { error } = await supabase.from("championship_results").delete().eq("id", id);
+  if (error) throw error;
+};
+
+export type DriverOverrideInput = {
+  season_id: string;
+  driver_id: string;
+  manual_points?: number | null;
+  manual_position?: number | null;
+  is_manual_override: boolean;
+  notes?: string | null;
+};
+
+export type TeamOverrideInput = {
+  season_id: string;
+  team_id: string;
+  manual_points?: number | null;
+  manual_position?: number | null;
+  is_manual_override: boolean;
+  notes?: string | null;
+};
+
+export const upsertDriverLeaderboardOverride = async (payload: DriverOverrideInput) => {
+  const { error } = await supabase
+    .from("championship_driver_overrides")
+    .upsert(
+      {
+        season_id: payload.season_id,
+        driver_id: payload.driver_id,
+        manual_points: payload.manual_points ?? null,
+        manual_position: payload.manual_position ?? null,
+        is_manual_override: payload.is_manual_override,
+        notes: payload.notes ?? null
+      },
+      { onConflict: "season_id,driver_id" }
+    );
+
+  if (error) throw error;
+};
+
+export const deleteDriverLeaderboardOverride = async (seasonId: string, driverId: string) => {
+  const { error } = await supabase
+    .from("championship_driver_overrides")
+    .delete()
+    .eq("season_id", seasonId)
+    .eq("driver_id", driverId);
+
+  if (error) throw error;
+};
+
+export const upsertTeamLeaderboardOverride = async (payload: TeamOverrideInput) => {
+  const { error } = await supabase
+    .from("championship_team_overrides")
+    .upsert(
+      {
+        season_id: payload.season_id,
+        team_id: payload.team_id,
+        manual_points: payload.manual_points ?? null,
+        manual_position: payload.manual_position ?? null,
+        is_manual_override: payload.is_manual_override,
+        notes: payload.notes ?? null
+      },
+      { onConflict: "season_id,team_id" }
+    );
+
+  if (error) throw error;
+};
+
+export const deleteTeamLeaderboardOverride = async (seasonId: string, teamId: string) => {
+  const { error } = await supabase
+    .from("championship_team_overrides")
+    .delete()
+    .eq("season_id", seasonId)
+    .eq("team_id", teamId);
+
   if (error) throw error;
 };

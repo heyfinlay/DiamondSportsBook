@@ -19,7 +19,7 @@
 - Added `settlement_get_pool_ledger(uuid)` RPC returning the full pool ledger (wins + losses) with distribution metadata for transparency.
 - New React Query hooks consume `fetchPoolSettlementLedger` and `fetchSettlementSummary` for both public and admin settlement views.
 - Removed the deprecated `ic_phone_number` column after backfilling `ic_number`, and updated the `get_dbgp_lineup` RPC to return driver status/season metadata that feeds admin tooling.
-- `championship_results` now stores `display_label_mode` directly on the row and accepts `NULL` `championship_result_id`, letting the UI toggle “Gap to leader” without needing a pre-existing settlement row.
+- `championship_results` keeps `display_label_mode` on each row and no longer references the deprecated `championship_result_id` column; new `championship_driver_overrides` and `championship_team_overrides` tables feed the standings views when admins activate manual leaderboard overrides.
 
 ## Follow-ups / Notes
 - Consider extending Supabase RLS coverage review for the new ledger RPC to ensure desired public/admin visibility.

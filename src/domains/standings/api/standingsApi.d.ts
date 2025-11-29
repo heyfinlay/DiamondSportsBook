@@ -13,6 +13,11 @@ export type DriverStanding = {
     dnf_count: number;
     poles: number;
     diff_to_leader: number | null;
+    is_manual_override: boolean;
+    manual_points: number | null;
+    manual_position: number | null;
+    computed_points: number;
+    computed_position: number;
 };
 export type TeamStanding = {
     team_id: string;
@@ -25,6 +30,11 @@ export type TeamStanding = {
     podiums: number;
     starts: number;
     diff_to_leader: number | null;
+    is_manual_override: boolean;
+    manual_points: number | null;
+    manual_position: number | null;
+    computed_points: number;
+    computed_position: number;
 };
 export type RaceResult = {
     result_id: string;
@@ -48,6 +58,9 @@ export type RaceResult = {
     points_awarded: number;
     fastest_lap: boolean;
 };
+export declare const fetchDriverStandings: (seasonId: string) => Promise<DriverStanding[]>;
+export declare const fetchTeamStandings: (seasonId: string) => Promise<TeamStanding[]>;
+export declare const fetchRaceResults: (seasonId: string) => Promise<RaceResult[]>;
 export declare const useDriverStandings: (seasonId?: string) => import("@tanstack/react-query").UseQueryResult<DriverStanding[], Error>;
 export declare const useTeamStandings: (seasonId?: string) => import("@tanstack/react-query").UseQueryResult<TeamStanding[], Error>;
 export declare const useRaceResults: (seasonId?: string) => import("@tanstack/react-query").UseQueryResult<RaceResult[], Error>;

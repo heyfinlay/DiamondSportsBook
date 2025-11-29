@@ -4,7 +4,7 @@ import { standingsKeys } from "@lib/query/keys";
 const DRIVER_STANDINGS_VIEW = "driver_standings_view";
 const TEAM_STANDINGS_VIEW = "team_standings_view";
 const RACE_RESULTS_VIEW = "race_results_view";
-const fetchDriverStandings = async (seasonId) => {
+export const fetchDriverStandings = async (seasonId) => {
     const { data, error } = await supabase
         .from(DRIVER_STANDINGS_VIEW)
         .select("*")
@@ -14,7 +14,7 @@ const fetchDriverStandings = async (seasonId) => {
         throw error;
     return (data ?? []);
 };
-const fetchTeamStandings = async (seasonId) => {
+export const fetchTeamStandings = async (seasonId) => {
     const { data, error } = await supabase
         .from(TEAM_STANDINGS_VIEW)
         .select("*")
@@ -24,7 +24,7 @@ const fetchTeamStandings = async (seasonId) => {
         throw error;
     return (data ?? []);
 };
-const fetchRaceResults = async (seasonId) => {
+export const fetchRaceResults = async (seasonId) => {
     const { data, error } = await supabase
         .from(RACE_RESULTS_VIEW)
         .select("*")

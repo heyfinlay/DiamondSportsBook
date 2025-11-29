@@ -10,23 +10,34 @@ import {
   ChampionshipTeam,
   DisplayLabelMode,
   createChampionshipSeason,
+  deleteDriverLeaderboardOverride,
   deleteChampionshipDriver,
   deleteChampionshipResult,
   deleteChampionshipTeam,
+  deleteTeamLeaderboardOverride,
   fetchChampionshipDrivers,
   fetchChampionshipRaces,
   fetchChampionshipResults,
   fetchChampionshipSeasons,
   fetchChampionshipTeams,
   setActiveChampionshipSeason,
+  upsertDriverLeaderboardOverride,
   upsertChampionshipDriver,
   upsertChampionshipRace,
   upsertChampionshipResults,
   upsertChampionshipTeam,
+  upsertTeamLeaderboardOverride,
   updateChampionshipSeason
 } from "@domains/championship/api/championshipApi";
+import {
+  DriverStanding,
+  TeamStanding,
+  fetchDriverStandings,
+  fetchTeamStandings
+} from "@domains/standings/api/standingsApi";
+import { standingsKeys } from "@lib/query/keys";
 
-type AdminTab = "seasons" | "roster" | "results";
+type AdminTab = "seasons" | "roster" | "results" | "leaderboard";
 
 const AdminChampionshipPage = () => {
   const { toast } = useToast();
@@ -106,7 +117,8 @@ const AdminChampionshipPage = () => {
         {[
           { key: "seasons", label: "Seasons" },
           { key: "roster", label: "Teams & Drivers" },
-          { key: "results", label: "Race Results" }
+          { key: "results", label: "Race Results" },
+          { key: "leaderboard", label: "Manual Leaderboard" }
         ].map((item) => (
           <button
             key={item.key}
@@ -152,6 +164,8 @@ const AdminChampionshipPage = () => {
           drivers={driversQuery.data ?? []}
         />
       )}
+
+      {tab === "leaderboard" && seasonId && <ManualLeaderboardEditor seasonId={seasonId} />}
     </div>
   );
 };
@@ -780,6 +794,481 @@ const RosterManager = ({
       </div>
     </section>
   );
+};
+
+type LeaderboardOverrideFormState = {
+  is_manual_override: boolean;
+  manual_points: string;
+  manual_position: string;
+  dirty: boolean;
+};
+
+const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [activeBoard, setActiveBoard] = useState<"drivers" | "teams">("drivers");
+  const [driverOverrides, setDriverOverrides] = useState<Record<string, LeaderboardOverrideFormState>>({});
+  const [teamOverrides, setTeamOverrides] = useState<Record<string, LeaderboardOverrideFormState>>({});
+  const [pendingDriverId, setPendingDriverId] = useState<string | null>(null);
+  const [pendingTeamId, setPendingTeamId] = useState<string | null>(null);
+
+  const driversQuery = useQuery({
+    queryKey: ["admin-driver-standings", seasonId],
+    queryFn: () => fetchDriverStandings(seasonId),
+    enabled: Boolean(seasonId)
+  });
+
+  const teamsQuery = useQuery({
+    queryKey: ["admin-team-standings", seasonId],
+    queryFn: () => fetchTeamStandings(seasonId),
+    enabled: Boolean(seasonId)
+  });
+
+  useEffect(() => {
+    if (!driversQuery.data) return;
+    setDriverOverrides((prev) => {
+      const next: Record<string, LeaderboardOverrideFormState> = { ...prev };
+      driversQuery.data?.forEach((row) => {
+        const defaults = buildDriverOverrideDefaults(row);
+        if (!next[row.driver_id] || !next[row.driver_id].dirty) {
+          next[row.driver_id] = defaults;
+        }
+      });
+      return next;
+    });
+  }, [driversQuery.data]);
+
+  useEffect(() => {
+    if (!teamsQuery.data) return;
+    setTeamOverrides((prev) => {
+      const next: Record<string, LeaderboardOverrideFormState> = { ...prev };
+      teamsQuery.data?.forEach((row) => {
+        const defaults = buildTeamOverrideDefaults(row);
+        if (!next[row.team_id] || !next[row.team_id].dirty) {
+          next[row.team_id] = defaults;
+        }
+      });
+      return next;
+    });
+  }, [teamsQuery.data]);
+
+  const driverOverrideMutation = useMutation({
+    mutationFn: async ({
+      driverId,
+      override
+    }: {
+      driverId: string;
+      override: LeaderboardOverrideFormState;
+    }) => {
+      if (!override.is_manual_override) {
+        await deleteDriverLeaderboardOverride(seasonId, driverId);
+        return;
+      }
+      const manualPoints = parsePointsInput(override.manual_points, "Manual points");
+      if (manualPoints === null) {
+        throw new Error("Manual points are required when override is enabled.");
+      }
+      const manualPosition = parsePositionInput(override.manual_position, "Manual position");
+      await upsertDriverLeaderboardOverride({
+        season_id: seasonId,
+        driver_id: driverId,
+        manual_points: manualPoints,
+        manual_position: manualPosition,
+        is_manual_override: true
+      });
+    },
+    onMutate: ({ driverId }) => setPendingDriverId(driverId),
+    onSuccess: (_, variables) => {
+      toast({ variant: "success", title: "Driver leaderboard updated" });
+      setDriverOverrides((prev) => {
+        const current = prev[variables.driverId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [variables.driverId]: { ...current, dirty: false }
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-driver-standings", seasonId] });
+      queryClient.invalidateQueries({ queryKey: standingsKeys.drivers(seasonId) });
+    },
+    onError: (error: Error) =>
+      toast({
+        variant: "error",
+        title: "Unable to update driver override",
+        description: error.message
+      }),
+    onSettled: () => setPendingDriverId(null)
+  });
+
+  const teamOverrideMutation = useMutation({
+    mutationFn: async ({
+      teamId,
+      override
+    }: {
+      teamId: string;
+      override: LeaderboardOverrideFormState;
+    }) => {
+      if (!override.is_manual_override) {
+        await deleteTeamLeaderboardOverride(seasonId, teamId);
+        return;
+      }
+      const manualPoints = parsePointsInput(override.manual_points, "Manual points");
+      if (manualPoints === null) {
+        throw new Error("Manual points are required when override is enabled.");
+      }
+      const manualPosition = parsePositionInput(override.manual_position, "Manual position");
+      await upsertTeamLeaderboardOverride({
+        season_id: seasonId,
+        team_id: teamId,
+        manual_points: manualPoints,
+        manual_position: manualPosition,
+        is_manual_override: true
+      });
+    },
+    onMutate: ({ teamId }) => setPendingTeamId(teamId),
+    onSuccess: (_, variables) => {
+      toast({ variant: "success", title: "Team leaderboard updated" });
+      setTeamOverrides((prev) => {
+        const current = prev[variables.teamId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [variables.teamId]: { ...current, dirty: false }
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-team-standings", seasonId] });
+      queryClient.invalidateQueries({ queryKey: standingsKeys.teams(seasonId) });
+    },
+    onError: (error: Error) =>
+      toast({
+        variant: "error",
+        title: "Unable to update team override",
+        description: error.message
+      }),
+    onSettled: () => setPendingTeamId(null)
+  });
+
+  const handleDriverChange = (
+    row: DriverStanding,
+    updates: Partial<Omit<LeaderboardOverrideFormState, "dirty">>
+  ) => {
+    setDriverOverrides((prev) => {
+      const base = prev[row.driver_id] ?? buildDriverOverrideDefaults(row);
+      return {
+        ...prev,
+        [row.driver_id]: { ...base, ...updates, dirty: true }
+      };
+    });
+  };
+
+  const resetDriverOverride = (row: DriverStanding) => {
+    setDriverOverrides((prev) => ({
+      ...prev,
+      [row.driver_id]: buildDriverOverrideDefaults(row)
+    }));
+  };
+
+  const handleTeamChange = (
+    row: TeamStanding,
+    updates: Partial<Omit<LeaderboardOverrideFormState, "dirty">>
+  ) => {
+    setTeamOverrides((prev) => {
+      const base = prev[row.team_id] ?? buildTeamOverrideDefaults(row);
+      return {
+        ...prev,
+        [row.team_id]: { ...base, ...updates, dirty: true }
+      };
+    });
+  };
+
+  const resetTeamOverride = (row: TeamStanding) => {
+    setTeamOverrides((prev) => ({
+      ...prev,
+      [row.team_id]: buildTeamOverrideDefaults(row)
+    }));
+  };
+
+  const renderDriverEditor = () => {
+    if (driversQuery.isLoading) {
+      return <p className="text-sm text-white/60">Loading driver standings…</p>;
+    }
+    if (!driversQuery.data?.length) {
+      return (
+        <p className="text-sm text-white/60">
+          No classified drivers yet. Once results are saved you can override the leaderboard here.
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {driversQuery.data.map((row) => {
+          const override = driverOverrides[row.driver_id] ?? buildDriverOverrideDefaults(row);
+          const isSaving = pendingDriverId === row.driver_id && driverOverrideMutation.isPending;
+
+          return (
+            <article
+              key={row.driver_id}
+              className={`rounded-2xl border border-white/10 bg-black/40 p-4 ${
+                override.is_manual_override ? "ring-1 ring-amber-400/60" : ""
+              }`}
+            >
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/50">Driver</p>
+                  <p className="text-lg font-semibold text-white">{row.driver_name}</p>
+                  <p className="text-xs text-white/60">{row.team_name ?? "Privateer"}</p>
+                </div>
+                <div className="text-xs text-white/70">
+                  <p>Computed · P{row.computed_position} · {row.computed_points.toFixed(1)}</p>
+                  <p className="text-white">
+                    Displayed · P{row.position} · {row.points.toFixed(1)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <label className="flex flex-col text-xs text-white/70">
+                  Manual points
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                    value={override.manual_points}
+                    onChange={(event) =>
+                      handleDriverChange(row, { manual_points: event.target.value })
+                    }
+                    disabled={!override.is_manual_override}
+                  />
+                </label>
+                <label className="flex flex-col text-xs text-white/70">
+                  Manual position
+                  <input
+                    type="number"
+                    className="mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                    value={override.manual_position}
+                    onChange={(event) =>
+                      handleDriverChange(row, { manual_position: event.target.value })
+                    }
+                    disabled={!override.is_manual_override}
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-white/70">
+                  <input
+                    type="checkbox"
+                    checked={override.is_manual_override}
+                    onChange={(event) =>
+                      handleDriverChange(row, { is_manual_override: event.target.checked })
+                    }
+                  />
+                  Manual override
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl border border-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em]"
+                    onClick={() => resetDriverOverride(row)}
+                    disabled={isSaving}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-2xl bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-50"
+                  onClick={() => driverOverrideMutation.mutate({ driverId: row.driver_id, override })}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving…" : override.is_manual_override ? "Save override" : "Remove override"}
+                </button>
+                <p className="text-xs text-white/60">
+                  Stored values replace automatic totals for this driver when override is enabled.
+                </p>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderTeamEditor = () => {
+    if (teamsQuery.isLoading) {
+      return <p className="text-sm text-white/60">Loading team standings…</p>;
+    }
+    if (!teamsQuery.data?.length) {
+      return (
+        <p className="text-sm text-white/60">
+          No team standings available yet. Add race results to populate the leaderboard.
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {teamsQuery.data.map((row) => {
+          const override = teamOverrides[row.team_id] ?? buildTeamOverrideDefaults(row);
+          const isSaving = pendingTeamId === row.team_id && teamOverrideMutation.isPending;
+
+          return (
+            <article
+              key={row.team_id}
+              className={`rounded-2xl border border-white/10 bg-black/40 p-4 ${
+                override.is_manual_override ? "ring-1 ring-amber-400/60" : ""
+              }`}
+            >
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/50">Team</p>
+                  <p className="text-lg font-semibold text-white">{row.team_name}</p>
+                </div>
+                <div className="text-xs text-white/70">
+                  <p>Computed · P{row.computed_position} · {row.computed_points.toFixed(1)}</p>
+                  <p className="text-white">
+                    Displayed · P{row.position} · {row.points.toFixed(1)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <label className="flex flex-col text-xs text-white/70">
+                  Manual points
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                    value={override.manual_points}
+                    onChange={(event) =>
+                      handleTeamChange(row, { manual_points: event.target.value })
+                    }
+                    disabled={!override.is_manual_override}
+                  />
+                </label>
+                <label className="flex flex-col text-xs text-white/70">
+                  Manual position
+                  <input
+                    type="number"
+                    className="mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                    value={override.manual_position}
+                    onChange={(event) =>
+                      handleTeamChange(row, { manual_position: event.target.value })
+                    }
+                    disabled={!override.is_manual_override}
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-white/70">
+                  <input
+                    type="checkbox"
+                    checked={override.is_manual_override}
+                    onChange={(event) =>
+                      handleTeamChange(row, { is_manual_override: event.target.checked })
+                    }
+                  />
+                  Manual override
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="w-full rounded-2xl border border-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em]"
+                    onClick={() => resetTeamOverride(row)}
+                    disabled={isSaving}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-2xl bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-50"
+                  onClick={() => teamOverrideMutation.mutate({ teamId: row.team_id, override })}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving…" : override.is_manual_override ? "Save override" : "Remove override"}
+                </button>
+                <p className="text-xs text-white/60">
+                  Overrides let you manually set constructor standings when calculations are unavailable.
+                </p>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <section className="space-y-6 rounded-3xl border border-white/10 bg-black/30 p-6 text-sm text-white">
+      <header>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Manual Leaderboard</p>
+        <h2 className="text-xl font-semibold text-white">Override points & positions</h2>
+        <p className="text-sm text-white/60">
+          Use overrides when automated aggregation isn&apos;t ready. Switch to the Drivers or Teams tab
+          to manage each leaderboard. Reset returns to computed values.
+        </p>
+      </header>
+
+      <div className="flex flex-wrap gap-2">
+        {(["drivers", "teams"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveBoard(key)}
+            className={`rounded-2xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] ${
+              activeBoard === key ? "bg-white text-black" : "border border-white/20 text-white/70"
+            }`}
+          >
+            {key === "drivers" ? "Drivers" : "Teams"}
+          </button>
+        ))}
+      </div>
+
+      {activeBoard === "drivers" ? renderDriverEditor() : renderTeamEditor()}
+    </section>
+  );
+};
+
+const buildDriverOverrideDefaults = (row: DriverStanding): LeaderboardOverrideFormState => ({
+  is_manual_override: row.is_manual_override ?? false,
+  manual_points: formatNumberInputValue(row.manual_points, row.computed_points),
+  manual_position: formatNumberInputValue(row.manual_position, row.computed_position),
+  dirty: false
+});
+
+const buildTeamOverrideDefaults = (row: TeamStanding): LeaderboardOverrideFormState => ({
+  is_manual_override: row.is_manual_override ?? false,
+  manual_points: formatNumberInputValue(row.manual_points, row.computed_points),
+  manual_position: formatNumberInputValue(row.manual_position, row.computed_position),
+  dirty: false
+});
+
+const formatNumberInputValue = (primary: number | null | undefined, fallback: number) => {
+  const value = primary ?? fallback;
+  return Number.isFinite(value) ? `${value}` : `${fallback}`;
+};
+
+const parsePointsInput = (value: string, label: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`${label} must be a valid number.`);
+  }
+  return parsed;
+};
+
+const parsePositionInput = (value: string, label: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (Number.isNaN(parsed) || !Number.isInteger(parsed)) {
+    throw new Error(`${label} must be a whole number.`);
+  }
+  return parsed;
 };
 
 const DISPLAY_LABEL_OPTIONS: { value: DisplayLabelMode; label: string; description: string }[] = [

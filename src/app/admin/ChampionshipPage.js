@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@app/components/ToastProvider";
-import { createChampionshipSeason, deleteChampionshipDriver, deleteChampionshipResult, deleteChampionshipTeam, fetchChampionshipDrivers, fetchChampionshipRaces, fetchChampionshipResults, fetchChampionshipSeasons, fetchChampionshipTeams, setActiveChampionshipSeason, upsertChampionshipDriver, upsertChampionshipRace, upsertChampionshipResults, upsertChampionshipTeam, updateChampionshipSeason } from "@domains/championship/api/championshipApi";
+import { createChampionshipSeason, deleteDriverLeaderboardOverride, deleteChampionshipDriver, deleteChampionshipResult, deleteChampionshipTeam, deleteTeamLeaderboardOverride, fetchChampionshipDrivers, fetchChampionshipRaces, fetchChampionshipResults, fetchChampionshipSeasons, fetchChampionshipTeams, setActiveChampionshipSeason, upsertDriverLeaderboardOverride, upsertChampionshipDriver, upsertChampionshipRace, upsertChampionshipResults, upsertChampionshipTeam, upsertTeamLeaderboardOverride, updateChampionshipSeason } from "@domains/championship/api/championshipApi";
+import { fetchDriverStandings, fetchTeamStandings } from "@domains/standings/api/standingsApi";
+import { standingsKeys } from "@lib/query/keys";
 const AdminChampionshipPage = () => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
@@ -53,8 +55,9 @@ const AdminChampionshipPage = () => {
     return (_jsxs("div", { className: "space-y-8", children: [_jsxs("header", { className: "flex flex-wrap items-start justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Championship" }), _jsx("h1", { className: "text-3xl font-semibold text-white", children: "DayBreak Grand Prix Control" }), _jsx("p", { className: "text-sm text-white/60", children: "Manage official seasons, driver lineups and race results that power the standings experience." })] }), _jsx(Link, { to: "/standings", className: "rounded-full border border-white/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-white/60", children: "\u2192 View public standings" })] }), _jsx("div", { className: "flex flex-wrap gap-3 rounded-2xl border border-white/10 bg-black/20 p-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/60", children: [
                     { key: "seasons", label: "Seasons" },
                     { key: "roster", label: "Teams & Drivers" },
-                    { key: "results", label: "Race Results" }
-                ].map((item) => (_jsx("button", { type: "button", onClick: () => setTab(item.key), className: `rounded-xl px-4 py-2 transition ${tab === item.key ? "bg-white text-black" : "hover:text-white"}`, children: item.label }, item.key))) }), tab === "seasons" && (_jsx(SeasonManager, { seasons: seasonsQuery.data ?? [], isLoading: seasonsQuery.isLoading, onSelectSeason: setSeasonId, selectedSeasonId: seasonId })), tab === "roster" && seasonId && (_jsx(RosterManager, { seasonId: seasonId, teams: teamsQuery.data ?? [], drivers: driversQuery.data ?? [], isTeamsLoading: teamsQuery.isLoading, isDriversLoading: driversQuery.isLoading })), tab === "results" && seasonId && (_jsx(RaceResultsManager, { seasonId: seasonId, races: racesQuery.data ?? [], isRacesLoading: racesQuery.isLoading, raceId: raceId, onRaceIdChange: setRaceId, results: resultsQuery.data ?? [], isResultsLoading: resultsQuery.isLoading, drivers: driversQuery.data ?? [] }))] }));
+                    { key: "results", label: "Race Results" },
+                    { key: "leaderboard", label: "Manual Leaderboard" }
+                ].map((item) => (_jsx("button", { type: "button", onClick: () => setTab(item.key), className: `rounded-xl px-4 py-2 transition ${tab === item.key ? "bg-white text-black" : "hover:text-white"}`, children: item.label }, item.key))) }), tab === "seasons" && (_jsx(SeasonManager, { seasons: seasonsQuery.data ?? [], isLoading: seasonsQuery.isLoading, onSelectSeason: setSeasonId, selectedSeasonId: seasonId })), tab === "roster" && seasonId && (_jsx(RosterManager, { seasonId: seasonId, teams: teamsQuery.data ?? [], drivers: driversQuery.data ?? [], isTeamsLoading: teamsQuery.isLoading, isDriversLoading: driversQuery.isLoading })), tab === "results" && seasonId && (_jsx(RaceResultsManager, { seasonId: seasonId, races: racesQuery.data ?? [], isRacesLoading: racesQuery.isLoading, raceId: raceId, onRaceIdChange: setRaceId, results: resultsQuery.data ?? [], isResultsLoading: resultsQuery.isLoading, drivers: driversQuery.data ?? [] })), tab === "leaderboard" && seasonId && _jsx(ManualLeaderboardEditor, { seasonId: seasonId })] }));
 };
 const SeasonManager = ({ seasons, isLoading, onSelectSeason, selectedSeasonId }) => {
     const { toast } = useToast();
@@ -285,6 +288,228 @@ const RosterManager = ({ seasonId, teams, drivers, isTeamsLoading, isDriversLoad
                                                         deleteDriverMutation.mutate(driver.id);
                                                     }, children: "Remove" })] })] }, driver.id));
                             })] })] })] }));
+};
+const ManualLeaderboardEditor = ({ seasonId }) => {
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [activeBoard, setActiveBoard] = useState("drivers");
+    const [driverOverrides, setDriverOverrides] = useState({});
+    const [teamOverrides, setTeamOverrides] = useState({});
+    const [pendingDriverId, setPendingDriverId] = useState(null);
+    const [pendingTeamId, setPendingTeamId] = useState(null);
+    const driversQuery = useQuery({
+        queryKey: ["admin-driver-standings", seasonId],
+        queryFn: () => fetchDriverStandings(seasonId),
+        enabled: Boolean(seasonId)
+    });
+    const teamsQuery = useQuery({
+        queryKey: ["admin-team-standings", seasonId],
+        queryFn: () => fetchTeamStandings(seasonId),
+        enabled: Boolean(seasonId)
+    });
+    useEffect(() => {
+        if (!driversQuery.data)
+            return;
+        setDriverOverrides((prev) => {
+            const next = { ...prev };
+            driversQuery.data?.forEach((row) => {
+                const defaults = buildDriverOverrideDefaults(row);
+                if (!next[row.driver_id] || !next[row.driver_id].dirty) {
+                    next[row.driver_id] = defaults;
+                }
+            });
+            return next;
+        });
+    }, [driversQuery.data]);
+    useEffect(() => {
+        if (!teamsQuery.data)
+            return;
+        setTeamOverrides((prev) => {
+            const next = { ...prev };
+            teamsQuery.data?.forEach((row) => {
+                const defaults = buildTeamOverrideDefaults(row);
+                if (!next[row.team_id] || !next[row.team_id].dirty) {
+                    next[row.team_id] = defaults;
+                }
+            });
+            return next;
+        });
+    }, [teamsQuery.data]);
+    const driverOverrideMutation = useMutation({
+        mutationFn: async ({ driverId, override }) => {
+            if (!override.is_manual_override) {
+                await deleteDriverLeaderboardOverride(seasonId, driverId);
+                return;
+            }
+            const manualPoints = parsePointsInput(override.manual_points, "Manual points");
+            if (manualPoints === null) {
+                throw new Error("Manual points are required when override is enabled.");
+            }
+            const manualPosition = parsePositionInput(override.manual_position, "Manual position");
+            await upsertDriverLeaderboardOverride({
+                season_id: seasonId,
+                driver_id: driverId,
+                manual_points: manualPoints,
+                manual_position: manualPosition,
+                is_manual_override: true
+            });
+        },
+        onMutate: ({ driverId }) => setPendingDriverId(driverId),
+        onSuccess: (_, variables) => {
+            toast({ variant: "success", title: "Driver leaderboard updated" });
+            setDriverOverrides((prev) => {
+                const current = prev[variables.driverId];
+                if (!current)
+                    return prev;
+                return {
+                    ...prev,
+                    [variables.driverId]: { ...current, dirty: false }
+                };
+            });
+            queryClient.invalidateQueries({ queryKey: ["admin-driver-standings", seasonId] });
+            queryClient.invalidateQueries({ queryKey: standingsKeys.drivers(seasonId) });
+        },
+        onError: (error) => toast({
+            variant: "error",
+            title: "Unable to update driver override",
+            description: error.message
+        }),
+        onSettled: () => setPendingDriverId(null)
+    });
+    const teamOverrideMutation = useMutation({
+        mutationFn: async ({ teamId, override }) => {
+            if (!override.is_manual_override) {
+                await deleteTeamLeaderboardOverride(seasonId, teamId);
+                return;
+            }
+            const manualPoints = parsePointsInput(override.manual_points, "Manual points");
+            if (manualPoints === null) {
+                throw new Error("Manual points are required when override is enabled.");
+            }
+            const manualPosition = parsePositionInput(override.manual_position, "Manual position");
+            await upsertTeamLeaderboardOverride({
+                season_id: seasonId,
+                team_id: teamId,
+                manual_points: manualPoints,
+                manual_position: manualPosition,
+                is_manual_override: true
+            });
+        },
+        onMutate: ({ teamId }) => setPendingTeamId(teamId),
+        onSuccess: (_, variables) => {
+            toast({ variant: "success", title: "Team leaderboard updated" });
+            setTeamOverrides((prev) => {
+                const current = prev[variables.teamId];
+                if (!current)
+                    return prev;
+                return {
+                    ...prev,
+                    [variables.teamId]: { ...current, dirty: false }
+                };
+            });
+            queryClient.invalidateQueries({ queryKey: ["admin-team-standings", seasonId] });
+            queryClient.invalidateQueries({ queryKey: standingsKeys.teams(seasonId) });
+        },
+        onError: (error) => toast({
+            variant: "error",
+            title: "Unable to update team override",
+            description: error.message
+        }),
+        onSettled: () => setPendingTeamId(null)
+    });
+    const handleDriverChange = (row, updates) => {
+        setDriverOverrides((prev) => {
+            const base = prev[row.driver_id] ?? buildDriverOverrideDefaults(row);
+            return {
+                ...prev,
+                [row.driver_id]: { ...base, ...updates, dirty: true }
+            };
+        });
+    };
+    const resetDriverOverride = (row) => {
+        setDriverOverrides((prev) => ({
+            ...prev,
+            [row.driver_id]: buildDriverOverrideDefaults(row)
+        }));
+    };
+    const handleTeamChange = (row, updates) => {
+        setTeamOverrides((prev) => {
+            const base = prev[row.team_id] ?? buildTeamOverrideDefaults(row);
+            return {
+                ...prev,
+                [row.team_id]: { ...base, ...updates, dirty: true }
+            };
+        });
+    };
+    const resetTeamOverride = (row) => {
+        setTeamOverrides((prev) => ({
+            ...prev,
+            [row.team_id]: buildTeamOverrideDefaults(row)
+        }));
+    };
+    const renderDriverEditor = () => {
+        if (driversQuery.isLoading) {
+            return _jsx("p", { className: "text-sm text-white/60", children: "Loading driver standings\u2026" });
+        }
+        if (!driversQuery.data?.length) {
+            return (_jsx("p", { className: "text-sm text-white/60", children: "No classified drivers yet. Once results are saved you can override the leaderboard here." }));
+        }
+        return (_jsx("div", { className: "space-y-4", children: driversQuery.data.map((row) => {
+                const override = driverOverrides[row.driver_id] ?? buildDriverOverrideDefaults(row);
+                const isSaving = pendingDriverId === row.driver_id && driverOverrideMutation.isPending;
+                return (_jsxs("article", { className: `rounded-2xl border border-white/10 bg-black/40 p-4 ${override.is_manual_override ? "ring-1 ring-amber-400/60" : ""}`, children: [_jsxs("div", { className: "flex flex-col gap-2 md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Driver" }), _jsx("p", { className: "text-lg font-semibold text-white", children: row.driver_name }), _jsx("p", { className: "text-xs text-white/60", children: row.team_name ?? "Privateer" })] }), _jsxs("div", { className: "text-xs text-white/70", children: [_jsxs("p", { children: ["Computed \u00B7 P", row.computed_position, " \u00B7 ", row.computed_points.toFixed(1)] }), _jsxs("p", { className: "text-white", children: ["Displayed \u00B7 P", row.position, " \u00B7 ", row.points.toFixed(1)] })] })] }), _jsxs("div", { className: "mt-4 grid gap-3 md:grid-cols-4", children: [_jsxs("label", { className: "flex flex-col text-xs text-white/70", children: ["Manual points", _jsx("input", { type: "number", step: "0.1", className: "mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50", value: override.manual_points, onChange: (event) => handleDriverChange(row, { manual_points: event.target.value }), disabled: !override.is_manual_override })] }), _jsxs("label", { className: "flex flex-col text-xs text-white/70", children: ["Manual position", _jsx("input", { type: "number", className: "mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50", value: override.manual_position, onChange: (event) => handleDriverChange(row, { manual_position: event.target.value }), disabled: !override.is_manual_override })] }), _jsxs("label", { className: "flex items-center gap-2 text-xs text-white/70", children: [_jsx("input", { type: "checkbox", checked: override.is_manual_override, onChange: (event) => handleDriverChange(row, { is_manual_override: event.target.checked }) }), "Manual override"] }), _jsx("div", { className: "flex gap-2", children: _jsx("button", { type: "button", className: "w-full rounded-2xl border border-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em]", onClick: () => resetDriverOverride(row), disabled: isSaving, children: "Reset" }) })] }), _jsxs("div", { className: "mt-4 flex flex-wrap gap-2", children: [_jsx("button", { type: "button", className: "rounded-2xl bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-50", onClick: () => driverOverrideMutation.mutate({ driverId: row.driver_id, override }), disabled: isSaving, children: isSaving ? "Saving…" : override.is_manual_override ? "Save override" : "Remove override" }), _jsx("p", { className: "text-xs text-white/60", children: "Stored values replace automatic totals for this driver when override is enabled." })] })] }, row.driver_id));
+            }) }));
+    };
+    const renderTeamEditor = () => {
+        if (teamsQuery.isLoading) {
+            return _jsx("p", { className: "text-sm text-white/60", children: "Loading team standings\u2026" });
+        }
+        if (!teamsQuery.data?.length) {
+            return (_jsx("p", { className: "text-sm text-white/60", children: "No team standings available yet. Add race results to populate the leaderboard." }));
+        }
+        return (_jsx("div", { className: "space-y-4", children: teamsQuery.data.map((row) => {
+                const override = teamOverrides[row.team_id] ?? buildTeamOverrideDefaults(row);
+                const isSaving = pendingTeamId === row.team_id && teamOverrideMutation.isPending;
+                return (_jsxs("article", { className: `rounded-2xl border border-white/10 bg-black/40 p-4 ${override.is_manual_override ? "ring-1 ring-amber-400/60" : ""}`, children: [_jsxs("div", { className: "flex flex-col gap-2 md:flex-row md:items-center md:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Team" }), _jsx("p", { className: "text-lg font-semibold text-white", children: row.team_name })] }), _jsxs("div", { className: "text-xs text-white/70", children: [_jsxs("p", { children: ["Computed \u00B7 P", row.computed_position, " \u00B7 ", row.computed_points.toFixed(1)] }), _jsxs("p", { className: "text-white", children: ["Displayed \u00B7 P", row.position, " \u00B7 ", row.points.toFixed(1)] })] })] }), _jsxs("div", { className: "mt-4 grid gap-3 md:grid-cols-4", children: [_jsxs("label", { className: "flex flex-col text-xs text-white/70", children: ["Manual points", _jsx("input", { type: "number", step: "0.1", className: "mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50", value: override.manual_points, onChange: (event) => handleTeamChange(row, { manual_points: event.target.value }), disabled: !override.is_manual_override })] }), _jsxs("label", { className: "flex flex-col text-xs text-white/70", children: ["Manual position", _jsx("input", { type: "number", className: "mt-1 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50", value: override.manual_position, onChange: (event) => handleTeamChange(row, { manual_position: event.target.value }), disabled: !override.is_manual_override })] }), _jsxs("label", { className: "flex items-center gap-2 text-xs text-white/70", children: [_jsx("input", { type: "checkbox", checked: override.is_manual_override, onChange: (event) => handleTeamChange(row, { is_manual_override: event.target.checked }) }), "Manual override"] }), _jsx("div", { className: "flex gap-2", children: _jsx("button", { type: "button", className: "w-full rounded-2xl border border-white/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.3em]", onClick: () => resetTeamOverride(row), disabled: isSaving, children: "Reset" }) })] }), _jsxs("div", { className: "mt-4 flex flex-wrap gap-2", children: [_jsx("button", { type: "button", className: "rounded-2xl bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-50", onClick: () => teamOverrideMutation.mutate({ teamId: row.team_id, override }), disabled: isSaving, children: isSaving ? "Saving…" : override.is_manual_override ? "Save override" : "Remove override" }), _jsx("p", { className: "text-xs text-white/60", children: "Overrides let you manually set constructor standings when calculations are unavailable." })] })] }, row.team_id));
+            }) }));
+    };
+    return (_jsxs("section", { className: "space-y-6 rounded-3xl border border-white/10 bg-black/30 p-6 text-sm text-white", children: [_jsxs("header", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Manual Leaderboard" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Override points & positions" }), _jsx("p", { className: "text-sm text-white/60", children: "Use overrides when automated aggregation isn't ready. Switch to the Drivers or Teams tab to manage each leaderboard. Reset returns to computed values." })] }), _jsx("div", { className: "flex flex-wrap gap-2", children: ["drivers", "teams"].map((key) => (_jsx("button", { type: "button", onClick: () => setActiveBoard(key), className: `rounded-2xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] ${activeBoard === key ? "bg-white text-black" : "border border-white/20 text-white/70"}`, children: key === "drivers" ? "Drivers" : "Teams" }, key))) }), activeBoard === "drivers" ? renderDriverEditor() : renderTeamEditor()] }));
+};
+const buildDriverOverrideDefaults = (row) => ({
+    is_manual_override: row.is_manual_override ?? false,
+    manual_points: formatNumberInputValue(row.manual_points, row.computed_points),
+    manual_position: formatNumberInputValue(row.manual_position, row.computed_position),
+    dirty: false
+});
+const buildTeamOverrideDefaults = (row) => ({
+    is_manual_override: row.is_manual_override ?? false,
+    manual_points: formatNumberInputValue(row.manual_points, row.computed_points),
+    manual_position: formatNumberInputValue(row.manual_position, row.computed_position),
+    dirty: false
+});
+const formatNumberInputValue = (primary, fallback) => {
+    const value = primary ?? fallback;
+    return Number.isFinite(value) ? `${value}` : `${fallback}`;
+};
+const parsePointsInput = (value, label) => {
+    const trimmed = value.trim();
+    if (!trimmed)
+        return null;
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) {
+        throw new Error(`${label} must be a valid number.`);
+    }
+    return parsed;
+};
+const parsePositionInput = (value, label) => {
+    const trimmed = value.trim();
+    if (!trimmed)
+        return null;
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed) || !Number.isInteger(parsed)) {
+        throw new Error(`${label} must be a whole number.`);
+    }
+    return parsed;
 };
 const DISPLAY_LABEL_OPTIONS = [
     {
