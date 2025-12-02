@@ -36,7 +36,7 @@ export const SessionProvider = ({ children }) => {
             user.user_metadata?.full_name ??
             (user.email ? user.email.split("@")[0] : "");
         const icNumber = user.user_metadata?.ic_number ?? "";
-        const updates = { id: user.id };
+        const updates = {};
         if (derivedUsername) {
             updates.username = derivedUsername;
         }
@@ -48,7 +48,7 @@ export const SessionProvider = ({ children }) => {
         }
         const syncProfile = async () => {
             try {
-                await supabase.from("profiles").upsert(updates, { onConflict: "id" });
+                await supabase.from("profiles").update(updates).eq("id", user.id);
             }
             catch (err) {
                 console.error("Failed to sync profile metadata", err);
@@ -95,10 +95,11 @@ export const SessionProvider = ({ children }) => {
             return { error };
         }
         const userId = data.user?.id;
-        if (userId) {
+        if (userId && data.session) {
             const { error: profileError } = await supabase
                 .from("profiles")
-                .upsert({ id: userId, username: trimmedUsername, ic_number: trimmedIc }, { onConflict: "id" });
+                .update({ username: trimmedUsername, ic_number: trimmedIc })
+                .eq("id", userId);
             if (profileError) {
                 console.error(profileError);
                 return { error: new Error(profileError.message) };

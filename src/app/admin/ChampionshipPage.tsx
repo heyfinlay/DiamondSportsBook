@@ -37,6 +37,13 @@ import {
 } from "@domains/standings/api/standingsApi";
 import { standingsKeys } from "@lib/query/keys";
 
+const safeToFixed = (value: number | null | undefined, decimals = 1, fallback = "0.0") => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toFixed(decimals);
+  }
+  return fallback;
+};
+
 type AdminTab = "seasons" | "roster" | "results" | "leaderboard";
 
 const AdminChampionshipPage = () => {
@@ -1020,9 +1027,9 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
                   <p className="text-xs text-white/60">{row.team_name ?? "Privateer"}</p>
                 </div>
                 <div className="text-xs text-white/70">
-                  <p>Computed · P{row.computed_position} · {row.computed_points.toFixed(1)}</p>
+                  <p>Computed · P{row.computed_position} · {safeToFixed(row.computed_points, 1)}</p>
                   <p className="text-white">
-                    Displayed · P{row.position} · {row.points.toFixed(1)}
+                    Displayed · P{row.position} · {safeToFixed(row.points, 1)}
                   </p>
                 </div>
               </div>
@@ -1126,9 +1133,9 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
                   <p className="text-lg font-semibold text-white">{row.team_name}</p>
                 </div>
                 <div className="text-xs text-white/70">
-                  <p>Computed · P{row.computed_position} · {row.computed_points.toFixed(1)}</p>
+                  <p>Computed · P{row.computed_position} · {safeToFixed(row.computed_points, 1)}</p>
                   <p className="text-white">
-                    Displayed · P{row.position} · {row.points.toFixed(1)}
+                    Displayed · P{row.position} · {safeToFixed(row.points, 1)}
                   </p>
                 </div>
               </div>
