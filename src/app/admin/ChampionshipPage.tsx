@@ -805,6 +805,11 @@ type LeaderboardOverrideFormState = {
   is_manual_override: boolean;
   manual_points: string;
   manual_position: string;
+  use_manual_stats_override: boolean;
+  manual_wins: string;
+  manual_podiums: string;
+  manual_starts: string;
+  manual_fastest_laps: string;
   dirty: boolean;
 };
 
@@ -867,6 +872,13 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
     }) => {
       const manualPoints = parsePointsInput(override.manual_points, "Manual points");
       const manualPosition = parsePositionInput(override.manual_position, "Manual position");
+      const manualWins = parsePositionInput(override.manual_wins, "Manual wins");
+      const manualPodiums = parsePositionInput(override.manual_podiums, "Manual podiums");
+      const manualStarts = parsePositionInput(override.manual_starts, "Manual starts");
+      const manualFastestLaps = parsePositionInput(
+        override.manual_fastest_laps,
+        "Manual fastest laps"
+      );
 
       if (override.is_manual_override && manualPoints === null) {
         throw new Error("Manual points are required when manual override is enabled.");
@@ -875,7 +887,12 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
       await updateDriverManualLeaderboard(driverId, {
         manual_points: override.is_manual_override ? manualPoints : null,
         manual_position: override.is_manual_override ? manualPosition : null,
-        use_manual_override: override.is_manual_override
+        use_manual_override: override.is_manual_override,
+        manual_wins: override.use_manual_stats_override ? manualWins : null,
+        manual_podiums: override.use_manual_stats_override ? manualPodiums : null,
+        manual_starts: override.use_manual_stats_override ? manualStarts : null,
+        manual_fastest_laps: override.use_manual_stats_override ? manualFastestLaps : null,
+        use_manual_stats_override: override.use_manual_stats_override
       });
     },
     onMutate: ({ driverId }) => setPendingDriverId(driverId),
@@ -1072,6 +1089,68 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
                 </div>
               </div>
 
+              <div className="mt-4 space-y-2 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <label className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-white/60">
+                  <input
+                    type="checkbox"
+                    checked={override.use_manual_stats_override}
+                    onChange={(event) =>
+                      handleDriverChange(row, { use_manual_stats_override: event.target.checked })
+                    }
+                  />
+                  Manual stats override
+                </label>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <label className="flex flex-col text-xs text-white/70">
+                    Manual wins
+                    <input
+                      type="number"
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      value={override.manual_wins}
+                      onChange={(event) =>
+                        handleDriverChange(row, { manual_wins: event.target.value })
+                      }
+                      disabled={!override.use_manual_stats_override}
+                    />
+                  </label>
+                  <label className="flex flex-col text-xs text-white/70">
+                    Manual podiums
+                    <input
+                      type="number"
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      value={override.manual_podiums}
+                      onChange={(event) =>
+                        handleDriverChange(row, { manual_podiums: event.target.value })
+                      }
+                      disabled={!override.use_manual_stats_override}
+                    />
+                  </label>
+                  <label className="flex flex-col text-xs text-white/70">
+                    Manual starts
+                    <input
+                      type="number"
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      value={override.manual_starts}
+                      onChange={(event) =>
+                        handleDriverChange(row, { manual_starts: event.target.value })
+                      }
+                      disabled={!override.use_manual_stats_override}
+                    />
+                  </label>
+                  <label className="flex flex-col text-xs text-white/70">
+                    Manual fastest laps
+                    <input
+                      type="number"
+                      className="mt-1 w-full rounded-2xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      value={override.manual_fastest_laps}
+                      onChange={(event) =>
+                        handleDriverChange(row, { manual_fastest_laps: event.target.value })
+                      }
+                      disabled={!override.use_manual_stats_override}
+                    />
+                  </label>
+                </div>
+              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -1233,6 +1312,11 @@ const buildDriverOverrideDefaults = (row: DriverStanding): LeaderboardOverrideFo
   is_manual_override: row.is_manual_override ?? false,
   manual_points: formatNumberInputValue(row.manual_points, row.computed_points),
   manual_position: formatNumberInputValue(row.manual_position, row.computed_position),
+  use_manual_stats_override: row.use_manual_stats_override ?? false,
+  manual_wins: formatNumberInputValue(row.manual_wins, row.computed_wins),
+  manual_podiums: formatNumberInputValue(row.manual_podiums, row.computed_podiums),
+  manual_starts: formatNumberInputValue(row.manual_starts, row.computed_starts),
+  manual_fastest_laps: formatNumberInputValue(row.manual_fastest_laps, row.computed_fastest_laps),
   dirty: false
 });
 
@@ -1240,6 +1324,11 @@ const buildTeamOverrideDefaults = (row: TeamStanding): LeaderboardOverrideFormSt
   is_manual_override: row.is_manual_override ?? false,
   manual_points: formatNumberInputValue(row.manual_points, row.computed_points),
   manual_position: formatNumberInputValue(row.manual_position, row.computed_position),
+  use_manual_stats_override: false,
+  manual_wins: "0",
+  manual_podiums: "0",
+  manual_starts: "0",
+  manual_fastest_laps: "0",
   dirty: false
 });
 

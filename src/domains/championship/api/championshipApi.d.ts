@@ -73,6 +73,11 @@ export declare const updateDriverManualLeaderboard: (driverId: string, payload: 
     manual_points?: number | null;
     manual_position?: number | null;
     use_manual_override: boolean;
+    manual_wins?: number | null;
+    manual_podiums?: number | null;
+    manual_starts?: number | null;
+    manual_fastest_laps?: number | null;
+    use_manual_stats_override: boolean;
 }) => Promise<void>;
 export declare const updateTeamManualLeaderboard: (teamId: string, payload: {
     manual_points?: number | null;

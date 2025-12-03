@@ -10,14 +10,24 @@ export type DriverStanding = {
     wins: number;
     podiums: number;
     starts: number;
+    fastest_laps: number;
     dnf_count: number;
     poles: number;
     diff_to_leader: number | null;
     is_manual_override: boolean;
     manual_points: number | null;
     manual_position: number | null;
+    manual_wins: number | null;
+    manual_podiums: number | null;
+    manual_starts: number | null;
+    manual_fastest_laps: number | null;
+    use_manual_stats_override: boolean;
     computed_points: number;
     computed_position: number;
+    computed_wins: number;
+    computed_podiums: number;
+    computed_starts: number;
+    computed_fastest_laps: number;
 };
 export type TeamStanding = {
     team_id: string;

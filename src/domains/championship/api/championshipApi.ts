@@ -204,20 +204,27 @@ export const fetchChampionshipResults = async (raceId: string) => {
 };
 
 export const upsertChampionshipResults = async (results: ChampionshipResult[]) => {
-  const payload = results.map((row) => ({
-    id: row.id ?? undefined,
-    race_id: row.race_id,
-    driver_id: row.driver_id,
-    team_id: row.team_id,
-    finish_position: row.finish_position,
-    position_display: row.position_display,
-    grid_position: row.grid_position,
-    gap_to_leader: row.gap_to_leader,
-    status: row.status,
-    points_awarded: row.points_awarded,
-    fastest_lap: row.fastest_lap,
-    display_label_mode: row.display_label_mode ?? "position"
-  }));
+  const payload = results.map((row) => {
+    const record: Record<string, unknown> = {
+      race_id: row.race_id,
+      driver_id: row.driver_id,
+      team_id: row.team_id,
+      finish_position: row.finish_position,
+      position_display: row.position_display,
+      grid_position: row.grid_position,
+      gap_to_leader: row.gap_to_leader,
+      status: row.status,
+      points_awarded: row.points_awarded,
+      fastest_lap: row.fastest_lap,
+      display_label_mode: row.display_label_mode ?? "position"
+    };
+
+    if (row.id) {
+      record.id = row.id;
+    }
+
+    return record;
+  });
 
   const { error } = await supabase
     .from("championship_results")
@@ -237,6 +244,11 @@ export const updateDriverManualLeaderboard = async (
     manual_points?: number | null;
     manual_position?: number | null;
     use_manual_override: boolean;
+    manual_wins?: number | null;
+    manual_podiums?: number | null;
+    manual_starts?: number | null;
+    manual_fastest_laps?: number | null;
+    use_manual_stats_override: boolean;
   }
 ) => {
   const { error } = await supabase
@@ -244,7 +256,12 @@ export const updateDriverManualLeaderboard = async (
     .update({
       manual_points: payload.manual_points ?? null,
       manual_position: payload.manual_position ?? null,
-      use_manual_override: payload.use_manual_override
+      use_manual_override: payload.use_manual_override,
+      manual_wins: payload.manual_wins ?? null,
+      manual_podiums: payload.manual_podiums ?? null,
+      manual_starts: payload.manual_starts ?? null,
+      manual_fastest_laps: payload.manual_fastest_laps ?? null,
+      use_manual_stats_override: payload.use_manual_stats_override
     })
     .eq("id", driverId);
 
