@@ -226,6 +226,8 @@ export const upsertChampionshipResults = async (results: ChampionshipResult[]) =
     return record;
   });
 
+  console.log("[DEBUG] Saving championship results payload", payload);
+
   const { error } = await supabase
     .from("championship_results")
     .upsert(payload, { onConflict: "race_id,driver_id" });
