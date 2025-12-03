@@ -1,6 +1,6 @@
 import { supabase } from "@lib/supabaseClient";
 const sessionSelect = `session:timing_sessions(id, name, track_name, mode, starts_at)`;
-const outcomeSelect = `outcomes(id, label, pool, color, driver_id)`;
+const outcomeSelect = `outcomes(id, label, pool, color, driver_id, metadata, participant_type, participant_id)`;
 const pendingSelect = `pending_settlement:pending_settlements(pool_id, status, winning_outcome_id, summary)`;
 const unwrapSingle = (value) => {
     if (!value)
@@ -18,12 +18,16 @@ export const fetchAdminMarkets = async () => {
         title,
         description,
         status,
+        market_type,
+        scope,
+        config,
         starts_at,
         takeout,
         ${sessionSelect},
         markets:markets(
           id,
           name,
+          label,
           description,
           status,
           archived,
@@ -34,7 +38,8 @@ export const fetchAdminMarkets = async () => {
           total_pool,
           min_stake,
           max_stake,
-          close_time
+          close_time,
+          config
         )
       `)
         .order("starts_at", { ascending: true });
@@ -44,6 +49,9 @@ export const fetchAdminMarkets = async () => {
         id: row.id,
         title: row.title,
         description: row.description ?? null,
+        market_type: (row.market_type ?? "WINNER_FULL_FIELD"),
+        scope: (row.scope ?? "race"),
+        config: row.config ?? {},
         status: row.status,
         starts_at: row.starts_at ?? null,
         takeout: Number(row.takeout ?? 0),
@@ -62,6 +70,7 @@ export const fetchAdminMarkets = async () => {
         markets: (row.markets ?? []).map((pool) => ({
             id: pool.id,
             name: pool.name,
+            label: pool.label ?? pool.name,
             description: pool.description ?? null,
             status: pool.status,
             archived: !!pool.archived,
@@ -73,6 +82,7 @@ export const fetchAdminMarkets = async () => {
             min_stake: Number(pool.min_stake ?? 0),
             max_stake: Number(pool.max_stake ?? 0),
             close_time: pool.close_time ?? null,
+            config: pool.config ?? {},
             settlement_payload: null,
             outcomes: []
         }))
@@ -86,12 +96,16 @@ export const fetchAdminMarketDetail = async (marketId) => {
         title,
         description,
         status,
+        market_type,
+        scope,
+        config,
         starts_at,
         takeout,
         ${sessionSelect},
         markets:markets(
           id,
           name,
+          label,
           description,
           status,
           archived,
@@ -103,6 +117,7 @@ export const fetchAdminMarketDetail = async (marketId) => {
           min_stake,
           max_stake,
           close_time,
+          config,
           settlement_payload,
           ${pendingSelect},
           ${outcomeSelect}
@@ -116,6 +131,9 @@ export const fetchAdminMarketDetail = async (marketId) => {
         id: data.id,
         title: data.title,
         description: data.description ?? null,
+        market_type: (data.market_type ?? "WINNER_FULL_FIELD"),
+        scope: (data.scope ?? "race"),
+        config: data.config ?? {},
         status: data.status,
         starts_at: data.starts_at ?? null,
         takeout: Number(data.takeout ?? 0),
@@ -134,6 +152,7 @@ export const fetchAdminMarketDetail = async (marketId) => {
         markets: (data.markets ?? []).map((pool) => ({
             id: pool.id,
             name: pool.name,
+            label: pool.label ?? pool.name,
             description: pool.description ?? null,
             status: pool.status,
             archived: !!pool.archived,
@@ -145,6 +164,7 @@ export const fetchAdminMarketDetail = async (marketId) => {
             min_stake: Number(pool.min_stake ?? 0),
             max_stake: Number(pool.max_stake ?? 0),
             close_time: pool.close_time ?? null,
+            config: pool.config ?? {},
             settlement_payload: pool.settlement_payload ?? null,
             pending_settlement: unwrapSingle(pool.pending_settlement),
             outcomes: pool.outcomes?.map((outcome) => ({
@@ -152,7 +172,10 @@ export const fetchAdminMarketDetail = async (marketId) => {
                 label: outcome.label,
                 pool: Number(outcome.pool ?? 0),
                 color: outcome.color ?? null,
-                driver_id: outcome.driver_id ?? null
+                driver_id: outcome.driver_id ?? null,
+                participant_type: outcome.participant_type ?? undefined,
+                participant_id: outcome.participant_id ?? undefined,
+                metadata: outcome.metadata ?? null
             })) ?? []
         }))
     };
@@ -169,6 +192,55 @@ export const createMarketWizard = async (payload) => {
     if (error)
         throw error;
     return data;
+};
+export const createMarketBuilder = async (payload) => {
+    const { data, error } = await supabase.rpc("market_builder_create", {
+        p_session_id: payload.sessionId,
+        p_title: payload.title,
+        p_market_type: payload.marketType,
+        p_scope: payload.scope,
+        p_description: payload.description ?? null,
+        p_takeout: payload.takeout ?? null,
+        p_starts_at: payload.startsAt ?? null,
+        p_config: payload.config ?? {},
+        p_pools: payload.pools
+    });
+    if (error)
+        throw error;
+    return data;
+};
+export const fetchSessionDrivers = async (sessionId) => {
+    const { data, error } = await supabase
+        .from("timing_drivers")
+        .select("id, name, number, team_name, primary_color, secondary_color")
+        .eq("session_id", sessionId)
+        .order("number", { ascending: true, nullsFirst: false })
+        .order("name", { ascending: true });
+    if (error)
+        throw error;
+    return (data?.map((driver) => ({
+        id: driver.id,
+        name: driver.name,
+        number: driver.number ?? null,
+        team_name: driver.team_name ?? null,
+        primary_color: driver.primary_color ?? null,
+        secondary_color: driver.secondary_color ?? null
+    })) ?? []);
+};
+export const fetchChampionshipTeams = async () => {
+    const { data, error } = await supabase
+        .from("championship_teams")
+        .select("id, name, primary_color, secondary_color")
+        .order("name", { ascending: true })
+        .limit(200);
+    if (error)
+        throw error;
+    return (data?.map((team) => ({
+        id: team.id,
+        name: team.name,
+        primary_color: team.primary_color ?? null,
+        secondary_color: team.secondary_color ?? null
+    })) ?? []);
 };
 const callPoolRpc = async (fn, poolId, extra) => {
     const { data, error } = await supabase.rpc(fn, {

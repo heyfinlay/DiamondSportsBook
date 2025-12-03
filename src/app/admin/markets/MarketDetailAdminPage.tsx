@@ -111,6 +111,9 @@ const MarketDetailAdminPage = () => {
             {market.session?.name ?? "Unlinked session"}
             {market.session?.track_name ? ` • ${market.session.track_name}` : ""}
           </p>
+          <p className="text-xs text-white/50">
+            {market.market_type} • {market.scope}
+          </p>
         </div>
         <div className="rounded-3xl border border-white/10 bg-black/30 px-6 py-4 text-right">
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">Handle</p>
@@ -225,7 +228,7 @@ const OverviewTab = ({
             <header className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-white/50">{pool.status}</p>
-                <h3 className="text-lg font-semibold text-white">{pool.name}</h3>
+                <h3 className="text-lg font-semibold text-white">{pool.label}</h3>
               </div>
               <p className="text-sm text-white/60">{`${currencySymbol}${pool.total_pool.toLocaleString()}`}</p>
             </header>
@@ -347,7 +350,7 @@ const PoolManager = ({ pool, onRefresh }: { pool: MarketPool; onRefresh: () => v
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-white/50">{pool.status}</p>
-          <h3 className="text-xl font-semibold text-white">{pool.name}</h3>
+          <h3 className="text-xl font-semibold text-white">{pool.label}</h3>
           <p className="text-sm text-white/60">{pool.description}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -506,7 +509,7 @@ const WalletTab = ({
             <option value="all">All pools</option>
             {pools.map((pool) => (
               <option key={pool.id} value={pool.id}>
-                {pool.name}
+                {pool.label}
               </option>
             ))}
           </select>
@@ -558,7 +561,7 @@ const ParticipantsTab = ({
           <option value="all">All pools</option>
           {pools.map((pool) => (
             <option key={pool.id} value={pool.id}>
-              {pool.name}
+              {pool.label}
             </option>
           ))}
         </select>
@@ -632,11 +635,16 @@ const PoolConfigModal = ({
   onSuccess: () => void;
 }) => {
   const { toast } = useToast();
-  const [name, setName] = useState(pool.name);
+  const [name, setName] = useState(pool.label);
   const [description, setDescription] = useState(pool.description ?? "");
 
   const updateMutation = useMutation({
-    mutationFn: () => updatePoolCopy(pool.id, { name, description: description.trim() || null }),
+    mutationFn: () =>
+      updatePoolCopy(pool.id, {
+        name,
+        label: name,
+        description: description.trim() || null
+      }),
     onSuccess: () => {
       toast({
         variant: "success",

@@ -139,15 +139,15 @@ export const upsertChampionshipResults = async (results) => {
             fastest_lap: row.fastest_lap,
             display_label_mode: row.display_label_mode ?? "position"
         };
-    if (row.id) {
-        record.id = row.id;
-    }
-    return record;
-});
-console.log("[DEBUG] Saving championship results payload", payload);
-const { error } = await supabase
-    .from("championship_results")
-    .upsert(payload, { onConflict: "race_id,driver_id" });
+        if (row.id) {
+            record.id = row.id;
+        }
+        return record;
+    });
+    console.log("[DEBUG] Saving championship results payload", payload);
+    const { error } = await supabase
+        .from("championship_results")
+        .upsert(payload, { onConflict: "race_id,driver_id" });
     if (error)
         throw error;
 };

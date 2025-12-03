@@ -13,17 +13,19 @@ export type PoolStatus =
 export interface MarketPool {
   id: string;
   name: string;
+  label: string;
   description: string | null;
   status: PoolStatus;
   archived?: boolean;
   settled_at?: string | null;
-   archived_at?: string | null;
-  pool_type: string;
+  archived_at?: string | null;
+  pool_type: PoolType;
   rake_percent: number;
   total_pool: number;
   min_stake: number;
   max_stake: number;
   close_time: string | null;
+  config: Record<string, unknown>;
   settlement_payload: Record<string, unknown> | null;
   pending_settlement?: {
     pool_id: string;
@@ -37,13 +39,31 @@ export interface MarketPool {
     pool: number;
     color: string | null;
     driver_id: string | null;
+    participant_type?: ParticipantType;
+    participant_id?: string | null;
+    metadata?: Record<string, unknown> | null;
   }>;
 }
+
+export type MarketScope = "qualifying" | "race";
+export type MarketType =
+  | "WINNER_FULL_FIELD"
+  | "PODIUM_FULL_FIELD"
+  | "POSITION_BRACKET"
+  | "HEAD_TO_HEAD"
+  | "YES_NO_PROP"
+  | "TEAM_POINTS"
+  | "NUMERIC_RANGE";
+export type PoolType = "winner" | "default" | "h2h" | "yes_no" | "range";
+export type ParticipantType = "driver" | "team" | "boolean" | "custom";
 
 export interface MarketContainer {
   id: string;
   title: string;
   description: string | null;
+  market_type: MarketType;
+  scope: MarketScope;
+  config: Record<string, unknown>;
   status: MarketContainerStatus;
   starts_at: string | null;
   takeout: number;
@@ -58,7 +78,7 @@ export interface MarketContainer {
 }
 
 const sessionSelect = `session:timing_sessions(id, name, track_name, mode, starts_at)`;
-const outcomeSelect = `outcomes(id, label, pool, color, driver_id)`;
+const outcomeSelect = `outcomes(id, label, pool, color, driver_id, metadata, participant_type, participant_id)`;
 const pendingSelect = `pending_settlement:pending_settlements(pool_id, status, winning_outcome_id, summary)`;
 
 const unwrapSingle = <T>(value: T | T[] | null | undefined): T | null => {
@@ -78,12 +98,16 @@ export const fetchAdminMarkets = async () => {
         title,
         description,
         status,
+        market_type,
+        scope,
+        config,
         starts_at,
         takeout,
         ${sessionSelect},
         markets:markets(
           id,
           name,
+          label,
           description,
           status,
           archived,
@@ -94,7 +118,8 @@ export const fetchAdminMarkets = async () => {
           total_pool,
           min_stake,
           max_stake,
-          close_time
+          close_time,
+          config
         )
       `
     )
@@ -107,6 +132,9 @@ export const fetchAdminMarkets = async () => {
       id: row.id,
       title: row.title,
       description: row.description ?? null,
+      market_type: (row.market_type ?? "WINNER_FULL_FIELD") as MarketType,
+      scope: (row.scope ?? "race") as MarketScope,
+      config: row.config ?? {},
       status: row.status as MarketContainerStatus,
       starts_at: row.starts_at ?? null,
       takeout: Number(row.takeout ?? 0),
@@ -124,21 +152,23 @@ export const fetchAdminMarkets = async () => {
       })(),
       markets: (row.markets ?? []).map((pool: any) => ({
         id: pool.id,
-        name: pool.name,
-        description: pool.description ?? null,
-        status: pool.status as PoolStatus,
-        archived: !!pool.archived,
-        settled_at: pool.settled_at ?? null,
-        archived_at: pool.archived_at ?? null,
-        pool_type: pool.pool_type,
-        rake_percent: Number(pool.rake_percent ?? 0),
-        total_pool: Number(pool.total_pool ?? 0),
-        min_stake: Number(pool.min_stake ?? 0),
-        max_stake: Number(pool.max_stake ?? 0),
-        close_time: pool.close_time ?? null,
-        settlement_payload: null,
-        outcomes: []
-      }))
+          name: pool.name,
+          label: pool.label ?? pool.name,
+          description: pool.description ?? null,
+          status: pool.status as PoolStatus,
+          archived: !!pool.archived,
+          settled_at: pool.settled_at ?? null,
+          archived_at: pool.archived_at ?? null,
+          pool_type: pool.pool_type as PoolType,
+          rake_percent: Number(pool.rake_percent ?? 0),
+          total_pool: Number(pool.total_pool ?? 0),
+          min_stake: Number(pool.min_stake ?? 0),
+          max_stake: Number(pool.max_stake ?? 0),
+          close_time: pool.close_time ?? null,
+          config: pool.config ?? {},
+          settlement_payload: null,
+          outcomes: []
+        }))
     })) ?? []
   ) as MarketContainer[];
 };
@@ -152,12 +182,16 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
         title,
         description,
         status,
+        market_type,
+        scope,
+        config,
         starts_at,
         takeout,
         ${sessionSelect},
         markets:markets(
           id,
           name,
+          label,
           description,
           status,
           archived,
@@ -169,6 +203,7 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
           min_stake,
           max_stake,
           close_time,
+          config,
           settlement_payload,
           ${pendingSelect},
           ${outcomeSelect}
@@ -184,6 +219,9 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
     id: data.id,
     title: data.title,
     description: data.description ?? null,
+    market_type: (data.market_type ?? "WINNER_FULL_FIELD") as MarketType,
+    scope: (data.scope ?? "race") as MarketScope,
+    config: data.config ?? {},
     status: data.status as MarketContainerStatus,
     starts_at: data.starts_at ?? null,
     takeout: Number(data.takeout ?? 0),
@@ -202,17 +240,19 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
     markets: (data.markets ?? []).map((pool: any) => ({
       id: pool.id,
       name: pool.name,
+      label: pool.label ?? pool.name,
       description: pool.description ?? null,
       status: pool.status as PoolStatus,
       archived: !!pool.archived,
       settled_at: pool.settled_at ?? null,
       archived_at: pool.archived_at ?? null,
-      pool_type: pool.pool_type,
+      pool_type: pool.pool_type as PoolType,
       rake_percent: Number(pool.rake_percent ?? 0),
       total_pool: Number(pool.total_pool ?? 0),
       min_stake: Number(pool.min_stake ?? 0),
       max_stake: Number(pool.max_stake ?? 0),
       close_time: pool.close_time ?? null,
+      config: pool.config ?? {},
       settlement_payload: pool.settlement_payload ?? null,
       pending_settlement: unwrapSingle(pool.pending_settlement),
       outcomes:
@@ -221,7 +261,10 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
           label: outcome.label,
           pool: Number(outcome.pool ?? 0),
           color: outcome.color ?? null,
-          driver_id: outcome.driver_id ?? null
+          driver_id: outcome.driver_id ?? null,
+          participant_type: outcome.participant_type ?? undefined,
+          participant_id: outcome.participant_id ?? undefined,
+          metadata: outcome.metadata ?? null
         })) ?? []
     }))
   };
@@ -258,6 +301,114 @@ export const createMarketWizard = async (payload: MarketWizardPayload) => {
 
   if (error) throw error;
   return data;
+};
+
+export interface MarketBuilderRunnerInput {
+  label: string;
+  participant_type?: ParticipantType;
+  participant_id?: string | null;
+  color?: string | null;
+  metadata?: Record<string, unknown>;
+  baseline_odds?: number | string | null;
+  range_start?: number | string | null;
+  range_end?: number | string | null;
+}
+
+export interface MarketBuilderPoolInput {
+  name: string;
+  label?: string;
+  description?: string;
+  pool_type?: PoolType | string;
+  rake_percent?: number;
+  min_stake?: number;
+  max_stake?: number;
+  close_time?: string;
+  config?: Record<string, unknown>;
+  runners?: MarketBuilderRunnerInput[];
+}
+
+export interface MarketBuilderPayload {
+  sessionId: string;
+  title: string;
+  marketType: MarketType;
+  scope: MarketScope;
+  description?: string;
+  takeout?: number;
+  startsAt?: string;
+  config?: Record<string, unknown>;
+  pools: MarketBuilderPoolInput[];
+}
+
+export const createMarketBuilder = async (payload: MarketBuilderPayload) => {
+  const { data, error } = await supabase.rpc("market_builder_create", {
+    p_session_id: payload.sessionId,
+    p_title: payload.title,
+    p_market_type: payload.marketType,
+    p_scope: payload.scope,
+    p_description: payload.description ?? null,
+    p_takeout: payload.takeout ?? null,
+    p_starts_at: payload.startsAt ?? null,
+    p_config: payload.config ?? {},
+    p_pools: payload.pools
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+export interface SessionDriver {
+  id: string;
+  name: string;
+  number: number | null;
+  team_name: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+}
+
+export const fetchSessionDrivers = async (sessionId: string): Promise<SessionDriver[]> => {
+  const { data, error } = await supabase
+    .from("timing_drivers")
+    .select("id, name, number, team_name, primary_color, secondary_color")
+    .eq("session_id", sessionId)
+    .order("number", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+  return (
+    data?.map((driver) => ({
+      id: driver.id,
+      name: driver.name,
+      number: driver.number ?? null,
+      team_name: driver.team_name ?? null,
+      primary_color: driver.primary_color ?? null,
+      secondary_color: driver.secondary_color ?? null
+    })) ?? []
+  );
+};
+
+export interface ChampionshipTeam {
+  id: string;
+  name: string;
+  primary_color: string | null;
+  secondary_color: string | null;
+}
+
+export const fetchChampionshipTeams = async (): Promise<ChampionshipTeam[]> => {
+  const { data, error } = await supabase
+    .from("championship_teams")
+    .select("id, name, primary_color, secondary_color")
+    .order("name", { ascending: true })
+    .limit(200);
+
+  if (error) throw error;
+  return (
+    data?.map((team) => ({
+      id: team.id,
+      name: team.name,
+      primary_color: team.primary_color ?? null,
+      secondary_color: team.secondary_color ?? null
+    })) ?? []
+  );
 };
 
 const callPoolRpc = async (fn: string, poolId: string, extra?: Record<string, unknown>) => {
@@ -431,6 +582,7 @@ export const fetchRakeLedger = async (marketId: string) => {
 export interface UpdatePoolCopyPayload {
   name?: string;
   description?: string | null;
+  label?: string | null;
 }
 
 export const updatePoolCopy = async (poolId: string, updates: UpdatePoolCopyPayload) => {

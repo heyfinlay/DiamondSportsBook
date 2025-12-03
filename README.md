@@ -496,3 +496,19 @@ If a feature request conflicts with the core principles above, it should be chal
   - Internals can change, but the behavior defined here should not break.
 
 If something in the code contradicts this manifesto, the manifesto wins.
+
+---
+
+## 12. Market Builder (Admin How-To)
+
+- Navigate to **Admin → Markets** and hit **+ New Market** to launch the 4-step builder.
+- **Step 1 – Basic:** Link a timing session, set title/description, scope (qualifying/race), optional category tag, visibility toggle, takeout, and start time.
+- **Step 2 – Type:** Choose the market shape (Full Field Winner/Podium/Bracket, Head-to-Head, Yes/No Prop, Team Points, Numeric Range). For position or range types, set min/max positions or range units.
+- **Step 3 – Pools & Runners:** The form adapts per type:
+  - Full-field/position: include all or select drivers; baseline odds may be added to runner metadata.
+  - Head-to-head: add rows of matchups; each row becomes its own `h2h` pool with two runners.
+  - Yes/No: single `yes_no` pool with Yes/No runners.
+  - Numeric range: single `range` pool; add labeled bands with optional numeric start/end.
+  - Team points: select teams; each becomes a runner in a `default` pool.
+- **Step 4 – Limits & Review:** Set default min/max stake and rake, optionally override per pool, review pool labels/runners, then create.
+- The builder calls `market_builder_create`, which writes `events.market_type`, `events.scope`, pool metadata (`markets.label`, `markets.pool_type`, `markets.config`), and runner typing (`outcomes.participant_type`, `participant_id`). Existing payout logic is unchanged.
