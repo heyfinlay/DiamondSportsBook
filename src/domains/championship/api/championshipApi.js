@@ -150,49 +150,27 @@ export const deleteChampionshipResult = async (id) => {
     if (error)
         throw error;
 };
-export const upsertDriverLeaderboardOverride = async (payload) => {
+export const updateDriverManualLeaderboard = async (driverId, payload) => {
     const { error } = await supabase
-        .from("championship_driver_overrides")
-        .upsert({
-        season_id: payload.season_id,
-        driver_id: payload.driver_id,
+        .from("championship_drivers")
+        .update({
         manual_points: payload.manual_points ?? null,
         manual_position: payload.manual_position ?? null,
-        is_manual_override: payload.is_manual_override,
-        notes: payload.notes ?? null
-    }, { onConflict: "season_id,driver_id" });
+        use_manual_override: payload.use_manual_override
+    })
+        .eq("id", driverId);
     if (error)
         throw error;
 };
-export const deleteDriverLeaderboardOverride = async (seasonId, driverId) => {
+export const updateTeamManualLeaderboard = async (teamId, payload) => {
     const { error } = await supabase
-        .from("championship_driver_overrides")
-        .delete()
-        .eq("season_id", seasonId)
-        .eq("driver_id", driverId);
-    if (error)
-        throw error;
-};
-export const upsertTeamLeaderboardOverride = async (payload) => {
-    const { error } = await supabase
-        .from("championship_team_overrides")
-        .upsert({
-        season_id: payload.season_id,
-        team_id: payload.team_id,
+        .from("championship_teams")
+        .update({
         manual_points: payload.manual_points ?? null,
         manual_position: payload.manual_position ?? null,
-        is_manual_override: payload.is_manual_override,
-        notes: payload.notes ?? null
-    }, { onConflict: "season_id,team_id" });
-    if (error)
-        throw error;
-};
-export const deleteTeamLeaderboardOverride = async (seasonId, teamId) => {
-    const { error } = await supabase
-        .from("championship_team_overrides")
-        .delete()
-        .eq("season_id", seasonId)
-        .eq("team_id", teamId);
+        use_manual_override: payload.use_manual_override
+    })
+        .eq("id", teamId);
     if (error)
         throw error;
 };

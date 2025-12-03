@@ -69,23 +69,13 @@ export interface ChampionshipResult {
 export declare const fetchChampionshipResults: (raceId: string) => Promise<ChampionshipResult[]>;
 export declare const upsertChampionshipResults: (results: ChampionshipResult[]) => Promise<void>;
 export declare const deleteChampionshipResult: (id: string) => Promise<void>;
-export type DriverOverrideInput = {
-    season_id: string;
-    driver_id: string;
+export declare const updateDriverManualLeaderboard: (driverId: string, payload: {
     manual_points?: number | null;
     manual_position?: number | null;
-    is_manual_override: boolean;
-    notes?: string | null;
-};
-export type TeamOverrideInput = {
-    season_id: string;
-    team_id: string;
+    use_manual_override: boolean;
+}) => Promise<void>;
+export declare const updateTeamManualLeaderboard: (teamId: string, payload: {
     manual_points?: number | null;
     manual_position?: number | null;
-    is_manual_override: boolean;
-    notes?: string | null;
-};
-export declare const upsertDriverLeaderboardOverride: (payload: DriverOverrideInput) => Promise<void>;
-export declare const deleteDriverLeaderboardOverride: (seasonId: string, driverId: string) => Promise<void>;
-export declare const upsertTeamLeaderboardOverride: (payload: TeamOverrideInput) => Promise<void>;
-export declare const deleteTeamLeaderboardOverride: (seasonId: string, teamId: string) => Promise<void>;
+    use_manual_override: boolean;
+}) => Promise<void>;

@@ -1,80 +1,18 @@
--- Manual leaderboard override tables and updated standings views.
+-- Manual leaderboard overrides live directly on the championship driver/team entries.
 
--- Driver overrides -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.championship_driver_overrides (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  season_id uuid NOT NULL REFERENCES public.championship_seasons(id) ON DELETE CASCADE,
-  driver_id uuid NOT NULL REFERENCES public.championship_drivers(id) ON DELETE CASCADE,
-  manual_points double precision,
-  manual_position integer,
-  is_manual_override boolean NOT NULL DEFAULT false,
-  notes text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (season_id, driver_id)
-);
+DROP TABLE IF EXISTS public.championship_driver_overrides;
+DROP TABLE IF EXISTS public.championship_team_overrides;
 
-DROP TRIGGER IF EXISTS trg_championship_driver_overrides_updated_at ON public.championship_driver_overrides;
-CREATE TRIGGER trg_championship_driver_overrides_updated_at
-BEFORE UPDATE ON public.championship_driver_overrides
-FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
+ALTER TABLE public.championship_drivers
+  ADD COLUMN IF NOT EXISTS manual_points double precision,
+  ADD COLUMN IF NOT EXISTS manual_position integer,
+  ADD COLUMN IF NOT EXISTS use_manual_override boolean NOT NULL DEFAULT false;
 
-ALTER TABLE public.championship_driver_overrides ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.championship_teams
+  ADD COLUMN IF NOT EXISTS manual_points double precision,
+  ADD COLUMN IF NOT EXISTS manual_position integer,
+  ADD COLUMN IF NOT EXISTS use_manual_override boolean NOT NULL DEFAULT false;
 
-DROP POLICY IF EXISTS championship_driver_overrides_admin ON public.championship_driver_overrides;
-CREATE POLICY championship_driver_overrides_admin
-  ON public.championship_driver_overrides
-  FOR ALL
-  USING (
-    public.has_permission('betting_admin')
-    OR public.has_permission('race_control')
-    OR public.has_permission('super_admin')
-  );
-
-DROP POLICY IF EXISTS championship_driver_overrides_read ON public.championship_driver_overrides;
-CREATE POLICY championship_driver_overrides_read
-  ON public.championship_driver_overrides
-  FOR SELECT
-  USING (true);
-
--- Team overrides -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.championship_team_overrides (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  season_id uuid NOT NULL REFERENCES public.championship_seasons(id) ON DELETE CASCADE,
-  team_id uuid NOT NULL REFERENCES public.championship_teams(id) ON DELETE CASCADE,
-  manual_points double precision,
-  manual_position integer,
-  is_manual_override boolean NOT NULL DEFAULT false,
-  notes text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (season_id, team_id)
-);
-
-DROP TRIGGER IF EXISTS trg_championship_team_overrides_updated_at ON public.championship_team_overrides;
-CREATE TRIGGER trg_championship_team_overrides_updated_at
-BEFORE UPDATE ON public.championship_team_overrides
-FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
-
-ALTER TABLE public.championship_team_overrides ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS championship_team_overrides_admin ON public.championship_team_overrides;
-CREATE POLICY championship_team_overrides_admin
-  ON public.championship_team_overrides
-  FOR ALL
-  USING (
-    public.has_permission('betting_admin')
-    OR public.has_permission('race_control')
-    OR public.has_permission('super_admin')
-  );
-
-DROP POLICY IF EXISTS championship_team_overrides_read ON public.championship_team_overrides;
-CREATE POLICY championship_team_overrides_read
-  ON public.championship_team_overrides
-  FOR SELECT
-  USING (true);
-
--- Views ----------------------------------------------------------------------
 CREATE OR REPLACE VIEW public.driver_standings_view AS
 WITH driver_points AS (
   SELECT
@@ -101,20 +39,15 @@ WITH driver_points AS (
 driver_with_overrides AS (
   SELECT
     dp.*,
-    o.is_manual_override,
-    o.manual_points,
-    o.manual_position,
-    COALESCE(
-      CASE
-        WHEN o.is_manual_override AND o.manual_points IS NOT NULL THEN o.manual_points
-        ELSE NULL
-      END,
-      dp.computed_points
-    ) AS display_points
+    d.manual_points,
+    d.manual_position,
+    d.use_manual_override,
+    CASE
+      WHEN d.use_manual_override AND d.manual_points IS NOT NULL THEN d.manual_points
+      ELSE dp.computed_points
+    END AS display_points
   FROM driver_points dp
-  LEFT JOIN public.championship_driver_overrides o
-    ON o.season_id = dp.season_id
-   AND o.driver_id = dp.driver_id
+  JOIN public.championship_drivers d ON d.id = dp.driver_id
 ),
 ranked AS (
   SELECT
@@ -137,7 +70,7 @@ SELECT
   team_color,
   season_id,
   CASE
-    WHEN is_manual_override AND manual_position IS NOT NULL THEN manual_position
+    WHEN use_manual_override AND manual_position IS NOT NULL THEN manual_position
     ELSE computed_position
   END AS position,
   display_points AS points,
@@ -151,7 +84,7 @@ SELECT
     WHEN display_points = leader_points THEN 0
     ELSE (leader_points - display_points)
   END::double precision AS diff_to_leader,
-  is_manual_override,
+  use_manual_override AS is_manual_override,
   manual_points,
   manual_position,
   computed_points,
@@ -176,20 +109,15 @@ WITH team_points AS (
 team_with_overrides AS (
   SELECT
     tp.*,
-    o.is_manual_override,
-    o.manual_points,
-    o.manual_position,
-    COALESCE(
-      CASE
-        WHEN o.is_manual_override AND o.manual_points IS NOT NULL THEN o.manual_points
-        ELSE NULL
-      END,
-      tp.computed_points
-    ) AS display_points
+    ct.manual_points,
+    ct.manual_position,
+    ct.use_manual_override,
+    CASE
+      WHEN ct.use_manual_override AND ct.manual_points IS NOT NULL THEN ct.manual_points
+      ELSE tp.computed_points
+    END AS display_points
   FROM team_points tp
-  LEFT JOIN public.championship_team_overrides o
-    ON o.season_id = tp.season_id
-   AND o.team_id = tp.team_id
+  JOIN public.championship_teams ct ON ct.id = tp.team_id
 ),
 ranked AS (
   SELECT
@@ -210,7 +138,7 @@ SELECT
   team_color,
   season_id,
   CASE
-    WHEN is_manual_override AND manual_position IS NOT NULL THEN manual_position
+    WHEN use_manual_override AND manual_position IS NOT NULL THEN manual_position
     ELSE computed_position
   END AS position,
   display_points AS points,
@@ -222,7 +150,7 @@ SELECT
     WHEN display_points = leader_points THEN 0
     ELSE (leader_points - display_points)
   END::double precision AS diff_to_leader,
-  is_manual_override,
+  use_manual_override AS is_manual_override,
   manual_points,
   manual_position,
   computed_points,

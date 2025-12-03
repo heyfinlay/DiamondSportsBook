@@ -10,24 +10,22 @@ import {
   ChampionshipTeam,
   DisplayLabelMode,
   createChampionshipSeason,
-  deleteDriverLeaderboardOverride,
   deleteChampionshipDriver,
   deleteChampionshipResult,
   deleteChampionshipTeam,
-  deleteTeamLeaderboardOverride,
   fetchChampionshipDrivers,
   fetchChampionshipRaces,
   fetchChampionshipResults,
   fetchChampionshipSeasons,
   fetchChampionshipTeams,
   setActiveChampionshipSeason,
-  upsertDriverLeaderboardOverride,
+  updateChampionshipSeason,
+  updateDriverManualLeaderboard,
+  updateTeamManualLeaderboard,
   upsertChampionshipDriver,
   upsertChampionshipRace,
   upsertChampionshipResults,
-  upsertChampionshipTeam,
-  upsertTeamLeaderboardOverride,
-  updateChampionshipSeason
+  upsertChampionshipTeam
 } from "@domains/championship/api/championshipApi";
 import {
   DriverStanding,
@@ -867,21 +865,17 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
       driverId: string;
       override: LeaderboardOverrideFormState;
     }) => {
-      if (!override.is_manual_override) {
-        await deleteDriverLeaderboardOverride(seasonId, driverId);
-        return;
-      }
       const manualPoints = parsePointsInput(override.manual_points, "Manual points");
-      if (manualPoints === null) {
-        throw new Error("Manual points are required when override is enabled.");
-      }
       const manualPosition = parsePositionInput(override.manual_position, "Manual position");
-      await upsertDriverLeaderboardOverride({
-        season_id: seasonId,
-        driver_id: driverId,
-        manual_points: manualPoints,
-        manual_position: manualPosition,
-        is_manual_override: true
+
+      if (override.is_manual_override && manualPoints === null) {
+        throw new Error("Manual points are required when manual override is enabled.");
+      }
+
+      await updateDriverManualLeaderboard(driverId, {
+        manual_points: override.is_manual_override ? manualPoints : null,
+        manual_position: override.is_manual_override ? manualPosition : null,
+        use_manual_override: override.is_manual_override
       });
     },
     onMutate: ({ driverId }) => setPendingDriverId(driverId),
@@ -915,21 +909,17 @@ const ManualLeaderboardEditor = ({ seasonId }: { seasonId: string }) => {
       teamId: string;
       override: LeaderboardOverrideFormState;
     }) => {
-      if (!override.is_manual_override) {
-        await deleteTeamLeaderboardOverride(seasonId, teamId);
-        return;
-      }
       const manualPoints = parsePointsInput(override.manual_points, "Manual points");
-      if (manualPoints === null) {
-        throw new Error("Manual points are required when override is enabled.");
-      }
       const manualPosition = parsePositionInput(override.manual_position, "Manual position");
-      await upsertTeamLeaderboardOverride({
-        season_id: seasonId,
-        team_id: teamId,
-        manual_points: manualPoints,
-        manual_position: manualPosition,
-        is_manual_override: true
+
+      if (override.is_manual_override && manualPoints === null) {
+        throw new Error("Manual points are required when manual override is enabled.");
+      }
+
+      await updateTeamManualLeaderboard(teamId, {
+        manual_points: override.is_manual_override ? manualPoints : null,
+        manual_position: override.is_manual_override ? manualPosition : null,
+        use_manual_override: override.is_manual_override
       });
     },
     onMutate: ({ teamId }) => setPendingTeamId(teamId),

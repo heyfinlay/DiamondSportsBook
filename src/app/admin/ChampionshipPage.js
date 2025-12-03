@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@app/components/ToastProvider";
-import { createChampionshipSeason, deleteDriverLeaderboardOverride, deleteChampionshipDriver, deleteChampionshipResult, deleteChampionshipTeam, deleteTeamLeaderboardOverride, fetchChampionshipDrivers, fetchChampionshipRaces, fetchChampionshipResults, fetchChampionshipSeasons, fetchChampionshipTeams, setActiveChampionshipSeason, upsertDriverLeaderboardOverride, upsertChampionshipDriver, upsertChampionshipRace, upsertChampionshipResults, upsertChampionshipTeam, upsertTeamLeaderboardOverride, updateChampionshipSeason } from "@domains/championship/api/championshipApi";
+import { createChampionshipSeason, deleteChampionshipDriver, deleteChampionshipResult, deleteChampionshipTeam, fetchChampionshipDrivers, fetchChampionshipRaces, fetchChampionshipResults, fetchChampionshipSeasons, fetchChampionshipTeams, setActiveChampionshipSeason, updateChampionshipSeason, updateDriverManualLeaderboard, updateTeamManualLeaderboard, upsertChampionshipDriver, upsertChampionshipRace, upsertChampionshipResults, upsertChampionshipTeam } from "@domains/championship/api/championshipApi";
 import { fetchDriverStandings, fetchTeamStandings } from "@domains/standings/api/standingsApi";
 import { standingsKeys } from "@lib/query/keys";
 const safeToFixed = (value, decimals = 1, fallback = "0.0") => {
@@ -343,21 +343,15 @@ const ManualLeaderboardEditor = ({ seasonId }) => {
     }, [teamsQuery.data]);
     const driverOverrideMutation = useMutation({
         mutationFn: async ({ driverId, override }) => {
-            if (!override.is_manual_override) {
-                await deleteDriverLeaderboardOverride(seasonId, driverId);
-                return;
-            }
             const manualPoints = parsePointsInput(override.manual_points, "Manual points");
-            if (manualPoints === null) {
-                throw new Error("Manual points are required when override is enabled.");
-            }
             const manualPosition = parsePositionInput(override.manual_position, "Manual position");
-            await upsertDriverLeaderboardOverride({
-                season_id: seasonId,
-                driver_id: driverId,
-                manual_points: manualPoints,
-                manual_position: manualPosition,
-                is_manual_override: true
+            if (override.is_manual_override && manualPoints === null) {
+                throw new Error("Manual points are required when manual override is enabled.");
+            }
+            await updateDriverManualLeaderboard(driverId, {
+                manual_points: override.is_manual_override ? manualPoints : null,
+                manual_position: override.is_manual_override ? manualPosition : null,
+                use_manual_override: override.is_manual_override
             });
         },
         onMutate: ({ driverId }) => setPendingDriverId(driverId),
@@ -384,21 +378,15 @@ const ManualLeaderboardEditor = ({ seasonId }) => {
     });
     const teamOverrideMutation = useMutation({
         mutationFn: async ({ teamId, override }) => {
-            if (!override.is_manual_override) {
-                await deleteTeamLeaderboardOverride(seasonId, teamId);
-                return;
-            }
             const manualPoints = parsePointsInput(override.manual_points, "Manual points");
-            if (manualPoints === null) {
-                throw new Error("Manual points are required when override is enabled.");
-            }
             const manualPosition = parsePositionInput(override.manual_position, "Manual position");
-            await upsertTeamLeaderboardOverride({
-                season_id: seasonId,
-                team_id: teamId,
-                manual_points: manualPoints,
-                manual_position: manualPosition,
-                is_manual_override: true
+            if (override.is_manual_override && manualPoints === null) {
+                throw new Error("Manual points are required when manual override is enabled.");
+            }
+            await updateTeamManualLeaderboard(teamId, {
+                manual_points: override.is_manual_override ? manualPoints : null,
+                manual_position: override.is_manual_override ? manualPosition : null,
+                use_manual_override: override.is_manual_override
             });
         },
         onMutate: ({ teamId }) => setPendingTeamId(teamId),
