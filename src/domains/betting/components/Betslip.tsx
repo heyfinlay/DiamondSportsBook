@@ -53,6 +53,16 @@ export const Betslip = () => {
   }, [betslip.stake]);
 
   const hasSelection = Boolean(betslip.outcomeId && betslip.marketId && betslip.isOpen);
+  const formatStakeLimitError = (error: Error) => {
+    const msg = error.message ?? "";
+    if (msg === "Stake outside limits" || msg.includes("Stake Ɖ")) {
+      if (betslip.maxStake > 0) {
+        return `Your stake must be between ${currencySymbol}${betslip.minStake.toLocaleString()} and ${currencySymbol}${betslip.maxStake.toLocaleString()}.`;
+      }
+      return `Your stake must be at least ${currencySymbol}${betslip.minStake.toLocaleString()}.`;
+    }
+    return msg;
+  };
 
   const {
     mutate: requestPreview,
@@ -75,7 +85,7 @@ export const Betslip = () => {
       toast({
         variant: "error",
         title: "Preview failed",
-        description: error.message
+        description: formatStakeLimitError(error)
       });
     }
   });
@@ -110,7 +120,7 @@ export const Betslip = () => {
       toast({
         variant: "error",
         title: "Bet placement failed",
-        description: error.message
+        description: formatStakeLimitError(error)
       });
     },
     onSuccess: (_data, variables) => {
