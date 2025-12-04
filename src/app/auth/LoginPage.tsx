@@ -70,70 +70,82 @@ export function LoginPage() {
   }, [PROFILE_COMPLETION_GATING_ENABLED, from, navigate, shouldForceProfileCompletion, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setMessage(null)
-    setLoading(true)
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    setLoading(true);
 
     try {
       if (isSignUp) {
-        const trimmedUsername = username.trim()
-        const trimmedIc = icNumber.trim()
+        const trimmedUsername = username.trim();
+        const trimmedIc = icNumber.trim();
+        const trimmedEmail = email.trim();
 
         if (!trimmedUsername || !trimmedIc) {
-          setError('Username and IC number are required.')
-          return
+          setError("Username and IC number are required.");
+          return;
         }
 
+        // Check username availability
         const { data: existingUsername, error: usernameCheckError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('username', trimmedUsername)
-          .maybeSingle()
+          .from("profiles")
+          .select("id")
+          .eq("username", trimmedUsername)
+          .maybeSingle();
 
-        if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
-          setError('Unable to verify username availability.')
-          return
+        if (usernameCheckError && usernameCheckError.code !== "PGRST116") {
+          setError("Unable to verify username availability.");
+          return;
         }
 
         if (existingUsername) {
-          setError('That username is already taken. Choose another one.')
-          return
+          setError("That username is already taken. Choose another one.");
+          return;
         }
 
+        // Create auth user (no email confirmation flow)
         const { error } = await signUp({
-          email: email.trim(),
+          email: trimmedEmail,
           password,
           username: trimmedUsername,
-          icNumber: trimmedIc
-        })
+          icNumber: trimmedIc,
+        });
+
         if (error) {
-          setError(error.message)
+          setError(error.message);
+          return;
+        }
+
+        // Immediately sign them in since we don't use email confirmation
+        const { error: signInError } = await signIn(trimmedEmail, password);
+
+        if (signInError) {
+          // Fallback: account exists but auto-login failed
+          setMessage("Account created. You can now sign in with your email and password.");
+          setIsSignUp(false);
+          setPassword("");
+          setUsername("");
+          setIcNumber("");
         } else {
-          setMessage(
-            'Check your email for a confirmation link. Once confirmed, you can sign in.'
-          )
-          setIsSignUp(false)
-          setPassword('')
-          setUsername('')
-          setIcNumber('')
+          // Fully logged in – send them where they were going
+          navigate(from, { replace: true });
         }
       } else {
-        const { error } = await signIn(email, password)
+        const { error } = await signIn(email, password);
         if (error) {
-          setError(error.message)
+          setError(error.message);
         } else {
           // Successful login - redirect
-          navigate(from, { replace: true })
+          navigate(from, { replace: true });
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred')
-      console.error(err)
+      setError("An unexpected error occurred");
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (PROFILE_COMPLETION_GATING_ENABLED && user && needsProfileCompletion) {
     const handleCompleteProfile = async (event: React.FormEvent) => {
