@@ -45,6 +45,16 @@ export const Betslip = () => {
         setInputValue(betslip.stake > 0 ? betslip.stake.toString() : "");
     }, [betslip.stake]);
     const hasSelection = Boolean(betslip.outcomeId && betslip.marketId && betslip.isOpen);
+    const formatStakeLimitError = (error) => {
+        const msg = error.message ?? "";
+        if (msg === "Stake outside limits" || msg.includes("Stake Ɖ")) {
+            if (betslip.maxStake > 0) {
+                return `Your stake must be between ${currencySymbol}${betslip.minStake.toLocaleString()} and ${currencySymbol}${betslip.maxStake.toLocaleString()}.`;
+            }
+            return `Your stake must be at least ${currencySymbol}${betslip.minStake.toLocaleString()}.`;
+        }
+        return msg;
+    };
     const { mutate: requestPreview, isPending: isPreviewPending } = useMutation({
         mutationFn: ({ marketId, outcomeId, stake }) => previewWager(marketId, outcomeId, stake),
         onSuccess: (result) => {
@@ -55,7 +65,7 @@ export const Betslip = () => {
             toast({
                 variant: "error",
                 title: "Preview failed",
-                description: error.message
+                description: formatStakeLimitError(error)
             });
         }
     });
@@ -81,7 +91,7 @@ export const Betslip = () => {
             toast({
                 variant: "error",
                 title: "Bet placement failed",
-                description: error.message
+                description: formatStakeLimitError(error)
             });
         },
         onSuccess: (_data, variables) => {

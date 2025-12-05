@@ -151,29 +151,36 @@ const AdminDashboard = () => {
               key={deposit.id}
               className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
             >
-              <div>
-                <p className="text-sm font-semibold">
-                  {`${currencySymbol}${deposit.amount.toFixed(2)}`}
-                </p>
-                <p className="text-xs text-white/60">
-                  Character:{" "}
-                  {deposit.display_name ||
-                    deposit.username ||
-                    `User ${deposit.user_id.slice(0, 8)}…`}
-                </p>
-                <p className="text-xs text-white/60">IC #: {deposit.ic_number ?? "—"}</p>
-                <p className="text-xs text-white/40">
-                  UUID: {deposit.user_id.slice(0, 8)}… ·{" "}
-                  {new Date(deposit.requested_at).toLocaleString()}
-                </p>
-              </div>
-              <button
-                className="rounded-full bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"
-                onClick={() => approveDepositMutation.mutate(deposit.id)}
-                disabled={approveDepositMutation.isPending}
-              >
-                Approve
-              </button>
+              {(() => {
+                const profile = deposit.profile;
+                const characterName =
+                  profile?.display_name ||
+                  profile?.username ||
+                  `User ${deposit.user_id.slice(0, 8)}…`;
+                const icNumber = profile?.ic_number ?? "—";
+                const uuid = profile?.id ?? deposit.user_id;
+                return (
+                  <>
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {`${currencySymbol}${deposit.amount.toFixed(2)}`}
+                      </p>
+                      <p className="text-xs text-white/60">Character: {characterName}</p>
+                      <p className="text-xs text-white/60">IC #: {icNumber}</p>
+                      <p className="text-xs text-white/40">
+                        UUID: {uuid.slice(0, 8)}… · {new Date(deposit.requested_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      className="rounded-full bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"
+                      onClick={() => approveDepositMutation.mutate(deposit.id)}
+                      disabled={approveDepositMutation.isPending}
+                    >
+                      Approve
+                    </button>
+                  </>
+                );
+              })()}
             </article>
           ))}
           {depositsQuery.data && depositsQuery.data.length === 0 && (
@@ -193,22 +200,27 @@ const AdminDashboard = () => {
               key={withdrawal.id}
               className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
             >
-              <div>
-                <p className="text-sm font-semibold">
-                  {`${currencySymbol}${withdrawal.amount.toFixed(2)}`}
-                </p>
-                <p className="text-xs text-white/60">
-                  Character:{" "}
-                  {withdrawal.display_name ||
-                    withdrawal.username ||
-                    `User ${withdrawal.user_id.slice(0, 8)}…`}
-                </p>
-                <p className="text-xs text-white/60">IC #: {withdrawal.ic_number ?? "—"}</p>
-                <p className="text-xs text-white/40">
-                  UUID: {withdrawal.user_id.slice(0, 8)}… ·{" "}
-                  {new Date(withdrawal.requested_at).toLocaleString()}
-                </p>
-              </div>
+              {(() => {
+                const profile = withdrawal.profile;
+                const characterName =
+                  profile?.display_name ||
+                  profile?.username ||
+                  `User ${withdrawal.user_id.slice(0, 8)}…`;
+                const icNumber = profile?.ic_number ?? "—";
+                const uuid = profile?.id ?? withdrawal.user_id;
+                return (
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {`${currencySymbol}${withdrawal.amount.toFixed(2)}`}
+                    </p>
+                    <p className="text-xs text-white/60">Character: {characterName}</p>
+                    <p className="text-xs text-white/60">IC #: {icNumber}</p>
+                    <p className="text-xs text-white/40">
+                      UUID: {uuid.slice(0, 8)}… · {new Date(withdrawal.requested_at).toLocaleString()}
+                    </p>
+                  </div>
+                );
+              })()}
               <div className="flex gap-2">
                 <button
                   className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"

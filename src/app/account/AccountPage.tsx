@@ -216,7 +216,8 @@ const AccountPage = () => {
           <input
             type="number"
             min="1"
-            step="10"
+            step="any"
+            inputMode="decimal"
             className="mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
             value={depositAmount}
             onChange={(event) => setDepositAmount(event.target.value)}
@@ -240,7 +241,8 @@ const AccountPage = () => {
           <input
             type="number"
             min="1"
-            step="10"
+            step="any"
+            inputMode="decimal"
             className="mt-4 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white"
             value={withdrawAmount}
             onChange={(event) => setWithdrawAmount(event.target.value)}

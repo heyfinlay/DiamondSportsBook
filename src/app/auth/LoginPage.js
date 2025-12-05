@@ -64,38 +64,49 @@ export function LoginPage() {
             if (isSignUp) {
                 const trimmedUsername = username.trim();
                 const trimmedIc = icNumber.trim();
+                const trimmedEmail = email.trim();
                 if (!trimmedUsername || !trimmedIc) {
-                    setError('Username and IC number are required.');
+                    setError("Username and IC number are required.");
                     return;
                 }
+                // Check username availability
                 const { data: existingUsername, error: usernameCheckError } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('username', trimmedUsername)
+                    .from("profiles")
+                    .select("id")
+                    .eq("username", trimmedUsername)
                     .maybeSingle();
-                if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
-                    setError('Unable to verify username availability.');
+                if (usernameCheckError && usernameCheckError.code !== "PGRST116") {
+                    setError("Unable to verify username availability.");
                     return;
                 }
                 if (existingUsername) {
-                    setError('That username is already taken. Choose another one.');
+                    setError("That username is already taken. Choose another one.");
                     return;
                 }
+                // Create auth user (no email confirmation flow)
                 const { error } = await signUp({
-                    email: email.trim(),
+                    email: trimmedEmail,
                     password,
                     username: trimmedUsername,
-                    icNumber: trimmedIc
+                    icNumber: trimmedIc,
                 });
                 if (error) {
                     setError(error.message);
+                    return;
+                }
+                // Immediately sign them in since we don't use email confirmation
+                const { error: signInError } = await signIn(trimmedEmail, password);
+                if (signInError) {
+                    // Fallback: account exists but auto-login failed
+                    setMessage("Account created. You can now sign in with your email and password.");
+                    setIsSignUp(false);
+                    setPassword("");
+                    setUsername("");
+                    setIcNumber("");
                 }
                 else {
-                    setMessage('Check your email for a confirmation link. Once confirmed, you can sign in.');
-                    setIsSignUp(false);
-                    setPassword('');
-                    setUsername('');
-                    setIcNumber('');
+                    // Fully logged in – send them where they were going
+                    navigate(from, { replace: true });
                 }
             }
             else {
@@ -110,7 +121,7 @@ export function LoginPage() {
             }
         }
         catch (err) {
-            setError('An unexpected error occurred');
+            setError("An unexpected error occurred");
             console.error(err);
         }
         finally {

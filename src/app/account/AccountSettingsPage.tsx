@@ -24,9 +24,15 @@ const AccountSettingsPage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const resolvedCharacterName = (profileName?: string | null) => {
+    // Prefer explicit character/display name; if it matches email, fall back to username instead.
+    if (profileName && profileName !== user?.email) return profileName;
+    return profileQuery.data?.username ?? "";
+  };
+
   useEffect(() => {
     if (profileQuery.data) {
-      setCharacterName(profileQuery.data.display_name ?? "");
+      setCharacterName(resolvedCharacterName(profileQuery.data.display_name));
       setUsername(profileQuery.data.username ?? "");
       setIcNumber(profileQuery.data.ic_number ?? "");
     }
@@ -193,7 +199,7 @@ const AccountSettingsPage = () => {
             <button
               type="button"
           onClick={() => {
-            setCharacterName(profileQuery.data?.display_name ?? "");
+            setCharacterName(resolvedCharacterName(profileQuery.data?.display_name));
             setUsername(profileQuery.data?.username ?? "");
             setIcNumber(profileQuery.data?.ic_number ?? "");
           }}
