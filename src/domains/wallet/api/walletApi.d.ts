@@ -45,10 +45,10 @@ export declare const fetchPendingDeposits: () => Promise<{
     account_id: any;
     user_id: any;
     profile: {
-        id: any;
-        display_name: any;
-        username: any;
-        ic_number: any;
+        id: string | null;
+        display_name: string | null;
+        username: string | null;
+        ic_number: string | null;
     };
 }[]>;
 export interface PendingWithdrawal {
@@ -71,10 +71,10 @@ export declare const fetchPendingWithdrawals: () => Promise<{
     account_id: any;
     user_id: any;
     profile: {
-        id: any;
-        display_name: any;
-        username: any;
-        ic_number: any;
+        id: string | null;
+        display_name: string | null;
+        username: string | null;
+        ic_number: string | null;
     };
 }[]>;
 export declare const approveDeposit: (depositId: string) => Promise<void>;

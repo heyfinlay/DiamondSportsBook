@@ -109,8 +109,6 @@ export interface PendingDeposit {
 }
 
 export const fetchPendingDeposits = async () => {
-  // Updated to join profiles directly so admin views have character/IC/UUID details
-  // (RLS allows admins to read all profiles).
   const { data, error } = await supabase
     .from("deposits")
     .select(`
@@ -118,36 +116,54 @@ export const fetchPendingDeposits = async () => {
       amount,
       requested_at,
       account_id,
-      user_id,
-      profiles:user_id (
-        id,
-        display_name,
-        username,
-        ic_number
-      )
+      wallet_accounts!inner(user_id)
     `)
     .eq("status", "requested")
     .order("requested_at", { ascending: true });
 
   if (error) throw error;
-  return (
+  const rows =
     data?.map((row) => {
-      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+      const account = Array.isArray(row.wallet_accounts) ? row.wallet_accounts[0] : row.wallet_accounts;
       return {
         id: row.id,
         amount: Number(row.amount),
         requested_at: row.requested_at,
         account_id: row.account_id,
-        user_id: row.user_id,
-        profile: {
-          id: profile?.id ?? null,
-          display_name: profile?.display_name ?? null,
-          username: profile?.username ?? null,
-          ic_number: profile?.ic_number ?? null
-        }
+        user_id: account?.user_id ?? null
       };
-    }) ?? []
-  );
+    }) ?? [];
+
+  // No direct FK from deposits to profiles; fetch profiles separately by user_id for admin display.
+  const userIds = rows.map((r) => r.user_id).filter((id): id is string => Boolean(id));
+  let profilesById: Record<string, { id: string | null; display_name: string | null; username: string | null; ic_number: string | null }> = {};
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name, username, ic_number")
+      .in("id", userIds);
+    if (profilesError) throw profilesError;
+    profilesById = Object.fromEntries(
+      (profiles ?? []).map((p) => [
+        p.id,
+        {
+          id: p.id ?? null,
+          display_name: p.display_name ?? null,
+          username: p.username ?? null,
+          ic_number: p.ic_number ?? null
+        }
+      ])
+    );
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    amount: row.amount,
+    requested_at: row.requested_at,
+    account_id: row.account_id,
+    user_id: row.user_id ?? "unknown",
+    profile: profilesById[row.user_id ?? ""] ?? null
+  }));
 };
 
 export interface PendingWithdrawal {
@@ -172,37 +188,53 @@ export const fetchPendingWithdrawals = async () => {
       amount,
       requested_at,
       account_id,
-      user_id,
-      profiles:user_id (
-        id,
-        display_name,
-        username,
-        ic_number
-      )
+      wallet_accounts!inner(user_id)
     `)
     .eq("status", "requested")
     .order("requested_at", { ascending: true });
 
   if (error) throw error;
-  return (
+  const rows =
     data?.map((row) => {
-      const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-
+      const account = Array.isArray(row.wallet_accounts) ? row.wallet_accounts[0] : row.wallet_accounts;
       return {
         id: row.id,
         amount: Number(row.amount),
         requested_at: row.requested_at,
         account_id: row.account_id,
-        user_id: row.user_id,
-        profile: {
-          id: profile?.id ?? null,
-          display_name: profile?.display_name ?? null,
-          username: profile?.username ?? null,
-          ic_number: profile?.ic_number ?? null
-        }
+        user_id: account?.user_id ?? null
       };
-    }) ?? []
-  );
+    }) ?? [];
+
+  const userIds = rows.map((r) => r.user_id).filter((id): id is string => Boolean(id));
+  let profilesById: Record<string, { id: string | null; display_name: string | null; username: string | null; ic_number: string | null }> = {};
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name, username, ic_number")
+      .in("id", userIds);
+    if (profilesError) throw profilesError;
+    profilesById = Object.fromEntries(
+      (profiles ?? []).map((p) => [
+        p.id,
+        {
+          id: p.id ?? null,
+          display_name: p.display_name ?? null,
+          username: p.username ?? null,
+          ic_number: p.ic_number ?? null
+        }
+      ])
+    );
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    amount: row.amount,
+    requested_at: row.requested_at,
+    account_id: row.account_id,
+    user_id: row.user_id ?? "unknown",
+    profile: profilesById[row.user_id ?? ""] ?? null
+  }));
 };
 
 export const approveDeposit = async (depositId: string) => {
