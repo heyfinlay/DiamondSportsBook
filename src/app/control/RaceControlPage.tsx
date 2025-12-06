@@ -22,6 +22,7 @@ import {
   resumeRace,
   setFlagStatus,
   updateDriverStatus,
+  updateDriverTiming,
   updateDriverBestLap,
   updateDriverDisplayPositions,
   type ControlEvent,
@@ -252,7 +253,7 @@ const RaceControlPage = () => {
 
   const updateRaceOrderMutation = useMutation({
     mutationFn: (updates: Array<{ driverId: string; displayPosition: number | null }>) =>
-      updateDriverDisplayPositions(updates),
+      updateDriverDisplayPositions(sessionId!, updates),
     onSuccess: () => {
       refreshTimingData();
       toast({ variant: "success", title: "Race order updated" });
@@ -265,7 +266,7 @@ const RaceControlPage = () => {
 
   const updateBestLapMutation = useMutation({
     mutationFn: ({ driverId, bestLapMs }: { driverId: string; bestLapMs: number | null }) =>
-      updateDriverBestLap(driverId, bestLapMs),
+      updateDriverBestLap(sessionId!, driverId, bestLapMs),
     onSuccess: () => {
       refreshTimingData();
       toast({ variant: "success", title: "Best lap updated" });
@@ -273,6 +274,32 @@ const RaceControlPage = () => {
     onError: (error: Error) => {
       recordError(error.message);
       toast({ variant: "error", title: "Unable to update best lap", description: error.message });
+    }
+  });
+
+  const updateLastLapMutation = useMutation({
+    mutationFn: ({ driverId, lastLapMs }: { driverId: string; lastLapMs: number | null }) =>
+      updateDriverTiming(sessionId!, driverId, { last_lap_ms: lastLapMs }),
+    onSuccess: () => {
+      refreshTimingData();
+      toast({ variant: "success", title: "Last lap updated" });
+    },
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to update last lap", description: error.message });
+    }
+  });
+
+  const updateLapsMutation = useMutation({
+    mutationFn: ({ driverId, laps }: { driverId: string; laps: number | null }) =>
+      updateDriverTiming(sessionId!, driverId, { laps }),
+    onSuccess: () => {
+      refreshTimingData();
+      toast({ variant: "success", title: "Laps updated" });
+    },
+    onError: (error: Error) => {
+      recordError(error.message);
+      toast({ variant: "error", title: "Unable to update laps", description: error.message });
     }
   });
 
@@ -407,6 +434,22 @@ const RaceControlPage = () => {
     return updateBestLapMutation.mutateAsync({ driverId, bestLapMs });
   };
 
+  const handleLastLapUpdate = (driverId: string, lastLapMs: number | null) => {
+    if (controlsLocked) {
+      guardSessionLocked("Session finished. Last laps are locked.");
+      return Promise.resolve();
+    }
+    return updateLastLapMutation.mutateAsync({ driverId, lastLapMs });
+  };
+
+  const handleLapsUpdate = (driverId: string, laps: number | null) => {
+    if (controlsLocked) {
+      guardSessionLocked("Session finished. Laps are locked.");
+      return Promise.resolve();
+    }
+    return updateLapsMutation.mutateAsync({ driverId, laps });
+  };
+
   const handleStatusUpdate = (driverId: string, status: string) => {
     if (controlsLocked) {
       guardSessionLocked("Driver statuses are locked after the checkered flag.");
@@ -465,9 +508,13 @@ const RaceControlPage = () => {
             entries={drivers}
             onReorder={handleRaceOrderChange}
             onUpdateBestLap={handleBestLapUpdate}
+            onUpdateLastLap={handleLastLapUpdate}
+            onUpdateLaps={handleLapsUpdate}
             onUpdateStatus={handleStatusUpdate}
             savingOrder={updateRaceOrderMutation.isPending}
             savingLap={updateBestLapMutation.isPending}
+            savingLastLap={updateLastLapMutation.isPending}
+            savingLaps={updateLapsMutation.isPending}
             statusUpdating={driverStatusMutation.isPending}
             disabled={controlsLocked}
             notify={toast}

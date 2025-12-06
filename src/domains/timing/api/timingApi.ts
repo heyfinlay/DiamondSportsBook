@@ -371,24 +371,38 @@ export const updateDriverStatus = async (driverId: string, status: string, reaso
 };
 
 export const updateDriverDisplayPositions = async (
+  sessionId: string,
   updates: Array<{ driverId: string; displayPosition: number | null }>
 ) => {
   if (!updates.length) return;
-  const payload = updates.map((entry) => ({
-    id: entry.driverId,
-    display_position: entry.displayPosition
-  }));
-  const { error } = await supabase.from("timing_drivers").upsert(payload, { onConflict: "id" });
+  const results = await Promise.all(
+    updates.map((entry) =>
+      supabase
+        .from("timing_drivers")
+        .update({ display_position: entry.displayPosition })
+        .eq("id", entry.driverId)
+        .eq("session_id", sessionId)
+    )
+  );
+  const errored = results.find((result) => result.error);
+  if (errored?.error) throw errored.error;
+};
+
+export const updateDriverTiming = async (
+  sessionId: string,
+  driverId: string,
+  payload: Partial<{ laps: number | null; last_lap_ms: number | null; best_lap_ms: number | null }>
+) => {
+  const { error } = await supabase
+    .from("timing_drivers")
+    .update(payload)
+    .eq("id", driverId)
+    .eq("session_id", sessionId);
   if (error) throw error;
 };
 
-export const updateDriverBestLap = async (driverId: string, bestLapMs: number | null) => {
-  const { error } = await supabase
-    .from("timing_drivers")
-    .update({ best_lap_ms: bestLapMs })
-    .eq("id", driverId);
-  if (error) throw error;
-};
+export const updateDriverBestLap = async (sessionId: string, driverId: string, bestLapMs: number | null) =>
+  updateDriverTiming(sessionId, driverId, { best_lap_ms: bestLapMs });
 
 export const logControlError = async (sessionId: string, message: string) => {
   try {

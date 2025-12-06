@@ -469,11 +469,16 @@ export declare const setFlagStatus: (sessionId: string, flag: string) => Promise
 export declare const pauseRace: (sessionId: string) => Promise<void>;
 export declare const resumeRace: (sessionId: string) => Promise<void>;
 export declare const updateDriverStatus: (driverId: string, status: string, reason?: string) => Promise<void>;
-export declare const updateDriverDisplayPositions: (updates: Array<{
+export declare const updateDriverDisplayPositions: (sessionId: string, updates: Array<{
     driverId: string;
     displayPosition: number | null;
 }>) => Promise<void>;
-export declare const updateDriverBestLap: (driverId: string, bestLapMs: number | null) => Promise<void>;
+export declare const updateDriverTiming: (sessionId: string, driverId: string, payload: Partial<{
+    laps: number | null;
+    last_lap_ms: number | null;
+    best_lap_ms: number | null;
+}>) => Promise<void>;
+export declare const updateDriverBestLap: (sessionId: string, driverId: string, bestLapMs: number | null) => Promise<void>;
 export declare const logControlError: (sessionId: string, message: string) => Promise<void>;
 export declare const getRaceTime: (sessionId: string) => Promise<number>;
 export declare const finishSession: (sessionId: string) => Promise<{
