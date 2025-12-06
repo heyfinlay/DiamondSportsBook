@@ -1,26 +1,24 @@
 import React from "react";
 
 export interface OutcomeTileProps {
-  id: string;
+  outcomeId: string;
   teamCode: string;
   teamName: string;
   teamColor?: string;
-  driverNumber?: string | number | null;
   driverName: string;
   oddsLabel: string;
   poolShareLabel: string;
   isFavourite?: boolean;
   isBestPayout?: boolean;
   isSelected?: boolean;
-  onSelect?: (id: string) => void;
+  onSelect?: () => void;
 }
 
 export function OutcomeTile({
-  id,
+  outcomeId,
   teamCode,
   teamName,
   teamColor,
-  driverNumber,
   driverName,
   oddsLabel,
   poolShareLabel,
@@ -32,18 +30,13 @@ export function OutcomeTile({
   const pillBase =
     "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em]";
 
-  const driverNumberLabel =
-    driverNumber !== undefined && driverNumber !== null
-      ? String(driverNumber).padStart(2, "0")
-      : "—";
   const teamLine = `${teamCode.toUpperCase()} • ${teamName}`;
-  const driverLine = `${driverNumberLabel} • ${driverName}`;
 
   return (
     <button
       type="button"
-      onClick={() => onSelect?.(id)}
-      className={`group flex h-full min-h-[120px] flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
+      onClick={() => onSelect?.()}
+      className={`group flex h-full min-h-[110px] flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
         isSelected
           ? "border-amber-400/70 bg-slate-900 shadow-[0_0_0_1px_rgba(251,191,36,0.2)]"
           : "border-slate-800/80 bg-slate-950/70 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-slate-900"
@@ -57,8 +50,8 @@ export function OutcomeTile({
             style={{ backgroundColor: teamColor ?? "#94a3b8" }}
           />
           <span
-            className="truncate text-xs font-semibold leading-tight text-slate-50"
-            title={teamLine}
+            className="truncate text-[12px] font-semibold leading-tight text-slate-50"
+            title={teamName}
           >
             <span className="uppercase tracking-[0.25em]">{teamCode}</span>
             <span className="text-slate-300"> • {teamName}</span>
@@ -79,16 +72,16 @@ export function OutcomeTile({
       </div>
 
       <p
-        className="text-xs text-slate-400"
+        className="truncate text-[11px] text-slate-400"
         style={{
           display: "-webkit-box",
           WebkitLineClamp: 1,
           WebkitBoxOrient: "vertical",
           overflow: "hidden"
         }}
-        title={driverLine}
+        title={driverName}
       >
-        {driverLine}
+        {driverName}
       </p>
 
       <div className="mt-1 flex items-center justify-between text-sm">

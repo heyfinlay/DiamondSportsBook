@@ -82,8 +82,8 @@ export function MarketCard({
           <OutcomeTile
             key={outcome.id}
             {...outcome}
-            isSelected={selectedOutcomeId === outcome.id}
-            onSelect={(outcomeId) => onSelectOutcome?.(outcomeId)}
+            isSelected={selectedOutcomeId === outcome.outcomeId}
+            onSelect={() => onSelectOutcome?.(outcome.outcomeId)}
           />
         ))}
       </div>

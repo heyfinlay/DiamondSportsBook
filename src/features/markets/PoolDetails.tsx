@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { MarketCard } from "../../components/markets/MarketCard";
-import { extractDriverNumber } from "../../components/markets/outcomeHelpers";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 import { getTeamCode } from "./teamCodes";
@@ -45,11 +44,11 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: 
         commission={pool.rakePercent}
         outcomes={pool.outcomes.map((outcome) => ({
           id: outcome.id,
+          outcomeId: outcome.id,
           teamCode: outcome.teamCode ?? getTeamCode(outcome.teamName),
           teamName: outcome.teamName,
           teamColor: outcome.teamColor,
           driverName: outcome.driverName,
-          driverNumber: outcome.driverNumber ?? extractDriverNumber(outcome.driverName),
           oddsLabel: formatOdds(outcome.baselineOdds),
           poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
           isFavourite: favouriteId === outcome.id,

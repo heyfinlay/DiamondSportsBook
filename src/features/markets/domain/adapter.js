@@ -62,18 +62,11 @@ const mapOutcomes = (totalStake, rakeFraction, outcomes) => outcomes.map((outcom
     const odds = typeof providedOdds === "number" && providedOdds > 0
         ? providedOdds
         : computeOdds(totalStake, staked, rakeFraction);
-    const metadataNumber = outcome.metadata?.["driver_number"];
-    const driverNumber = typeof metadataNumber === "number"
-        ? metadataNumber
-        : typeof metadataNumber === "string" && metadataNumber.trim().length
-            ? metadataNumber.trim()
-            : null;
     return {
         id: outcome.id,
         teamName,
         driverName: outcome.driverName ?? outcome.label,
         teamCode: getTeamCode(teamName),
-        driverNumber,
         teamColor: outcome.teamColor ?? getTeamColor(teamName),
         marketShare: totalStake > 0 ? staked / totalStake : 0,
         baselineOdds: odds,
