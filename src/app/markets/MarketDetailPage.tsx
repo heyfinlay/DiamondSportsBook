@@ -184,6 +184,7 @@ const MarketDetailPage = () => {
       <MarketHeroCard
         label="Market Detail"
         title={pool.title}
+        subLabel={pool.timeRemainingLabel}
         description={
           <p>
             Explore every outcome with live odds and pool share. Click a tile to launch the bet slip.

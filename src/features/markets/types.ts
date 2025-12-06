@@ -19,6 +19,7 @@ export interface Pool {
   status: PoolStatus;
   totalStake: number;
   totalBets: number;
+  closeAt?: string | null;
   timeRemainingLabel: string; // "Closes in 08:12", "Closed · 2m ago"
   rakePercent: number;
   lastUpdatedLabel: string; // "00:34 ago"

@@ -17,6 +17,7 @@ export interface Pool {
     status: PoolStatus;
     totalStake: number;
     totalBets: number;
+    closeAt?: string | null;
     timeRemainingLabel: string;
     rakePercent: number;
     lastUpdatedLabel: string;
