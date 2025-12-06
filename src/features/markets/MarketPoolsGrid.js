@@ -4,7 +4,7 @@ import { getTeamCode } from "./teamCodes";
 import { formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 export function MarketPoolsGrid({ pools, onSelectPool }) {
-    return (_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-[11px] uppercase tracking-[0.35em] text-amber-200/80", children: "DayBreak Grand Prix" }), _jsx("h2", { className: "text-2xl font-semibold leading-tight text-white md:text-3xl", children: "Active Markets" })] }), _jsxs("p", { className: "text-xs text-white/60", children: [pools.length, " pool", pools.length === 1 ? "" : "s"] })] }), _jsx("div", { className: "grid gap-4 md:grid-cols-2 xl:grid-cols-3", children: pools.map((pool) => {
+    return (_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h2", { className: "text-2xl font-semibold leading-tight text-white md:text-3xl", children: "Active Markets" }), _jsxs("p", { className: "text-xs text-white/60", children: [pools.length, " pool", pools.length === 1 ? "" : "s"] })] }), _jsx("div", { className: "grid gap-4 md:grid-cols-2 xl:grid-cols-3", children: pools.map((pool) => {
                     const { favouriteId, bestPayoutId } = getOutcomeRankings(pool.outcomes);
                     const outcomes = pool.outcomes.map((outcome) => ({
                         id: outcome.id,
@@ -15,6 +15,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }) {
                         driverName: outcome.driverName,
                         oddsLabel: formatOdds(outcome.baselineOdds),
                         poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
+                        poolSharePercent: Math.max(0, Math.min(outcome.marketShare * 100, 100)),
                         isFavourite: outcome.id === favouriteId,
                         isBestPayout: outcome.id === bestPayoutId
                     }));

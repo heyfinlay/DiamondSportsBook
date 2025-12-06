@@ -8,6 +8,7 @@ export interface OutcomeTileProps {
   driverName: string;
   oddsLabel: string;
   poolShareLabel: string;
+  poolSharePercent: number;
   isFavourite?: boolean;
   isBestPayout?: boolean;
   isSelected?: boolean;
@@ -22,6 +23,7 @@ export function OutcomeTile({
   driverName,
   oddsLabel,
   poolShareLabel,
+  poolSharePercent,
   isFavourite,
   isBestPayout,
   isSelected,
@@ -36,7 +38,7 @@ export function OutcomeTile({
     <button
       type="button"
       onClick={() => onSelect?.()}
-      className={`group flex h-full min-h-[110px] flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
+      className={`group flex h-full min-h-[120px] flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
         isSelected
           ? "border-amber-400/70 bg-slate-900 shadow-[0_0_0_1px_rgba(251,191,36,0.2)]"
           : "border-slate-800/80 bg-slate-950/70 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-slate-900"
@@ -51,7 +53,7 @@ export function OutcomeTile({
           />
           <span
             className="truncate text-[12px] font-semibold leading-tight text-slate-50"
-            title={teamName}
+            title={teamLine}
           >
             <span className="uppercase tracking-[0.25em]">{teamCode}</span>
             <span className="text-slate-300"> • {teamName}</span>
@@ -84,9 +86,17 @@ export function OutcomeTile({
         {driverName}
       </p>
 
-      <div className="mt-1 flex items-center justify-between text-sm">
-        <span className="font-semibold text-white">{oddsLabel}</span>
-        <span className="text-xs text-slate-400">{poolShareLabel}</span>
+      <div className="mt-auto space-y-1.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-sm font-semibold text-white">{oddsLabel}</span>
+          <span className="text-[11px] text-slate-400">{poolShareLabel}</span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
+          <div
+            className="h-full rounded-full bg-amber-400/80"
+            style={{ width: `${Math.max(0, Math.min(poolSharePercent, 100))}%` }}
+          />
+        </div>
       </div>
     </button>
   );
