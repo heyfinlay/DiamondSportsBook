@@ -51,6 +51,7 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: 
           driverName: outcome.driverName,
           oddsLabel: formatOdds(outcome.baselineOdds),
           poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
+          poolSharePercent: Math.max(0, Math.min(outcome.marketShare * 100, 100)),
           isFavourite: favouriteId === outcome.id,
           isBestPayout: bestPayoutId === outcome.id
         }))}

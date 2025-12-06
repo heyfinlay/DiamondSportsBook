@@ -14,14 +14,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.35em] text-amber-200/80">
-            DayBreak Grand Prix
-          </p>
-          <h2 className="text-2xl font-semibold leading-tight text-white md:text-3xl">
-            Active Markets
-          </h2>
-        </div>
+        <h2 className="text-2xl font-semibold leading-tight text-white md:text-3xl">Active Markets</h2>
         <p className="text-xs text-white/60">
           {pools.length} pool{pools.length === 1 ? "" : "s"}
         </p>
@@ -40,6 +33,7 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
             driverName: outcome.driverName,
             oddsLabel: formatOdds(outcome.baselineOdds),
             poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
+            poolSharePercent: Math.max(0, Math.min(outcome.marketShare * 100, 100)),
             isFavourite: outcome.id === favouriteId,
             isBestPayout: outcome.id === bestPayoutId
           }));

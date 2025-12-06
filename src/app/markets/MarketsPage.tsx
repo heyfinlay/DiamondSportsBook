@@ -24,36 +24,6 @@ const MarketsPage = () => {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-8 shadow-[0_0_40px_rgba(15,23,42,0.45)]">
-        <div className="flex flex-col gap-3">
-          <span className="text-[11px] uppercase tracking-[0.35em] text-amber-200/80">
-            DayBreak Grand Prix
-          </span>
-          <h1 className="text-4xl font-semibold text-white sm:text-5xl">
-            Diamond Sportsbook — Race 1 Markets
-          </h1>
-          <p className="max-w-3xl text-sm text-neutral-300 sm:text-base">
-            Browse live parimutuel pools and place your bets on qualifying and race outcomes. Odds move with every bet,
-            locking in when the market closes.
-          </p>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">
-          <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-emerald-100">
-            Markets open
-          </span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
-            Track: Paleto Bay Circuit
-          </span>
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
-            Currency: {capitalizedCurrencyLabel}
-          </span>
-        </div>
-
-        <p className="mt-4 text-[0.7rem] uppercase tracking-[0.3em] text-neutral-500">
-          Parody product; no real-world stakes.
-        </p>
-      </header>
       {!sessionLoading && !user && <AuthCtaBanner />}
 
       {poolsQuery.isLoading && (
