@@ -8,7 +8,6 @@ import { PoolAnalytics } from "../../features/markets/PoolAnalytics";
 import { PoolDetails } from "../../features/markets/PoolDetails";
 import { fetchUiLiveBetsForPool, fetchUiPoolById } from "../../features/markets/api";
 import FinalSettlementsTable from "../../features/markets/components/FinalSettlementsTable";
-import { USE_MARKET_LAYOUT_V2 } from "../../features/markets/flags";
 import { formatCurrency } from "../../features/markets/utils/format";
 import type { Pool } from "../../features/markets/types";
 import { useSession } from "@lib/auth/SessionProvider";
@@ -87,6 +86,20 @@ const MarketDetailPage = () => {
 
   const pool: Pool | null = poolQuery.data ?? null;
 
+  const statusLabel: Record<Pool["status"], string> = {
+    open: "Open",
+    closing_soon: "Closing Soon",
+    closed: "Closed",
+    settled: "Settled"
+  };
+
+  const statusClasses: Record<Pool["status"], string> = {
+    open: "bg-emerald-500/10 text-emerald-200 border-emerald-500/40",
+    closing_soon: "bg-amber-500/10 text-amber-200 border-amber-500/40",
+    closed: "bg-slate-700/60 text-slate-200 border-slate-600/60",
+    settled: "bg-indigo-500/10 text-indigo-200 border-indigo-500/40"
+  };
+
   if (!marketId) {
     return <p className="text-white/70">Market not found.</p>;
   }
@@ -107,28 +120,6 @@ const MarketDetailPage = () => {
     setSelectedOutcomeId(outcomeId);
     setBetSlipOpen(true);
   };
-
-  const headerContent = USE_MARKET_LAYOUT_V2 ? (
-    <header className="rounded-3xl border border-white/10 bg-black/30 p-6">
-      <p className="text-xs uppercase tracking-[0.35em] text-white/50">Market</p>
-      <h1 className="mt-2 text-3xl font-semibold text-white">{pool.title}</h1>
-      <p className="text-sm text-white/60">{pool.timeRemainingLabel}</p>
-      <p className="text-xs text-white/40">Updated {pool.lastUpdatedLabel}</p>
-    </header>
-  ) : (
-    <header className="flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-white/10 bg-black/30 p-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Pool</p>
-        <h1 className="text-3xl font-semibold text-white">{pool.title}</h1>
-        <p className="text-sm text-white/60">{pool.timeRemainingLabel}</p>
-      </div>
-      <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-right">
-        <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Pool</p>
-        <p className="text-2xl font-semibold text-white">{formatCurrency(pool.totalStake)}</p>
-        <p className="text-xs text-white/50">Rake {pool.rakePercent.toFixed(1)}%</p>
-      </div>
-    </header>
-  );
 
   const settlements = settlementsQuery.data ?? [];
   const winnerRows = settlements.filter((row) => row.payout > 0);
@@ -188,8 +179,29 @@ const MarketDetailPage = () => {
   };
 
   return (
-    <div className="space-y-8">
-      {headerContent}
+    <div className="mx-auto flex max-w-5xl flex-col gap-8">
+      <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-[0.35em] text-amber-200/80">Market Detail</p>
+            <h1 className="text-3xl font-semibold text-white sm:text-4xl">{pool.title}</h1>
+            <p className="text-sm text-white/70">
+              Explore every outcome with live odds and pool share. Click a tile to launch the bet slip.
+            </p>
+          </div>
+          <div className="flex flex-col items-start gap-2 text-sm text-white/70 sm:items-end">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[pool.status]}`}
+            >
+              {statusLabel[pool.status]}
+            </span>
+            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100">
+              {formatCurrency(pool.totalStake)} Pool
+            </span>
+            <p className="text-xs text-white/50">Updated {pool.lastUpdatedLabel}</p>
+          </div>
+        </div>
+      </header>
       {!sessionLoading && !user && <AuthCtaBanner />}
 
       <section className="flex flex-col gap-6">
