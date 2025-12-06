@@ -5,6 +5,8 @@ export interface Outcome {
   teamName: string;
   driverName: string;
   teamColor?: string;
+  teamCode?: string;
+  driverNumber?: string | number | null;
   marketShare: number; // 0–1
   baselineOdds: number; // e.g. 3.6 => x3.6
   numBets: number;

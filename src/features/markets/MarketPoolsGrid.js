@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { MarketCard } from "../../components/markets/MarketCard";
-import { deriveOutcomeCode } from "../../components/markets/outcomeHelpers";
+import { extractDriverNumber } from "../../components/markets/outcomeHelpers";
+import { getTeamCode } from "./teamCodes";
 import { formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 export function MarketPoolsGrid({ pools, onSelectPool }) {
@@ -8,9 +9,11 @@ export function MarketPoolsGrid({ pools, onSelectPool }) {
                     const { favouriteId, bestPayoutId } = getOutcomeRankings(pool.outcomes);
                     const outcomes = pool.outcomes.map((outcome) => ({
                         id: outcome.id,
-                        shortName: deriveOutcomeCode(outcome.driverName ?? outcome.teamName),
-                        fullName: outcome.driverName ?? outcome.teamName,
+                        teamCode: getTeamCode(outcome.teamName),
+                        teamName: outcome.teamName,
                         teamColor: outcome.teamColor,
+                        driverName: outcome.driverName,
+                        driverNumber: outcome.driverNumber ?? extractDriverNumber(outcome.driverName),
                         oddsLabel: formatOdds(outcome.baselineOdds),
                         poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
                         isFavourite: outcome.id === favouriteId,

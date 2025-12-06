@@ -1,1 +1,1 @@
-export declare const deriveOutcomeCode: (name?: string | null) => string;
+export declare const extractDriverNumber: (driverName?: string | null) => string | null;

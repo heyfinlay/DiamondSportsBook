@@ -33,8 +33,8 @@ const MarketsPage = () => {
             Diamond Sportsbook — Race 1 Markets
           </h1>
           <p className="max-w-3xl text-sm text-neutral-300 sm:text-base">
-            Browse live parimutuel pools and place your Diamonds on qualifying and race outcomes. Odds move with every
-            bet, locking in when the market closes.
+            Browse live parimutuel pools and place your bets on qualifying and race outcomes. Odds move with every bet,
+            locking in when the market closes.
           </p>
         </div>
 

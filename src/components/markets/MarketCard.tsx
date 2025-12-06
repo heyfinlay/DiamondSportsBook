@@ -43,6 +43,11 @@ export function MarketCard({
   actionLabel = "View details",
   subtitle
 }: MarketCardProps) {
+  const gridCols =
+    outcomes.length === 2
+      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2"
+      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4 shadow-[0_0_30px_rgba(3,7,18,0.45)]">
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -61,13 +66,18 @@ export function MarketCard({
               {status.replace("_", " ")}
             </span>
           ) : null}
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100">
-            {formatCurrency(totalPool)} Diamonds
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-right text-xs font-semibold text-amber-100">
+            <span className="leading-tight">
+              <span className="block text-sm text-amber-50">{formatCurrency(totalPool)}</span>
+              <span className="block text-[10px] font-normal uppercase tracking-[0.25em] text-amber-200">
+                pool
+              </span>
+            </span>
           </span>
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className={`grid flex-1 gap-2 ${gridCols}`}>
         {outcomes.map((outcome) => (
           <OutcomeTile
             key={outcome.id}

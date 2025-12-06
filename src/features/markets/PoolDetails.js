@@ -1,9 +1,10 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo, useState } from "react";
 import { MarketCard } from "../../components/markets/MarketCard";
-import { deriveOutcomeCode } from "../../components/markets/outcomeHelpers";
+import { extractDriverNumber } from "../../components/markets/outcomeHelpers";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
+import { getTeamCode } from "./teamCodes";
 const statusLabel = {
     open: "Open",
     closing_soon: "Closing Soon",
@@ -20,9 +21,11 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }) 
     };
     return (_jsxs("section", { className: "space-y-4", children: [_jsx(MarketCard, { id: pool.id, name: pool.title, closeTimeLabel: pool.timeRemainingLabel, status: pool.status, totalPool: pool.totalStake, commission: pool.rakePercent, outcomes: pool.outcomes.map((outcome) => ({
                     id: outcome.id,
-                    shortName: deriveOutcomeCode(outcome.driverName ?? outcome.teamName),
-                    fullName: outcome.driverName ?? outcome.teamName,
+                    teamCode: outcome.teamCode ?? getTeamCode(outcome.teamName),
+                    teamName: outcome.teamName,
                     teamColor: outcome.teamColor,
+                    driverName: outcome.driverName,
+                    driverNumber: outcome.driverNumber ?? extractDriverNumber(outcome.driverName),
                     oddsLabel: formatOdds(outcome.baselineOdds),
                     poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
                     isFavourite: favouriteId === outcome.id,

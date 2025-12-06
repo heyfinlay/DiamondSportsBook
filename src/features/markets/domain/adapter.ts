@@ -1,5 +1,6 @@
 import type { EventWithMarkets, PoolPricingRow } from "@domains/betting/api/bettingApi";
 import { getTeamColor } from "../teamColors";
+import { getTeamCode } from "../teamCodes";
 import type { Pool, PoolStatus, Outcome } from "../types";
 
 // Types that mirror the fetchMarketDetail response. We only rely on the fields we need.
@@ -98,10 +99,20 @@ const mapOutcomes = (
       typeof providedOdds === "number" && providedOdds > 0
         ? providedOdds
         : computeOdds(totalStake, staked, rakeFraction);
+    const metadataNumber =
+      (outcome.metadata as Record<string, unknown> | undefined)?.["driver_number"];
+    const driverNumber =
+      typeof metadataNumber === "number"
+        ? metadataNumber
+        : typeof metadataNumber === "string" && metadataNumber.trim().length
+          ? metadataNumber.trim()
+          : null;
     return {
       id: outcome.id,
       teamName,
       driverName: outcome.driverName ?? outcome.label,
+      teamCode: getTeamCode(teamName),
+      driverNumber,
       teamColor: outcome.teamColor ?? getTeamColor(teamName),
       marketShare: totalStake > 0 ? staked / totalStake : 0,
       baselineOdds: odds,
