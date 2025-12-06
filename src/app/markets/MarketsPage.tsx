@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import { fetchUiPools } from "../../features/markets/api";
-import { currencyLabel } from "@lib/currency";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 import { marketKeys } from "@lib/query/keys";
+import { MarketHeroCard } from "../../components/markets/MarketHeroCard";
+import { useBettingStore } from "@domains/betting/store/bettingStore";
 
 // This screen keeps the v2 grid layout from commit 9208937 while relying on the team metadata-backed pricing feeds from 23eeb03.
 
 const MarketsPage = () => {
   const navigate = useNavigate();
   const { user, loading: sessionLoading } = useSession();
+  const setBetslipSelection = useBettingStore((state) => state.setBetslipSelection);
 
   const poolsQuery = useQuery({
     queryKey: marketKeys.pools(),
@@ -20,10 +22,35 @@ const MarketsPage = () => {
   });
 
   const pools = poolsQuery.data ?? [];
-  const capitalizedCurrencyLabel = currencyLabel.charAt(0).toUpperCase() + currencyLabel.slice(1);
+
+  const handleOutcomeSelect = (poolId: string, poolTitle: string, outcome: (typeof pools)[number]["outcomes"][number]) => {
+    setBetslipSelection({
+      marketId: poolId,
+      marketName: poolTitle,
+      eventTitle: null,
+      outcomeId: outcome.id,
+      outcomeLabel: `${outcome.teamName} — ${outcome.driverName}`,
+      minStake: 0,
+      maxStake: 0,
+      stake: 0
+    });
+    navigate(`/market/${poolId}`);
+  };
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
+      <MarketHeroCard
+        label="SPORTSBOOK OVERVIEW"
+        title="Diamond Sportsbook"
+        description={
+          <div className="space-y-1 text-white/80">
+            <p>Bet on the DayBreak Grand Prix using live pool-based odds.</p>
+            <p>Lower market share means a higher potential payout.</p>
+            <p>Choose a market, pick a driver, and place your bet.</p>
+          </div>
+        }
+      />
+
       {!sessionLoading && !user && <AuthCtaBanner />}
 
       {poolsQuery.isLoading && (
@@ -37,7 +64,11 @@ const MarketsPage = () => {
       )}
 
       {pools.length > 0 ? (
-        <MarketPoolsGrid pools={pools} onSelectPool={(poolId) => navigate(`/market/${poolId}`)} />
+        <MarketPoolsGrid
+          pools={pools}
+          onSelectPool={(poolId) => navigate(`/market/${poolId}`)}
+          onSelectOutcome={handleOutcomeSelect}
+        />
       ) : (
         !poolsQuery.isLoading && (
           <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-dashed border-white/10 bg-[#05070F]/40 p-8 text-sm text-neutral-400">

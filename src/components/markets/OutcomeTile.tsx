@@ -38,7 +38,7 @@ export function OutcomeTile({
     <button
       type="button"
       onClick={() => onSelect?.()}
-      className={`group flex h-full min-h-[120px] flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
+      className={`group flex h-full min-h-[120px] cursor-pointer flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
         isSelected
           ? "border-amber-400/70 bg-slate-900 shadow-[0_0_0_1px_rgba(251,191,36,0.2)]"
           : "border-slate-800/80 bg-slate-950/70 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-slate-900"
@@ -93,8 +93,11 @@ export function OutcomeTile({
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
           <div
-            className="h-full rounded-full bg-amber-400/80"
-            style={{ width: `${Math.max(0, Math.min(poolSharePercent, 100))}%` }}
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.max(0, Math.min(poolSharePercent, 100))}%`,
+              backgroundColor: teamColor ?? "#fbbf24"
+            }}
           />
         </div>
       </div>

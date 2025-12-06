@@ -44,6 +44,9 @@ interface BettingState {
   setMarkets: (markets: BettingState["markets"]) => void;
   setOutcomes: (marketId: string, outcomes: OutcomeQuote[]) => void;
   openBetslip: (selection: Omit<BetslipState, "isOpen" | "stake" | "preview"> & { stake?: number }) => void;
+  setBetslipSelection: (
+    selection: Omit<BetslipState, "isOpen" | "preview"> & { stake?: number }
+  ) => void;
   closeBetslip: () => void;
   setStake: (value: number) => void;
   setPreviewData: (preview: WagerPreview | null) => void;
@@ -88,6 +91,15 @@ export const useBettingStore = create<BettingState>()(
             ...initialBetslipState,
             ...selection,
             isOpen: true,
+            stake: selection.stake ?? Math.max(selection.minStake, 0)
+          }
+        })),
+      setBetslipSelection: (selection) =>
+        set(() => ({
+          betslip: {
+            ...initialBetslipState,
+            ...selection,
+            isOpen: false,
             stake: selection.stake ?? Math.max(selection.minStake, 0)
           }
         })),

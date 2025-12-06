@@ -40,6 +40,9 @@ interface BettingState {
     openBetslip: (selection: Omit<BetslipState, "isOpen" | "stake" | "preview"> & {
         stake?: number;
     }) => void;
+    setBetslipSelection: (selection: Omit<BetslipState, "isOpen" | "preview"> & {
+        stake?: number;
+    }) => void;
     closeBetslip: () => void;
     setStake: (value: number) => void;
     setPreviewData: (preview: WagerPreview | null) => void;
