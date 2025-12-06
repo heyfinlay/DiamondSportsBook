@@ -8,9 +8,10 @@ import type { Pool } from "./types";
 interface MarketPoolsGridProps {
   pools: Pool[];
   onSelectPool?: (poolId: string) => void;
+  onSelectOutcome?: (poolId: string, poolTitle: string, outcome: Pool["outcomes"][number]) => void;
 }
 
-export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
+export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }: MarketPoolsGridProps) {
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
@@ -35,7 +36,8 @@ export function MarketPoolsGrid({ pools, onSelectPool }: MarketPoolsGridProps) {
             poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
             poolSharePercent: Math.max(0, Math.min(outcome.marketShare * 100, 100)),
             isFavourite: outcome.id === favouriteId,
-            isBestPayout: outcome.id === bestPayoutId
+            isBestPayout: outcome.id === bestPayoutId,
+            onSelect: () => onSelectOutcome?.(pool.id, pool.title, outcome)
           }));
 
           return (

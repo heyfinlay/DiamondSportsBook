@@ -83,7 +83,7 @@ export function MarketCard({
             key={outcome.id}
             {...outcome}
             isSelected={selectedOutcomeId === outcome.outcomeId}
-            onSelect={() => onSelectOutcome?.(outcome.outcomeId)}
+            onSelect={outcome.onSelect ?? (() => onSelectOutcome?.(outcome.outcomeId))}
           />
         ))}
       </div>

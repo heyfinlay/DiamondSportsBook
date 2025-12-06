@@ -36,6 +36,14 @@ export const useBettingStore = create()(devtools(subscribeWithSelector((set) => 
             stake: selection.stake ?? Math.max(selection.minStake, 0)
         }
     })),
+    setBetslipSelection: (selection) => set(() => ({
+        betslip: {
+            ...initialBetslipState,
+            ...selection,
+            isOpen: false,
+            stake: selection.stake ?? Math.max(selection.minStake, 0)
+        }
+    })),
     closeBetslip: () => set(() => ({ betslip: initialBetslipState })),
     setStake: (value) => set((state) => ({
         betslip: {
