@@ -5,4 +5,4 @@ export interface LeaderboardRow extends DriverStanding {
     displayBestLap: string;
 }
 export declare const formatLapTime: (ms?: number | null, fallback?: string) => string;
-export declare const buildLeaderboard: (drivers: DriverStanding[]) => LeaderboardRow[];
+export declare const buildLeaderboard: (drivers: DriverStanding[], sessionMode?: string) => LeaderboardRow[];

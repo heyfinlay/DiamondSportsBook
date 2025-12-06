@@ -5,6 +5,7 @@ declare const sessionStateSchema: z.ZodObject<{
     track_name: z.ZodString;
     laps_target: z.ZodNullable<z.ZodNumber>;
     status: z.ZodOptional<z.ZodString>;
+    mode: z.ZodOptional<z.ZodString>;
     phase: z.ZodString;
     track_status: z.ZodString;
     race_time_ms: z.ZodNumber;
@@ -24,6 +25,7 @@ declare const sessionStateSchema: z.ZodObject<{
     track_name?: string;
     laps_target?: number;
     status?: string;
+    mode?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -43,6 +45,7 @@ declare const sessionStateSchema: z.ZodObject<{
     track_name?: string;
     laps_target?: number;
     status?: string;
+    mode?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -68,6 +71,7 @@ declare const driverStandingSchema: z.ZodObject<{
     best_lap_ms: z.ZodNullable<z.ZodNumber>;
     total_time_ms: z.ZodNullable<z.ZodNumber>;
     status: z.ZodString;
+    display_position: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     position: z.ZodNullable<z.ZodNumber>;
     gap_to_leader_ms: z.ZodNullable<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
@@ -80,6 +84,7 @@ declare const driverStandingSchema: z.ZodObject<{
     last_lap_ms?: number;
     best_lap_ms?: number;
     total_time_ms?: number;
+    display_position?: number;
     position?: number;
     gap_to_leader_ms?: number;
 }, {
@@ -92,6 +97,7 @@ declare const driverStandingSchema: z.ZodObject<{
     last_lap_ms?: number;
     best_lap_ms?: number;
     total_time_ms?: number;
+    display_position?: number;
     position?: number;
     gap_to_leader_ms?: number;
 }>;
@@ -247,9 +253,9 @@ declare const sessionSummarySchema: z.ZodObject<{
     track_name?: string;
     laps_target?: number;
     status?: string;
+    mode?: string;
     starts_at?: string;
     archived_at?: string;
-    mode?: string;
     created_at?: string;
     is_active?: boolean;
     session_state?: {
@@ -266,9 +272,9 @@ declare const sessionSummarySchema: z.ZodObject<{
     track_name?: string;
     laps_target?: number;
     status?: string;
+    mode?: string;
     starts_at?: string;
     archived_at?: string;
-    mode?: string;
     created_at?: string;
     is_active?: boolean;
     session_state?: {
@@ -347,6 +353,7 @@ export declare const fetchSessionDetail: (sessionId: string) => Promise<{
     track_name?: string;
     laps_target?: number;
     status?: string;
+    mode?: string;
     phase?: string;
     track_status?: string;
     race_time_ms?: number;
@@ -372,6 +379,7 @@ export declare const fetchDriverStandings: (sessionId: string) => Promise<{
     last_lap_ms?: number;
     best_lap_ms?: number;
     total_time_ms?: number;
+    display_position?: number;
     position?: number;
     gap_to_leader_ms?: number;
 }[]>;
@@ -461,6 +469,11 @@ export declare const setFlagStatus: (sessionId: string, flag: string) => Promise
 export declare const pauseRace: (sessionId: string) => Promise<void>;
 export declare const resumeRace: (sessionId: string) => Promise<void>;
 export declare const updateDriverStatus: (driverId: string, status: string, reason?: string) => Promise<void>;
+export declare const updateDriverDisplayPositions: (updates: Array<{
+    driverId: string;
+    displayPosition: number | null;
+}>) => Promise<void>;
+export declare const updateDriverBestLap: (driverId: string, bestLapMs: number | null) => Promise<void>;
 export declare const logControlError: (sessionId: string, message: string) => Promise<void>;
 export declare const getRaceTime: (sessionId: string) => Promise<number>;
 export declare const finishSession: (sessionId: string) => Promise<{

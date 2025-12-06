@@ -67,8 +67,8 @@ const LiveTimingPage = () => {
 
   const isLoading = sessionQuery.isLoading || driversQuery.isLoading;
   const leaderboard = useMemo(
-    () => buildLeaderboard(driversQuery.data ?? []),
-    [driversQuery.data]
+    () => buildLeaderboard(driversQuery.data ?? [], sessionQuery.data?.mode),
+    [driversQuery.data, sessionQuery.data?.mode]
   );
   const totalDrivers = leaderboard.length;
 

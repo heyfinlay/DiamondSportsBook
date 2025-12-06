@@ -12,6 +12,7 @@ export declare const findDriverByNumberHotkey: (drivers: DriverStanding[], key: 
     last_lap_ms?: number;
     best_lap_ms?: number;
     total_time_ms?: number;
+    display_position?: number;
     position?: number;
     gap_to_leader_ms?: number;
 };

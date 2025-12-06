@@ -7,6 +7,7 @@ const sessionStateSchema = z.object({
   track_name: z.string(),
   laps_target: z.number().nullable(),
   status: z.string().optional(),
+  mode: z.string().optional(),
   phase: z.string(),
   track_status: z.string(),
   race_time_ms: z.number(),
@@ -34,6 +35,7 @@ const driverStandingSchema = z.object({
   best_lap_ms: z.number().nullable(),
   total_time_ms: z.number().nullable(),
   status: z.string(),
+  display_position: z.number().nullable().optional(),
   position: z.number().nullable(),
   gap_to_leader_ms: z.number().nullable()
 });
@@ -136,7 +138,7 @@ export type TimingResult = z.infer<typeof timingResultSchema>;
 export const fetchSessionDetail = async (sessionId: string) => {
   const { data: sessionRow, error: sessionError } = await supabase
     .from("timing_sessions")
-    .select("id, name, track_name, laps_target, status, starts_at, ends_at, ended_at, archived_at")
+    .select("id, name, track_name, laps_target, status, starts_at, ends_at, ended_at, archived_at, mode")
     .eq("id", sessionId)
     .single();
 
@@ -156,6 +158,7 @@ export const fetchSessionDetail = async (sessionId: string) => {
     ...sessionRow,
     ...stateRow,
     id: sessionRow.id,
+    mode: sessionRow.mode,
     phase: stateRow.procedure_phase,
     track_status: stateRow.flag_status
   });
@@ -364,6 +367,26 @@ export const updateDriverStatus = async (driverId: string, status: string, reaso
     p_status: status,
     p_reason: reason ?? null
   });
+  if (error) throw error;
+};
+
+export const updateDriverDisplayPositions = async (
+  updates: Array<{ driverId: string; displayPosition: number | null }>
+) => {
+  if (!updates.length) return;
+  const payload = updates.map((entry) => ({
+    id: entry.driverId,
+    display_position: entry.displayPosition
+  }));
+  const { error } = await supabase.from("timing_drivers").upsert(payload, { onConflict: "id" });
+  if (error) throw error;
+};
+
+export const updateDriverBestLap = async (driverId: string, bestLapMs: number | null) => {
+  const { error } = await supabase
+    .from("timing_drivers")
+    .update({ best_lap_ms: bestLapMs })
+    .eq("id", driverId);
   if (error) throw error;
 };
 
