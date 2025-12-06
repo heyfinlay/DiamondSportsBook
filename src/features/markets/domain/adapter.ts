@@ -44,19 +44,7 @@ const statusMap: Record<string, PoolStatus> = {
   suspended: "closed"
 };
 
-const formatTimeRemaining = (closeTime?: string | null) => {
-  if (!closeTime) return "No scheduled close";
-  const closeDate = new Date(closeTime);
-  if (Number.isNaN(closeDate.getTime())) return "No scheduled close";
-  const diffMs = closeDate.getTime() - Date.now();
-  const isPast = diffMs <= 0;
-  const absMs = Math.abs(diffMs);
-  const minutes = Math.round(absMs / 60000);
-  const hours = Math.round(minutes / 60);
-  const label =
-    minutes < 60 ? `${minutes}m` : hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
-  return isPast ? `Closed · ${label} ago` : `Closes in ${label}`;
-};
+import { getMarketCloseLabel } from "../utils/closeTime";
 
 const formatLastUpdated = (updatedAt?: string | null) => {
   if (!updatedAt) return "—";
@@ -150,7 +138,8 @@ const buildPool = ({
     status: uiStatus,
     totalStake,
     totalBets,
-    timeRemainingLabel: formatTimeRemaining(closeTime),
+    closeAt: closeTime ?? null,
+    timeRemainingLabel: getMarketCloseLabel(closeTime ?? null),
     rakePercent: Math.max(rakeFraction, 0) * 100,
     lastUpdatedLabel: formatLastUpdated(activityAt ?? updatedAt),
     outcomes: mapOutcomes(totalStake, rakeFraction, outcomes)

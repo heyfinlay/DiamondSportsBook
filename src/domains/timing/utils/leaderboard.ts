@@ -57,16 +57,29 @@ const formatLapDeficit = (lapDiff: number, gapMs: number | null) => {
   return `${base} ${formatGapSeconds(gapMs)}`;
 };
 
-export const buildLeaderboard = (drivers: DriverStanding[]): LeaderboardRow[] => {
+const sortByDisplayPosition = (a: DriverStanding, b: DriverStanding) => {
+  const aPos = a.display_position ?? Number.MAX_SAFE_INTEGER;
+  const bPos = b.display_position ?? Number.MAX_SAFE_INTEGER;
+  if (aPos !== bPos) return aPos - bPos;
+  return compareDrivers(a, b);
+};
+
+export const buildLeaderboard = (drivers: DriverStanding[], sessionMode?: string): LeaderboardRow[] => {
   if (!drivers.length) return [];
 
-  const sorted = [...drivers].map((driver) => ({
-    ...driver,
-    laps_completed: driver.laps_completed ?? 0,
-    total_time_ms: isFiniteNumber(driver.total_time_ms) ? driver.total_time_ms : null,
-    best_lap_ms: isFiniteNumber(driver.best_lap_ms) ? driver.best_lap_ms : null,
-    last_lap_ms: isFiniteNumber(driver.last_lap_ms) ? driver.last_lap_ms : null
-  })).sort(compareDrivers);
+  const useDisplayOrder =
+    sessionMode === "race" &&
+    drivers.some((driver) => driver.display_position !== null && driver.display_position !== undefined);
+
+  const sorted = [...drivers]
+    .map((driver) => ({
+      ...driver,
+      laps_completed: driver.laps_completed ?? 0,
+      total_time_ms: isFiniteNumber(driver.total_time_ms) ? driver.total_time_ms : null,
+      best_lap_ms: isFiniteNumber(driver.best_lap_ms) ? driver.best_lap_ms : null,
+      last_lap_ms: isFiniteNumber(driver.last_lap_ms) ? driver.last_lap_ms : null
+    }))
+    .sort(useDisplayOrder ? sortByDisplayPosition : compareDrivers);
 
   const leader = sorted[0];
   const leaderLaps = leader?.laps_completed ?? 0;

@@ -42,6 +42,7 @@ const MarketsPage = () => {
       <MarketHeroCard
         label="SPORTSBOOK OVERVIEW"
         title="Diamond Sportsbook"
+        subLabel={null}
         description={
           <div className="space-y-1 text-white/80">
             <p>Bet on the DayBreak Grand Prix using live pool-based odds.</p>

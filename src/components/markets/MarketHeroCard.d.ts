@@ -11,6 +11,7 @@ interface MarketHeroCardProps {
     title: string;
     description: React.ReactNode;
     rightMeta?: RightMeta;
+    subLabel?: string | null;
 }
-export declare function MarketHeroCard({ label, title, description, rightMeta }: MarketHeroCardProps): import("react/jsx-runtime").JSX.Element;
+export declare function MarketHeroCard({ label, title, description, rightMeta, subLabel }: MarketHeroCardProps): import("react/jsx-runtime").JSX.Element;
 export {};

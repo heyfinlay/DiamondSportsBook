@@ -3,13 +3,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { archiveSession, createSession, deleteSessionDeep, fetchControlEvents, fetchDriverStandings, fetchSessionDetail, fetchTimingResults, finishSession, forceEndSession, getRaceTime, initializeRace, logLap, logPenalty, logPitEvent, logControlError, pauseRace, resumeRace, setFlagStatus, updateDriverStatus } from "@domains/timing/api/timingApi";
+import { archiveSession, createSession, deleteSessionDeep, fetchControlEvents, fetchDriverStandings, fetchSessionDetail, fetchTimingResults, finishSession, forceEndSession, getRaceTime, initializeRace, logLap, logPenalty, logPitEvent, logControlError, pauseRace, resumeRace, setFlagStatus, updateDriverStatus, updateDriverBestLap, updateDriverDisplayPositions } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
 import { TrackStatusBanner } from "@domains/timing/components/TrackStatusBanner";
 import { sessionHasEnded } from "@domains/timing/utils/sessionLifecycle";
 import { findDriverByNumberHotkey } from "./driverHotkeys";
+import RaceOrderPanel from "./components/RaceOrderPanel";
 const FLAG_OPTIONS = [
     { value: "green", label: "Green", className: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" },
     { value: "yellow", label: "Yellow", className: "bg-amber-500/20 text-amber-200 border-amber-400/40" },
@@ -54,6 +55,7 @@ const RaceControlPage = () => {
         enabled: !!sessionId && sessionHasEnded(sessionQuery.data)
     });
     const session = sessionQuery.data;
+    const isRaceSession = session?.mode === "race";
     const isFinished = sessionHasEnded(session);
     const isArchived = Boolean(session?.archived_at);
     const controlsLocked = isFinished || isArchived;
@@ -85,6 +87,7 @@ const RaceControlPage = () => {
             return;
         queryClient.invalidateQueries({ queryKey: ["timing-drivers", sessionId] });
         queryClient.invalidateQueries({ queryKey: ["control-events", sessionId] });
+        queryClient.invalidateQueries({ queryKey: ["live-standings", sessionId] });
     };
     const createSessionMutation = useMutation({
         mutationFn: createSession,
@@ -197,6 +200,28 @@ const RaceControlPage = () => {
             toast({ variant: "error", title: "Unable to update driver", description: error.message });
         }
     });
+    const updateRaceOrderMutation = useMutation({
+        mutationFn: (updates) => updateDriverDisplayPositions(updates),
+        onSuccess: () => {
+            refreshTimingData();
+            toast({ variant: "success", title: "Race order updated" });
+        },
+        onError: (error) => {
+            recordError(error.message);
+            toast({ variant: "error", title: "Unable to reorder grid", description: error.message });
+        }
+    });
+    const updateBestLapMutation = useMutation({
+        mutationFn: ({ driverId, bestLapMs }) => updateDriverBestLap(driverId, bestLapMs),
+        onSuccess: () => {
+            refreshTimingData();
+            toast({ variant: "success", title: "Best lap updated" });
+        },
+        onError: (error) => {
+            recordError(error.message);
+            toast({ variant: "error", title: "Unable to update best lap", description: error.message });
+        }
+    });
     const deleteSessionMutation = useMutation({
         mutationFn: deleteSessionDeep,
         onSuccess: () => {
@@ -234,7 +259,7 @@ const RaceControlPage = () => {
         return map;
     }, [drivers]);
     useEffect(() => {
-        if (!sessionId || controlsLocked)
+        if (!sessionId || !session || controlsLocked || isRaceSession)
             return;
         const handler = (event) => {
             const active = document.activeElement;
@@ -250,7 +275,7 @@ const RaceControlPage = () => {
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [drivers, logLapMutation, sessionId, controlsLocked]);
+    }, [drivers, logLapMutation, sessionId, controlsLocked, isRaceSession, session]);
     if (!sessionId) {
         return (_jsx(CreateSessionForm, { formState: createFormState, onChange: setCreateFormState, onSubmit: (event) => {
                 event.preventDefault();
@@ -291,6 +316,27 @@ const RaceControlPage = () => {
             description: message
         });
     };
+    const handleRaceOrderChange = (updates) => {
+        if (controlsLocked) {
+            guardSessionLocked("Results are locked. Race order cannot be changed.");
+            return Promise.resolve();
+        }
+        return updateRaceOrderMutation.mutateAsync(updates);
+    };
+    const handleBestLapUpdate = (driverId, bestLapMs) => {
+        if (controlsLocked) {
+            guardSessionLocked("Session finished. Best laps are locked.");
+            return Promise.resolve();
+        }
+        return updateBestLapMutation.mutateAsync({ driverId, bestLapMs });
+    };
+    const handleStatusUpdate = (driverId, status) => {
+        if (controlsLocked) {
+            guardSessionLocked("Driver statuses are locked after the checkered flag.");
+            return Promise.resolve();
+        }
+        return driverStatusMutation.mutateAsync({ driverId, status });
+    };
     const handleLap = (driverId) => {
         if (controlsLocked) {
             guardSessionLocked("Results are locked. No further laps can be logged.");
@@ -313,7 +359,7 @@ const RaceControlPage = () => {
                     const confirmed = window.confirm("Delete this session and all timing data?");
                     if (confirmed)
                         deleteSessionMutation.mutate(sessionId);
-                }, onArchive: handleArchiveSession, disableStart: initializeRaceMutation.isPending || isFinished || isArchived, flagLoading: flagMutation.isPending || isFinished || isArchived, finishing: finishSessionMutation.isPending, forceEnding: forceEndSessionMutation.isPending, archiving: archiveSessionMutation.isPending, isFinished: isFinished, isArchived: isArchived }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [_jsx(DriverCaptureGrid, { drivers: driversSortedForDisplay, onLap: handleLap, onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onRetire: handleRetire, disabled: controlsLocked }), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, disabled: controlsLocked, onSubmit: (payload) => logPenaltyMutation.mutate({
+                }, onArchive: handleArchiveSession, disableStart: initializeRaceMutation.isPending || isFinished || isArchived, flagLoading: flagMutation.isPending || isFinished || isArchived, finishing: finishSessionMutation.isPending, forceEnding: forceEndSessionMutation.isPending, archiving: archiveSessionMutation.isPending, isFinished: isFinished, isArchived: isArchived }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [isRaceSession ? (_jsx(RaceOrderPanel, { entries: drivers, onReorder: handleRaceOrderChange, onUpdateBestLap: handleBestLapUpdate, onUpdateStatus: handleStatusUpdate, savingOrder: updateRaceOrderMutation.isPending, savingLap: updateBestLapMutation.isPending, statusUpdating: driverStatusMutation.isPending, disabled: controlsLocked, notify: toast })) : (_jsx(DriverCaptureGrid, { drivers: driversSortedForDisplay, onLap: handleLap, onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onRetire: handleRetire, disabled: controlsLocked })), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, disabled: controlsLocked, onSubmit: (payload) => logPenaltyMutation.mutate({
                                         sessionId,
                                         driverId: payload.driverId || null,
                                         reason: payload.reason,
