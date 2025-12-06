@@ -23,19 +23,34 @@ const MarketsPage = () => {
   const capitalizedCurrencyLabel = currencyLabel.charAt(0).toUpperCase() + currencyLabel.slice(1);
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-4 rounded-3xl border border-white/5 bg-[#060910]/80 p-8 shadow-[0_0_40px_rgba(15,23,42,0.45)]">
-        <span className="text-xs uppercase tracking-[0.35em] text-[#9FF7D3]">Diamond Sports Book</span>
-        <h1 className="text-4xl font-semibold text-white sm:text-5xl">Live Markets</h1>
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#9FF7D3]">How It Works</p>
-          <p className="mt-2 max-w-3xl text-sm text-neutral-300 sm:text-base">
-            Bet on DBGP races using a live parimutuel pool. Your payout depends on the money wagered across each outcome.
-            Odds adjust in real time until the market closes and your final price is locked. Winnings are distributed
-            proportionally from the final pool. All wagers settle in Dollars (in-game currency).
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
+      <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-8 shadow-[0_0_40px_rgba(15,23,42,0.45)]">
+        <div className="flex flex-col gap-3">
+          <span className="text-[11px] uppercase tracking-[0.35em] text-amber-200/80">
+            DayBreak Grand Prix
+          </span>
+          <h1 className="text-4xl font-semibold text-white sm:text-5xl">
+            Diamond Sportsbook — Race 1 Markets
+          </h1>
+          <p className="max-w-3xl text-sm text-neutral-300 sm:text-base">
+            Browse live parimutuel pools and place your bets on qualifying and race outcomes. Odds move with every bet,
+            locking in when the market closes.
           </p>
         </div>
-        <p className="text-[0.7rem] uppercase tracking-[0.3em] text-neutral-500">
+
+        <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">
+          <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-emerald-100">
+            Markets open
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
+            Track: Paleto Bay Circuit
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/70">
+            Currency: {capitalizedCurrencyLabel}
+          </span>
+        </div>
+
+        <p className="mt-4 text-[0.7rem] uppercase tracking-[0.3em] text-neutral-500">
           Parody product; no real-world stakes.
         </p>
       </header>

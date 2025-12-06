@@ -9,7 +9,6 @@ import { PoolAnalytics } from "../../features/markets/PoolAnalytics";
 import { PoolDetails } from "../../features/markets/PoolDetails";
 import { fetchUiLiveBetsForPool, fetchUiPoolById } from "../../features/markets/api";
 import FinalSettlementsTable from "../../features/markets/components/FinalSettlementsTable";
-import { USE_MARKET_LAYOUT_V2 } from "../../features/markets/flags";
 import { formatCurrency } from "../../features/markets/utils/format";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
@@ -70,6 +69,18 @@ const MarketDetailPage = () => {
         }
     });
     const pool = poolQuery.data ?? null;
+    const statusLabel = {
+        open: "Open",
+        closing_soon: "Closing Soon",
+        closed: "Closed",
+        settled: "Settled"
+    };
+    const statusClasses = {
+        open: "bg-emerald-500/10 text-emerald-200 border-emerald-500/40",
+        closing_soon: "bg-amber-500/10 text-amber-200 border-amber-500/40",
+        closed: "bg-slate-700/60 text-slate-200 border-slate-600/60",
+        settled: "bg-indigo-500/10 text-indigo-200 border-indigo-500/40"
+    };
     if (!marketId) {
         return _jsx("p", { className: "text-white/70", children: "Market not found." });
     }
@@ -86,7 +97,6 @@ const MarketDetailPage = () => {
         setSelectedOutcomeId(outcomeId);
         setBetSlipOpen(true);
     };
-    const headerContent = USE_MARKET_LAYOUT_V2 ? (_jsxs("header", { className: "rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Market" }), _jsx("h1", { className: "mt-2 text-3xl font-semibold text-white", children: pool.title }), _jsx("p", { className: "text-sm text-white/60", children: pool.timeRemainingLabel }), _jsxs("p", { className: "text-xs text-white/40", children: ["Updated ", pool.lastUpdatedLabel] })] })) : (_jsxs("header", { className: "flex flex-wrap items-start justify-between gap-4 rounded-3xl border border-white/10 bg-black/30 p-6", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.35em] text-white/50", children: "Pool" }), _jsx("h1", { className: "text-3xl font-semibold text-white", children: pool.title }), _jsx("p", { className: "text-sm text-white/60", children: pool.timeRemainingLabel })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-right", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Total Pool" }), _jsx("p", { className: "text-2xl font-semibold text-white", children: formatCurrency(pool.totalStake) }), _jsxs("p", { className: "text-xs text-white/50", children: ["Rake ", pool.rakePercent.toFixed(1), "%"] })] })] }));
     const settlements = settlementsQuery.data ?? [];
     const winnerRows = settlements.filter((row) => row.payout > 0);
     const winningOutcomeName = winnerRows[0]?.outcome_label ?? "Winning outcome";
@@ -102,6 +112,6 @@ const MarketDetailPage = () => {
         }
         return (_jsxs("section", { className: "space-y-5", children: [_jsxs("div", { className: "grid gap-4 sm:grid-cols-3", children: [_jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Total Pool" }), _jsx("p", { className: "mt-1 text-2xl font-semibold text-white", children: formatCurrency(pool.totalStake) }), _jsx("p", { className: "text-xs text-white/50", children: "Combined stakes across all outcomes" })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Winning Outcome" }), _jsx("p", { className: "mt-1 text-lg font-semibold text-white", children: winningOutcomeName }), _jsxs("p", { className: "text-xs text-white/50", children: [winnerRows.length, " winning bets"] })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-white/5 px-4 py-3", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Paid to winners" }), _jsx("p", { className: "mt-1 text-2xl font-semibold text-emerald-300", children: formatCurrency(totalPaidOut) }), _jsx("p", { className: "text-xs text-white/50", children: "After rake distribution" })] })] }), _jsx(FinalSettlementsTable, { rows: settlements })] }));
     };
-    return (_jsxs("div", { className: "space-y-8", children: [headerContent, !sessionLoading && !user && _jsx(AuthCtaBanner, {}), _jsxs("section", { className: "flex flex-col gap-6", children: [_jsx(PoolDetails, { pool: pool, liveBets: liveBetsQuery.data ?? [], onOutcomeSelect: handleOutcomeSelect, onOpenBetSlip: handleOpenBetSlip }), isPoolSettled ? (renderSettlementsPanel()) : (_jsx(PoolAnalytics, { pool: pool, liveBets: liveBetsQuery.data ?? [] }))] }), _jsx(BetSlipDrawer, { isOpen: betSlipOpen, pool: pool, outcomes: pool.outcomes, selectedOutcomeId: selectedOutcomeId, onClose: () => setBetSlipOpen(false), onSelectOutcome: handleOutcomeSelect, onPlaceBet: ({ poolId, outcomeId, stake }) => placeBetMutation.mutate({ poolId, outcomeId, stake }), isPlacing: placeBetMutation.isPending })] }));
+    return (_jsxs("div", { className: "mx-auto flex max-w-5xl flex-col gap-8", children: [_jsx("header", { className: "overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-6 sm:p-8", children: _jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", children: [_jsxs("div", { className: "space-y-2", children: [_jsx("p", { className: "text-[11px] uppercase tracking-[0.35em] text-amber-200/80", children: "Market Detail" }), _jsx("h1", { className: "text-3xl font-semibold text-white sm:text-4xl", children: pool.title }), _jsx("p", { className: "text-sm text-white/70", children: "Explore every outcome with live odds and pool share. Click a tile to launch the bet slip." })] }), _jsxs("div", { className: "flex flex-col items-start gap-2 text-sm text-white/70 sm:items-end", children: [_jsx("span", { className: `inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[pool.status]}`, children: statusLabel[pool.status] }), _jsxs("span", { className: "rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100", children: [formatCurrency(pool.totalStake), " Pool"] }), _jsxs("p", { className: "text-xs text-white/50", children: ["Updated ", pool.lastUpdatedLabel] })] })] }) }), !sessionLoading && !user && _jsx(AuthCtaBanner, {}), _jsxs("section", { className: "flex flex-col gap-6", children: [_jsx(PoolDetails, { pool: pool, liveBets: liveBetsQuery.data ?? [], onOutcomeSelect: handleOutcomeSelect, onOpenBetSlip: handleOpenBetSlip }), isPoolSettled ? (renderSettlementsPanel()) : (_jsx(PoolAnalytics, { pool: pool, liveBets: liveBetsQuery.data ?? [] }))] }), _jsx(BetSlipDrawer, { isOpen: betSlipOpen, pool: pool, outcomes: pool.outcomes, selectedOutcomeId: selectedOutcomeId, onClose: () => setBetSlipOpen(false), onSelectOutcome: handleOutcomeSelect, onPlaceBet: ({ poolId, outcomeId, stake }) => placeBetMutation.mutate({ poolId, outcomeId, stake }), isPlacing: placeBetMutation.isPending })] }));
 };
 export default MarketDetailPage;

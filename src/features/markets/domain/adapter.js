@@ -1,4 +1,5 @@
 import { getTeamColor } from "../teamColors";
+import { getTeamCode } from "../teamCodes";
 const statusMap = {
     open: "open",
     closing_soon: "closing_soon",
@@ -65,6 +66,7 @@ const mapOutcomes = (totalStake, rakeFraction, outcomes) => outcomes.map((outcom
         id: outcome.id,
         teamName,
         driverName: outcome.driverName ?? outcome.label,
+        teamCode: getTeamCode(teamName),
         teamColor: outcome.teamColor ?? getTeamColor(teamName),
         marketShare: totalStake > 0 ? staked / totalStake : 0,
         baselineOdds: odds,

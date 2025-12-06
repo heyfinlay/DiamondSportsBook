@@ -1,5 +1,6 @@
 import type { EventWithMarkets, PoolPricingRow } from "@domains/betting/api/bettingApi";
 import { getTeamColor } from "../teamColors";
+import { getTeamCode } from "../teamCodes";
 import type { Pool, PoolStatus, Outcome } from "../types";
 
 // Types that mirror the fetchMarketDetail response. We only rely on the fields we need.
@@ -102,6 +103,7 @@ const mapOutcomes = (
       id: outcome.id,
       teamName,
       driverName: outcome.driverName ?? outcome.label,
+      teamCode: getTeamCode(teamName),
       teamColor: outcome.teamColor ?? getTeamColor(teamName),
       marketShare: totalStake > 0 ? staked / totalStake : 0,
       baselineOdds: odds,

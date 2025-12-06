@@ -1,0 +1,15 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { formatCurrency } from "../../features/markets/utils/format";
+import { OutcomeTile } from "./OutcomeTile";
+const statusClasses = {
+    open: "bg-emerald-500/15 text-emerald-200 border-emerald-500/40",
+    closing_soon: "bg-amber-500/15 text-amber-100 border-amber-500/40",
+    closed: "bg-slate-700/60 text-slate-200 border-slate-600/60",
+    settled: "bg-indigo-500/15 text-indigo-100 border-indigo-500/40"
+};
+export function MarketCard({ id, name, closeTimeLabel, status, totalPool, commission, outcomes, selectedOutcomeId, onSelectOutcome, onViewDetails, actionLabel = "View details", subtitle }) {
+    const gridCols = outcomes.length === 2
+        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2"
+        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+    return (_jsxs("article", { className: "flex h-full flex-col rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4 shadow-[0_0_30px_rgba(3,7,18,0.45)]", children: [_jsxs("div", { className: "mb-3 flex items-start justify-between gap-3", children: [_jsxs("div", { className: "min-w-0 space-y-1", children: [subtitle ? (_jsx("p", { className: "text-[11px] uppercase tracking-[0.3em] text-amber-200/80", children: subtitle })) : null, _jsx("h3", { className: "truncate text-lg font-semibold leading-tight text-white", children: name }), closeTimeLabel ? _jsx("p", { className: "text-xs text-slate-400", children: closeTimeLabel }) : null] }), _jsxs("div", { className: "flex flex-col items-end gap-2", children: [status ? (_jsx("span", { className: `inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[status]}`, children: status.replace("_", " ") })) : null, _jsx("span", { className: "inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-right text-xs font-semibold text-amber-100", children: _jsxs("span", { className: "leading-tight", children: [_jsx("span", { className: "block text-sm text-amber-50", children: formatCurrency(totalPool) }), _jsx("span", { className: "block text-[10px] font-normal uppercase tracking-[0.25em] text-amber-200", children: "pool" })] }) })] })] }), _jsx("div", { className: `grid flex-1 gap-2 ${gridCols}`, children: outcomes.map((outcome) => (_jsx(OutcomeTile, { ...outcome, isSelected: selectedOutcomeId === outcome.outcomeId, onSelect: () => onSelectOutcome?.(outcome.outcomeId) }, outcome.id))) }), _jsxs("div", { className: "mt-4 flex items-center justify-between text-xs text-slate-400", children: [_jsxs("span", { children: ["Commission: ", commission.toFixed(1), "%"] }), onViewDetails ? (_jsxs("button", { type: "button", onClick: () => onViewDetails?.(id), className: "inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200 transition hover:text-white", children: [actionLabel, " \u2192"] })) : null] })] }));
+}
