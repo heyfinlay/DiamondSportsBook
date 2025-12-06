@@ -6,6 +6,7 @@ import { fetchUiPools } from "../../features/markets/api";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 import { marketKeys } from "@lib/query/keys";
+import { MarketHeroCard } from "../../components/markets/MarketHeroCard";
 import { useBettingStore } from "@domains/betting/store/bettingStore";
 
 // This screen keeps the v2 grid layout from commit 9208937 while relying on the team metadata-backed pricing feeds from 23eeb03.
@@ -38,12 +39,17 @@ const MarketsPage = () => {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <section className="space-y-1.5 rounded-2xl border border-white/10 bg-black/30 p-4 text-white">
-        <p className="text-lg font-semibold">Welcome to Diamond Sportsbook.</p>
-        <p className="text-sm text-white/80">Bet on the DayBreak Grand Prix using live pool-based odds.</p>
-        <p className="text-sm text-white/80">Lower market share means a higher potential payout.</p>
-        <p className="text-sm text-white/80">Choose a market, pick a driver, and place your bet.</p>
-      </section>
+      <MarketHeroCard
+        label="SPORTSBOOK OVERVIEW"
+        title="Diamond Sportsbook"
+        description={
+          <div className="space-y-1 text-white/80">
+            <p>Bet on the DayBreak Grand Prix using live pool-based odds.</p>
+            <p>Lower market share means a higher potential payout.</p>
+            <p>Choose a market, pick a driver, and place your bet.</p>
+          </div>
+        }
+      />
 
       {!sessionLoading && !user && <AuthCtaBanner />}
 

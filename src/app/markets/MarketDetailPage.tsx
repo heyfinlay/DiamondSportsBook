@@ -16,6 +16,7 @@ import { marketKeys, walletKeys } from "@lib/query/keys";
 import { fetchPoolSettlementLedger } from "@domains/betting/api/settlementAuditApi";
 import { refetchAfterBet } from "@lib/query/refetchers";
 import { LIVE_BETS_POLL_INTERVAL_MS, MARKET_POLL_INTERVAL_MS } from "@config/realtime";
+import { MarketHeroCard } from "../../components/markets/MarketHeroCard";
 
 // Layout baseline restored from commit 9208937 (markets UI v2) while the team metadata/API work from 23eeb03 stays intact.
 
@@ -180,28 +181,21 @@ const MarketDetailPage = () => {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
-      <header className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-black p-6 sm:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.35em] text-amber-200/80">Market Detail</p>
-            <h1 className="text-3xl font-semibold text-white sm:text-4xl">{pool.title}</h1>
-            <p className="text-sm text-white/70">
-              Explore every outcome with live odds and pool share. Click a tile to launch the bet slip.
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-2 text-sm text-white/70 sm:items-end">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[pool.status]}`}
-            >
-              {statusLabel[pool.status]}
-            </span>
-            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100">
-              {formatCurrency(pool.totalStake)} Pool
-            </span>
-            <p className="text-xs text-white/50">Updated {pool.lastUpdatedLabel}</p>
-          </div>
-        </div>
-      </header>
+      <MarketHeroCard
+        label="Market Detail"
+        title={pool.title}
+        description={
+          <p>
+            Explore every outcome with live odds and pool share. Click a tile to launch the bet slip.
+          </p>
+        }
+        rightMeta={{
+          status: pool.status,
+          statusLabel: statusLabel[pool.status],
+          statusClassName: statusClasses[pool.status],
+          badgeContent: `${formatCurrency(pool.totalStake)} Pool`
+        }}
+      />
       {!sessionLoading && !user && <AuthCtaBanner />}
 
       <section className="flex flex-col gap-6">
