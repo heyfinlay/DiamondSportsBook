@@ -3,10 +3,11 @@ import { MarketCard } from "../../components/markets/MarketCard";
 import { deriveOutcomeCode } from "../../components/markets/outcomeHelpers";
 import { formatCurrency, formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
-import type { Pool, PoolStatus } from "./types";
+import type { LiveBet, Pool, PoolStatus } from "./types";
 
 interface PoolDetailsProps {
   pool: Pool;
+  liveBets: LiveBet[];
   onOutcomeSelect?: (outcomeId: string) => void;
   onOpenBetSlip?: (poolId: string, outcomeId: string) => void;
 }
@@ -18,7 +19,7 @@ const statusLabel: Record<PoolStatus, string> = {
   settled: "Settled"
 };
 
-export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetailsProps) {
+export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: PoolDetailsProps) {
   const [selectedOutcomeId, setSelectedOutcomeId] = useState<string | null>(null);
 
   const { favouriteId, bestPayoutId } = useMemo(
@@ -66,7 +67,9 @@ export function PoolDetails({ pool, onOutcomeSelect, onOpenBetSlip }: PoolDetail
           <p className="mt-1 text-lg font-semibold text-white">
             {pool.totalBets.toLocaleString("en-US")}
           </p>
-          <p className="text-xs text-white/40">Live tickets on this pool</p>
+          <p className="text-xs text-white/40">
+            Live tickets on this pool · {liveBets.length.toLocaleString("en-US")}
+          </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
           <p className="text-[11px] uppercase tracking-[0.28em] text-white/50">Commission</p>
