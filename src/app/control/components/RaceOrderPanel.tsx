@@ -57,10 +57,14 @@ type RaceOrderPanelProps = {
   entries: DriverStanding[];
   onReorder: (updates: Array<{ driverId: string; displayPosition: number | null }>) => Promise<void> | void;
   onUpdateBestLap: (driverId: string, bestLapMs: number | null) => Promise<void> | void;
+  onUpdateLastLap: (driverId: string, lastLapMs: number | null) => Promise<void> | void;
+  onUpdateLaps: (driverId: string, laps: number | null) => Promise<void> | void;
   onUpdateStatus: (driverId: string, status: string) => Promise<void> | void;
   disabled?: boolean;
   savingOrder?: boolean;
   savingLap?: boolean;
+  savingLastLap?: boolean;
+  savingLaps?: boolean;
   statusUpdating?: boolean;
   notify: (options: { title: string; description?: string; variant?: "success" | "error" | "default" }) => void;
 };
@@ -69,29 +73,43 @@ const RaceOrderPanel = ({
   entries,
   onReorder,
   onUpdateBestLap,
+  onUpdateLastLap,
+  onUpdateLaps,
   onUpdateStatus,
   disabled,
   savingOrder,
   savingLap,
+  savingLastLap,
+  savingLaps,
   statusUpdating,
   notify
 }: RaceOrderPanelProps) => {
   const [orderedEntries, setOrderedEntries] = useState<DriverStanding[]>([]);
-  const [lapInputs, setLapInputs] = useState<Record<string, string>>({});
+  const [bestLapInputs, setBestLapInputs] = useState<Record<string, string>>({});
+  const [lastLapInputs, setLastLapInputs] = useState<Record<string, string>>({});
+  const [lapCountInputs, setLapCountInputs] = useState<Record<string, string>>({});
   const [localOrdering, setLocalOrdering] = useState(false);
 
   useEffect(() => {
     const sorted = sortEntries(entries);
     setOrderedEntries(sorted);
     const nextInputs: Record<string, string> = {};
+    const nextLastInputs: Record<string, string> = {};
+    const nextLapCounts: Record<string, string> = {};
     sorted.forEach((entry) => {
       nextInputs[entry.driver_id] = formatInputValue(entry.best_lap_ms);
+      nextLastInputs[entry.driver_id] = formatInputValue(entry.last_lap_ms);
+      nextLapCounts[entry.driver_id] = entry.laps_completed?.toString() ?? "";
     });
-    setLapInputs(nextInputs);
+    setBestLapInputs(nextInputs);
+    setLastLapInputs(nextLastInputs);
+    setLapCountInputs(nextLapCounts);
   }, [entries]);
 
   const isReorderDisabled = disabled || savingOrder || localOrdering;
   const isBestLapDisabled = disabled || savingLap;
+  const isLastLapDisabled = disabled || savingLastLap;
+  const isLapCountDisabled = disabled || savingLaps;
   const isStatusDisabled = disabled || statusUpdating;
 
   const saveOrder = (nextOrder: DriverStanding[]) => {
@@ -130,7 +148,7 @@ const RaceOrderPanel = ({
   };
 
   const handleBestLapSave = (driverId: string) => {
-    const input = lapInputs[driverId] ?? "";
+    const input = bestLapInputs[driverId] ?? "";
     const parsed = parseLapInput(input);
     if (parsed === undefined) {
       notify({
@@ -143,7 +161,7 @@ const RaceOrderPanel = ({
 
     Promise.resolve(onUpdateBestLap(driverId, parsed))
       .then(() => {
-        setLapInputs((prev) => ({
+        setBestLapInputs((prev) => ({
           ...prev,
           [driverId]: formatInputValue(parsed)
         }));
@@ -153,6 +171,63 @@ const RaceOrderPanel = ({
           variant: "error",
           title: "Unable to update lap",
           description: error instanceof Error ? error.message : "Best lap could not be saved."
+        });
+      });
+  };
+
+  const handleLastLapSave = (driverId: string) => {
+    const input = lastLapInputs[driverId] ?? "";
+    const parsed = parseLapInput(input);
+    if (parsed === undefined) {
+      notify({
+        variant: "error",
+        title: "Invalid lap time",
+        description: "Use mm:ss.sss or ss.sss format."
+      });
+      return;
+    }
+
+    Promise.resolve(onUpdateLastLap(driverId, parsed))
+      .then(() => {
+        setLastLapInputs((prev) => ({
+          ...prev,
+          [driverId]: formatInputValue(parsed)
+        }));
+      })
+      .catch((error: unknown) => {
+        notify({
+          variant: "error",
+          title: "Unable to update lap",
+          description: error instanceof Error ? error.message : "Last lap could not be saved."
+        });
+      });
+  };
+
+  const handleLapCountSave = (driverId: string) => {
+    const input = lapCountInputs[driverId];
+    if (input === undefined) return;
+    const parsed = input.trim() === "" ? null : Number(input);
+    if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+      notify({
+        variant: "error",
+        title: "Invalid lap count",
+        description: "Enter a non-negative number of laps."
+      });
+      return;
+    }
+
+    Promise.resolve(onUpdateLaps(driverId, parsed))
+      .then(() => {
+        setLapCountInputs((prev) => ({
+          ...prev,
+          [driverId]: parsed === null ? "" : parsed.toString()
+        }));
+      })
+      .catch((error: unknown) => {
+        notify({
+          variant: "error",
+          title: "Unable to update laps",
+          description: error instanceof Error ? error.message : "Laps could not be saved."
         });
       });
   };
@@ -217,7 +292,26 @@ const RaceOrderPanel = ({
                 <p className="text-xs text-white/60">{driver.team_name}</p>
               </div>
             </div>
-            <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 sm:items-center">
+            <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center">
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Laps</p>
+                <input
+                  type="number"
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white"
+                  value={lapCountInputs[driver.driver_id] ?? ""}
+                  onChange={(event) =>
+                    setLapCountInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value }))
+                  }
+                  onBlur={() => handleLapCountSave(driver.driver_id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleLapCountSave(driver.driver_id);
+                    }
+                  }}
+                  disabled={isLapCountDisabled}
+                />
+              </div>
               <div className="space-y-1">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Status</p>
                 <select
@@ -234,13 +328,32 @@ const RaceOrderPanel = ({
                 </select>
               </div>
               <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Last Lap</p>
+                <input
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white"
+                  placeholder="1:32.457"
+                  value={lastLapInputs[driver.driver_id] ?? ""}
+                  onChange={(event) =>
+                    setLastLapInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value }))
+                  }
+                  onBlur={() => handleLastLapSave(driver.driver_id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      handleLastLapSave(driver.driver_id);
+                    }
+                  }}
+                  disabled={isLastLapDisabled}
+                />
+              </div>
+              <div className="space-y-1">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Best Lap</p>
                 <input
                   className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white"
                   placeholder="1:32.457"
-                  value={lapInputs[driver.driver_id] ?? ""}
+                  value={bestLapInputs[driver.driver_id] ?? ""}
                   onChange={(event) =>
-                    setLapInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value }))
+                    setBestLapInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value }))
                   }
                   onBlur={() => handleBestLapSave(driver.driver_id)}
                   onKeyDown={(event) => {
@@ -253,8 +366,9 @@ const RaceOrderPanel = ({
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Last Saved</p>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Current Times</p>
                 <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white/80">
+                  Last: {driver.last_lap_ms ? formatLapTime(driver.last_lap_ms) : "—"} • Best:{" "}
                   {driver.best_lap_ms ? formatLapTime(driver.best_lap_ms) : "—"}
                 </p>
               </div>
