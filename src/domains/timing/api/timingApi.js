@@ -308,7 +308,7 @@ export const updateDriverDisplayPositions = async (sessionId, updates) => {
         .eq("id", entry.driverId)
         .eq("session_id", sessionId)));
     const errored = results.find((result) => result.error);
-    if (errored === null || errored === void 0 ? void 0 : errored.error)
+    if (errored?.error)
         throw errored.error;
 };
 export const updateDriverTiming = async (sessionId, driverId, payload) => {

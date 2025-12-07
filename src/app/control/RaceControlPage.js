@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { archiveSession, createSession, deleteSessionDeep, fetchControlEvents, fetchDriverStandings, fetchSessionDetail, fetchTimingResults, finishSession, forceEndSession, getRaceTime, initializeRace, logLap, logPenalty, logPitEvent, logControlError, pauseRace, resumeRace, setFlagStatus, updateDriverStatus, updateDriverBestLap, updateDriverDisplayPositions } from "@domains/timing/api/timingApi";
+import { archiveSession, createSession, deleteSessionDeep, fetchControlEvents, fetchDriverStandings, fetchSessionDetail, fetchTimingResults, finishSession, forceEndSession, getRaceTime, initializeRace, logLap, logPenalty, logPitEvent, logControlError, pauseRace, resumeRace, setFlagStatus, updateDriverStatus, updateDriverTiming, updateDriverBestLap, updateDriverDisplayPositions } from "@domains/timing/api/timingApi";
 import { useTimingRealtime } from "@domains/timing/hooks/useTimingRealtime";
 import { useToast } from "@app/components/ToastProvider";
 import { usePermissions } from "@lib/auth/usePermissions";
@@ -201,7 +201,7 @@ const RaceControlPage = () => {
         }
     });
     const updateRaceOrderMutation = useMutation({
-        mutationFn: (updates) => updateDriverDisplayPositions(updates),
+        mutationFn: (updates) => updateDriverDisplayPositions(sessionId, updates),
         onSuccess: () => {
             refreshTimingData();
             toast({ variant: "success", title: "Race order updated" });
@@ -212,7 +212,7 @@ const RaceControlPage = () => {
         }
     });
     const updateBestLapMutation = useMutation({
-        mutationFn: ({ driverId, bestLapMs }) => updateDriverBestLap(driverId, bestLapMs),
+        mutationFn: ({ driverId, bestLapMs }) => updateDriverBestLap(sessionId, driverId, bestLapMs),
         onSuccess: () => {
             refreshTimingData();
             toast({ variant: "success", title: "Best lap updated" });
@@ -220,6 +220,28 @@ const RaceControlPage = () => {
         onError: (error) => {
             recordError(error.message);
             toast({ variant: "error", title: "Unable to update best lap", description: error.message });
+        }
+    });
+    const updateLastLapMutation = useMutation({
+        mutationFn: ({ driverId, lastLapMs }) => updateDriverTiming(sessionId, driverId, { last_lap_ms: lastLapMs }),
+        onSuccess: () => {
+            refreshTimingData();
+            toast({ variant: "success", title: "Last lap updated" });
+        },
+        onError: (error) => {
+            recordError(error.message);
+            toast({ variant: "error", title: "Unable to update last lap", description: error.message });
+        }
+    });
+    const updateLapsMutation = useMutation({
+        mutationFn: ({ driverId, laps }) => updateDriverTiming(sessionId, driverId, { laps }),
+        onSuccess: () => {
+            refreshTimingData();
+            toast({ variant: "success", title: "Laps updated" });
+        },
+        onError: (error) => {
+            recordError(error.message);
+            toast({ variant: "error", title: "Unable to update laps", description: error.message });
         }
     });
     const deleteSessionMutation = useMutation({
@@ -330,6 +352,20 @@ const RaceControlPage = () => {
         }
         return updateBestLapMutation.mutateAsync({ driverId, bestLapMs });
     };
+    const handleLastLapUpdate = (driverId, lastLapMs) => {
+        if (controlsLocked) {
+            guardSessionLocked("Session finished. Last laps are locked.");
+            return Promise.resolve();
+        }
+        return updateLastLapMutation.mutateAsync({ driverId, lastLapMs });
+    };
+    const handleLapsUpdate = (driverId, laps) => {
+        if (controlsLocked) {
+            guardSessionLocked("Session finished. Laps are locked.");
+            return Promise.resolve();
+        }
+        return updateLapsMutation.mutateAsync({ driverId, laps });
+    };
     const handleStatusUpdate = (driverId, status) => {
         if (controlsLocked) {
             guardSessionLocked("Driver statuses are locked after the checkered flag.");
@@ -359,7 +395,7 @@ const RaceControlPage = () => {
                     const confirmed = window.confirm("Delete this session and all timing data?");
                     if (confirmed)
                         deleteSessionMutation.mutate(sessionId);
-                }, onArchive: handleArchiveSession, disableStart: initializeRaceMutation.isPending || isFinished || isArchived, flagLoading: flagMutation.isPending || isFinished || isArchived, finishing: finishSessionMutation.isPending, forceEnding: forceEndSessionMutation.isPending, archiving: archiveSessionMutation.isPending, isFinished: isFinished, isArchived: isArchived }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [isRaceSession ? (_jsx(RaceOrderPanel, { entries: drivers, onReorder: handleRaceOrderChange, onUpdateBestLap: handleBestLapUpdate, onUpdateStatus: handleStatusUpdate, savingOrder: updateRaceOrderMutation.isPending, savingLap: updateBestLapMutation.isPending, statusUpdating: driverStatusMutation.isPending, disabled: controlsLocked, notify: toast })) : (_jsx(DriverCaptureGrid, { drivers: driversSortedForDisplay, onLap: handleLap, onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onRetire: handleRetire, disabled: controlsLocked })), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, disabled: controlsLocked, onSubmit: (payload) => logPenaltyMutation.mutate({
+                }, onArchive: handleArchiveSession, disableStart: initializeRaceMutation.isPending || isFinished || isArchived, flagLoading: flagMutation.isPending || isFinished || isArchived, finishing: finishSessionMutation.isPending, forceEnding: forceEndSessionMutation.isPending, archiving: archiveSessionMutation.isPending, isFinished: isFinished, isArchived: isArchived }), _jsxs("div", { className: "grid gap-6 lg:grid-cols-[2fr,1fr]", children: [isRaceSession ? (_jsx(RaceOrderPanel, { entries: drivers, onReorder: handleRaceOrderChange, onUpdateBestLap: handleBestLapUpdate, onUpdateLastLap: handleLastLapUpdate, onUpdateLaps: handleLapsUpdate, onUpdateStatus: handleStatusUpdate, savingOrder: updateRaceOrderMutation.isPending, savingLap: updateBestLapMutation.isPending, savingLastLap: updateLastLapMutation.isPending, savingLaps: updateLapsMutation.isPending, statusUpdating: driverStatusMutation.isPending, disabled: controlsLocked, notify: toast })) : (_jsx(DriverCaptureGrid, { drivers: driversSortedForDisplay, onLap: handleLap, onPit: (driverId) => setPitForm({ driverId }), onPenalty: (driverId) => setPenaltyForm((prev) => ({ ...prev, driverId })), onRetire: handleRetire, disabled: controlsLocked })), _jsxs("div", { className: "space-y-4", children: [_jsx(ControlCard, { title: "Penalty", children: _jsx(PenaltyForm, { drivers: drivers, formState: penaltyForm, onChange: setPenaltyForm, notify: toast, submitting: logPenaltyMutation.isPending, disabled: controlsLocked, onSubmit: (payload) => logPenaltyMutation.mutate({
                                         sessionId,
                                         driverId: payload.driverId || null,
                                         reason: payload.reason,
