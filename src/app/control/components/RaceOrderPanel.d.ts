@@ -6,10 +6,14 @@ type RaceOrderPanelProps = {
         displayPosition: number | null;
     }>) => Promise<void> | void;
     onUpdateBestLap: (driverId: string, bestLapMs: number | null) => Promise<void> | void;
+    onUpdateLastLap: (driverId: string, lastLapMs: number | null) => Promise<void> | void;
+    onUpdateLaps: (driverId: string, laps: number | null) => Promise<void> | void;
     onUpdateStatus: (driverId: string, status: string) => Promise<void> | void;
     disabled?: boolean;
     savingOrder?: boolean;
     savingLap?: boolean;
+    savingLastLap?: boolean;
+    savingLaps?: boolean;
     statusUpdating?: boolean;
     notify: (options: {
         title: string;
@@ -17,5 +21,5 @@ type RaceOrderPanelProps = {
         variant?: "success" | "error" | "default";
     }) => void;
 };
-declare const RaceOrderPanel: ({ entries, onReorder, onUpdateBestLap, onUpdateStatus, disabled, savingOrder, savingLap, statusUpdating, notify }: RaceOrderPanelProps) => import("react/jsx-runtime").JSX.Element;
+declare const RaceOrderPanel: ({ entries, onReorder, onUpdateBestLap, onUpdateLastLap, onUpdateLaps, onUpdateStatus, disabled, savingOrder, savingLap, savingLastLap, savingLaps, statusUpdating, notify }: RaceOrderPanelProps) => import("react/jsx-runtime").JSX.Element;
 export default RaceOrderPanel;

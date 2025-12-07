@@ -48,21 +48,31 @@ const parseLapInput = (value) => {
     return ms;
 };
 const formatInputValue = (ms) => (ms && ms > 0 ? formatLapTime(ms, "") : "");
-const RaceOrderPanel = ({ entries, onReorder, onUpdateBestLap, onUpdateStatus, disabled, savingOrder, savingLap, statusUpdating, notify }) => {
+const RaceOrderPanel = ({ entries, onReorder, onUpdateBestLap, onUpdateLastLap, onUpdateLaps, onUpdateStatus, disabled, savingOrder, savingLap, savingLastLap, savingLaps, statusUpdating, notify }) => {
     const [orderedEntries, setOrderedEntries] = useState([]);
-    const [lapInputs, setLapInputs] = useState({});
+    const [bestLapInputs, setBestLapInputs] = useState({});
+    const [lastLapInputs, setLastLapInputs] = useState({});
+    const [lapCountInputs, setLapCountInputs] = useState({});
     const [localOrdering, setLocalOrdering] = useState(false);
     useEffect(() => {
         const sorted = sortEntries(entries);
         setOrderedEntries(sorted);
         const nextInputs = {};
+        const nextLastInputs = {};
+        const nextLapCounts = {};
         sorted.forEach((entry) => {
             nextInputs[entry.driver_id] = formatInputValue(entry.best_lap_ms);
+            nextLastInputs[entry.driver_id] = formatInputValue(entry.last_lap_ms);
+            nextLapCounts[entry.driver_id] = entry.laps_completed?.toString() ?? "";
         });
-        setLapInputs(nextInputs);
+        setBestLapInputs(nextInputs);
+        setLastLapInputs(nextLastInputs);
+        setLapCountInputs(nextLapCounts);
     }, [entries]);
     const isReorderDisabled = disabled || savingOrder || localOrdering;
     const isBestLapDisabled = disabled || savingLap;
+    const isLastLapDisabled = disabled || savingLastLap;
+    const isLapCountDisabled = disabled || savingLaps;
     const isStatusDisabled = disabled || statusUpdating;
     const saveOrder = (nextOrder) => {
         const payload = nextOrder.map((entry, index) => ({
@@ -98,7 +108,7 @@ const RaceOrderPanel = ({ entries, onReorder, onUpdateBestLap, onUpdateStatus, d
         saveOrder(next);
     };
     const handleBestLapSave = (driverId) => {
-        const input = lapInputs[driverId] ?? "";
+        const input = bestLapInputs[driverId] ?? "";
         const parsed = parseLapInput(input);
         if (parsed === undefined) {
             notify({
@@ -110,7 +120,7 @@ const RaceOrderPanel = ({ entries, onReorder, onUpdateBestLap, onUpdateStatus, d
         }
         Promise.resolve(onUpdateBestLap(driverId, parsed))
             .then(() => {
-            setLapInputs((prev) => ({
+            setBestLapInputs((prev) => ({
                 ...prev,
                 [driverId]: formatInputValue(parsed)
             }));
@@ -120,6 +130,60 @@ const RaceOrderPanel = ({ entries, onReorder, onUpdateBestLap, onUpdateStatus, d
                 variant: "error",
                 title: "Unable to update lap",
                 description: error instanceof Error ? error.message : "Best lap could not be saved."
+            });
+        });
+    };
+    const handleLastLapSave = (driverId) => {
+        const input = lastLapInputs[driverId] ?? "";
+        const parsed = parseLapInput(input);
+        if (parsed === undefined) {
+            notify({
+                variant: "error",
+                title: "Invalid lap time",
+                description: "Use mm:ss.sss or ss.sss format."
+            });
+            return;
+        }
+        Promise.resolve(onUpdateLastLap(driverId, parsed))
+            .then(() => {
+            setLastLapInputs((prev) => ({
+                ...prev,
+                [driverId]: formatInputValue(parsed)
+            }));
+        })
+            .catch((error) => {
+            notify({
+                variant: "error",
+                title: "Unable to update lap",
+                description: error instanceof Error ? error.message : "Last lap could not be saved."
+            });
+        });
+    };
+    const handleLapCountSave = (driverId) => {
+        const input = lapCountInputs[driverId];
+        if (input === undefined)
+            return;
+        const parsed = input.trim() === "" ? null : Number(input);
+        if (parsed !== null && (!Number.isFinite(parsed) || parsed < 0)) {
+            notify({
+                variant: "error",
+                title: "Invalid lap count",
+                description: "Enter a non-negative number of laps."
+            });
+            return;
+        }
+        Promise.resolve(onUpdateLaps(driverId, parsed))
+            .then(() => {
+            setLapCountInputs((prev) => ({
+                ...prev,
+                [driverId]: parsed === null ? "" : parsed.toString()
+            }));
+        })
+            .catch((error) => {
+            notify({
+                variant: "error",
+                title: "Unable to update laps",
+                description: error instanceof Error ? error.message : "Laps could not be saved."
             });
         });
     };
@@ -139,11 +203,21 @@ const RaceOrderPanel = ({ entries, onReorder, onUpdateBestLap, onUpdateStatus, d
             return "Session locked";
         return "Click arrows to adjust running order";
     }, [disabled, localOrdering, savingOrder]);
-    return (_jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/40 p-5 space-y-3", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Race Order" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Manual Running Order" })] }), _jsx("p", { className: "text-xs text-white/50", children: headline })] }), _jsxs("div", { className: "space-y-2", children: [orderedEntries.map((driver, index) => (_jsxs("article", { className: "flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:gap-4", children: [_jsxs("div", { className: "flex items-center gap-3 sm:w-48", children: [_jsxs("div", { className: "flex flex-col gap-1", children: [_jsx("button", { className: "rounded-full border border-white/20 p-1 text-white/80 hover:bg-white/10 disabled:opacity-30", onClick: () => moveDriver(driver.driver_id, -1), disabled: isReorderDisabled || index === 0, "aria-label": "Move up", children: _jsx(ArrowUp, { className: "h-4 w-4" }) }), _jsx("button", { className: "rounded-full border border-white/20 p-1 text-white/80 hover:bg-white/10 disabled:opacity-30", onClick: () => moveDriver(driver.driver_id, 1), disabled: isReorderDisabled || index === orderedEntries.length - 1, "aria-label": "Move down", children: _jsx(ArrowDown, { className: "h-4 w-4" }) })] }), _jsxs("div", { children: [_jsxs("span", { className: "inline-flex rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/70", children: ["P", index + 1] }), _jsxs("p", { className: "mt-1 text-lg font-semibold text-white", children: ["#", driver.car_number, " ", driver.driver_name] }), _jsx("p", { className: "text-xs text-white/60", children: driver.team_name })] })] }), _jsxs("div", { className: "grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3 sm:items-center", children: [_jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Status" }), _jsx("select", { className: "w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white", value: driver.status, onChange: (event) => handleStatusChange(driver.driver_id, event.target.value), disabled: isStatusDisabled, children: DRIVER_STATUS_OPTIONS.map((option) => (_jsx("option", { value: option.value, children: option.label }, option.value))) })] }), _jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Best Lap" }), _jsx("input", { className: "w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white", placeholder: "1:32.457", value: lapInputs[driver.driver_id] ?? "", onChange: (event) => setLapInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value })), onBlur: () => handleBestLapSave(driver.driver_id), onKeyDown: (event) => {
+    return (_jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/40 p-5 space-y-3", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/60", children: "Race Order" }), _jsx("h2", { className: "text-xl font-semibold text-white", children: "Manual Running Order" })] }), _jsx("p", { className: "text-xs text-white/50", children: headline })] }), _jsxs("div", { className: "space-y-2", children: [orderedEntries.map((driver, index) => (_jsxs("article", { className: "flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:gap-4", children: [_jsxs("div", { className: "flex items-center gap-3 sm:w-48", children: [_jsxs("div", { className: "flex flex-col gap-1", children: [_jsx("button", { className: "rounded-full border border-white/20 p-1 text-white/80 hover:bg-white/10 disabled:opacity-30", onClick: () => moveDriver(driver.driver_id, -1), disabled: isReorderDisabled || index === 0, "aria-label": "Move up", children: _jsx(ArrowUp, { className: "h-4 w-4" }) }), _jsx("button", { className: "rounded-full border border-white/20 p-1 text-white/80 hover:bg-white/10 disabled:opacity-30", onClick: () => moveDriver(driver.driver_id, 1), disabled: isReorderDisabled || index === orderedEntries.length - 1, "aria-label": "Move down", children: _jsx(ArrowDown, { className: "h-4 w-4" }) })] }), _jsxs("div", { children: [_jsxs("span", { className: "inline-flex rounded-full border border-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.35em] text-white/70", children: ["P", index + 1] }), _jsxs("p", { className: "mt-1 text-lg font-semibold text-white", children: ["#", driver.car_number, " ", driver.driver_name] }), _jsx("p", { className: "text-xs text-white/60", children: driver.team_name })] })] }), _jsxs("div", { className: "grid flex-1 grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center", children: [_jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Laps" }), _jsx("input", { type: "number", className: "w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white", value: lapCountInputs[driver.driver_id] ?? "", onChange: (event) => setLapCountInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value })), onBlur: () => handleLapCountSave(driver.driver_id), onKeyDown: (event) => {
+                                                    if (event.key === "Enter") {
+                                                        event.preventDefault();
+                                                        handleLapCountSave(driver.driver_id);
+                                                    }
+                                                }, disabled: isLapCountDisabled })] }), _jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Status" }), _jsx("select", { className: "w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white", value: driver.status, onChange: (event) => handleStatusChange(driver.driver_id, event.target.value), disabled: isStatusDisabled, children: DRIVER_STATUS_OPTIONS.map((option) => (_jsx("option", { value: option.value, children: option.label }, option.value))) })] }), _jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Last Lap" }), _jsx("input", { className: "w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white", placeholder: "1:32.457", value: lastLapInputs[driver.driver_id] ?? "", onChange: (event) => setLastLapInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value })), onBlur: () => handleLastLapSave(driver.driver_id), onKeyDown: (event) => {
+                                                    if (event.key === "Enter") {
+                                                        event.preventDefault();
+                                                        handleLastLapSave(driver.driver_id);
+                                                    }
+                                                }, disabled: isLastLapDisabled })] }), _jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Best Lap" }), _jsx("input", { className: "w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-sm text-white", placeholder: "1:32.457", value: bestLapInputs[driver.driver_id] ?? "", onChange: (event) => setBestLapInputs((prev) => ({ ...prev, [driver.driver_id]: event.target.value })), onBlur: () => handleBestLapSave(driver.driver_id), onKeyDown: (event) => {
                                                     if (event.key === "Enter") {
                                                         event.preventDefault();
                                                         handleBestLapSave(driver.driver_id);
                                                     }
-                                                }, disabled: isBestLapDisabled })] }), _jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Last Saved" }), _jsx("p", { className: "rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white/80", children: driver.best_lap_ms ? formatLapTime(driver.best_lap_ms) : "—" })] })] })] }, driver.driver_id))), !orderedEntries.length && (_jsx("p", { className: "text-sm text-white/60", children: "No drivers registered in this session yet." }))] })] }));
+                                                }, disabled: isBestLapDisabled })] }), _jsxs("div", { className: "space-y-1", children: [_jsx("p", { className: "text-[10px] uppercase tracking-[0.3em] text-white/40", children: "Current Times" }), _jsxs("p", { className: "rounded-xl border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white/80", children: ["Last: ", driver.last_lap_ms ? formatLapTime(driver.last_lap_ms) : "—", " \u2022 Best:", " ", driver.best_lap_ms ? formatLapTime(driver.best_lap_ms) : "—"] })] })] })] }, driver.driver_id))), !orderedEntries.length && (_jsx("p", { className: "text-sm text-white/60", children: "No drivers registered in this session yet." }))] })] }));
 };
 export default RaceOrderPanel;

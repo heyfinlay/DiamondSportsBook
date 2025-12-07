@@ -200,15 +200,15 @@ declare const controlEventSchema: z.ZodObject<{
     created_by: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
-    session_id?: string;
     type?: string;
+    session_id?: string;
     created_at?: string;
     payload?: Record<string, any>;
     created_by?: string;
 }, {
     id?: string;
-    session_id?: string;
     type?: string;
+    session_id?: string;
     created_at?: string;
     payload?: Record<string, any>;
     created_by?: string;
@@ -249,6 +249,7 @@ declare const sessionSummarySchema: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     id?: string;
+    is_active?: boolean;
     name?: string;
     track_name?: string;
     laps_target?: number;
@@ -257,7 +258,6 @@ declare const sessionSummarySchema: z.ZodObject<{
     starts_at?: string;
     archived_at?: string;
     created_at?: string;
-    is_active?: boolean;
     session_state?: {
         race_time_ms?: number;
         is_timing?: boolean;
@@ -268,6 +268,7 @@ declare const sessionSummarySchema: z.ZodObject<{
     };
 }, {
     id?: string;
+    is_active?: boolean;
     name?: string;
     track_name?: string;
     laps_target?: number;
@@ -276,7 +277,6 @@ declare const sessionSummarySchema: z.ZodObject<{
     starts_at?: string;
     archived_at?: string;
     created_at?: string;
-    is_active?: boolean;
     session_state?: {
         race_time_ms?: number;
         is_timing?: boolean;
@@ -442,8 +442,8 @@ export declare const fetchPitEvents: (sessionId: string) => Promise<{
 }[]>;
 export declare const fetchControlEvents: (sessionId: string) => Promise<{
     id?: string;
-    session_id?: string;
     type?: string;
+    session_id?: string;
     created_at?: string;
     payload?: Record<string, any>;
     created_by?: string;
