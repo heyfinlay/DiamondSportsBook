@@ -38,13 +38,13 @@ export function OutcomeTile({
     <button
       type="button"
       onClick={() => onSelect?.()}
-      className={`group flex h-full min-h-[96px] cursor-pointer flex-col justify-between rounded-lg border px-3 py-2 text-left transition ${
+      className={`group flex h-full min-h-[104px] cursor-pointer flex-col justify-between rounded-lg border px-3 py-2 text-left transition md:min-h-[120px] ${
         isSelected
           ? "border-gold/70 bg-black/60 shadow-[0_0_0_1px_rgba(245,197,66,0.2)]"
           : "border-white/10 bg-black/40 hover:-translate-y-0.5 hover:border-gold/40 hover:bg-black/60"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-0`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden
@@ -52,14 +52,14 @@ export function OutcomeTile({
             style={{ backgroundColor: teamColor ?? "#94a3b8" }}
           />
           <span
-            className="truncate text-[11px] font-semibold leading-tight text-white"
+            className="truncate text-[12px] font-semibold leading-tight text-white md:text-[13px]"
             title={teamLine}
           >
             <span className="uppercase tracking-[0.25em] text-white/80">{teamCode}</span>
             <span className="text-white/60"> • {teamName}</span>
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {isFavourite && (
             <span className={`${pillBase} border-emerald-400/60 bg-emerald-500/10 text-emerald-100`}>
               Fav
@@ -74,7 +74,7 @@ export function OutcomeTile({
       </div>
 
       <p
-        className="truncate text-[10px] text-white/45"
+        className="truncate text-[11px] text-white/55 md:text-[12px]"
         style={{
           display: "-webkit-box",
           WebkitLineClamp: 1,

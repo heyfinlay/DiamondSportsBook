@@ -23,10 +23,10 @@ const WalletSummary = () => {
   const pending = loading || isLoading;
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2">
-      <div className="text-left">
+    <div className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2">
+      <div className="min-w-0 text-left">
         <p className="text-[0.6rem] uppercase tracking-[0.35em] text-white/60">Wallet</p>
-        <p className="text-lg font-semibold text-white">
+        <p className="truncate text-lg font-semibold text-white">
           {pending
             ? "…"
             : `${currencySymbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
@@ -34,7 +34,7 @@ const WalletSummary = () => {
       </div>
       <Link
         to="/account"
-        className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/80 transition hover:border-gold/60 hover:text-white"
+        className="shrink-0 rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/80 transition hover:border-gold/60 hover:text-white"
       >
         Manage
       </Link>
