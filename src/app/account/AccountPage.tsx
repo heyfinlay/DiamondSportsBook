@@ -301,31 +301,37 @@ const AccountPage = () => {
                 <span className="text-xs uppercase tracking-[0.3em] text-white/40">Syncing…</span>
               )}
             </header>
-            <div className="mt-5 space-y-3">
-              {transactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-semibold capitalize text-white">{tx.kind}</p>
-                    <p className="text-xs text-white/60">
-                      {new Date(tx.created_at).toLocaleString()}
+
+            <details className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-4" open>
+              <summary className="cursor-pointer list-none text-xs uppercase tracking-[0.3em] text-white/60">
+                Expand / collapse ledger
+              </summary>
+              <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
+                {transactions.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold capitalize text-white">{tx.kind}</p>
+                      <p className="text-xs text-white/60">
+                        {new Date(tx.created_at).toLocaleString()}
+                      </p>
+                      {renderTransactionNote(tx.meta)}
+                    </div>
+                    <p className={`text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`}>
+                      {tx.amount > 0 ? "+" : ""}
+                      {`${currencySymbol}${tx.amount.toFixed(2)}`}
                     </p>
-                    {renderTransactionNote(tx.meta)}
                   </div>
-                  <p className={`text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`}>
-                    {tx.amount > 0 ? "+" : ""}
-                    {`${currencySymbol}${tx.amount.toFixed(2)}`}
+                ))}
+                {!transactions.length && !transactionsQuery.isLoading && (
+                  <p className="text-sm text-white/60">
+                    No transactions yet — request a deposit or place a wager to see ledger entries.
                   </p>
-                </div>
-              ))}
-              {!transactions.length && !transactionsQuery.isLoading && (
-                <p className="text-sm text-white/60">
-                  No transactions yet — request a deposit or place a wager to see ledger entries.
-                </p>
-              )}
-            </div>
+                )}
+              </div>
+            </details>
           </article>
 
           <article className="rounded-3xl border border-white/10 bg-black/30 p-6">

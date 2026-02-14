@@ -103,16 +103,13 @@ const RootLayout = () => {
                 </NavLink>
               ))}
             </div>
-            <div className="mt-auto">
-              <WalletSummary />
-            </div>
           </aside>
 
           <div className="flex-1">
-            <header className="flex items-center justify-between border-b border-white/10 bg-black/60 px-6 py-4 backdrop-blur lg:hidden">
+            <header className="flex items-center justify-between border-b border-white/10 bg-black/60 px-6 py-4 backdrop-blur">
               <button
                 type="button"
-                className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.25em] text-white"
+                className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.25em] text-white lg:hidden"
                 onClick={() => setMobileOpen(true)}
               >
                 Menu
@@ -120,7 +117,12 @@ const RootLayout = () => {
               <div className="text-sm font-semibold tracking-wide">
                 DBGP <span className="text-brand">v2</span>
               </div>
-              <WalletSummary />
+              <div className="hidden lg:block">
+                <WalletSummary />
+              </div>
+              <div className="lg:hidden">
+                <WalletSummary />
+              </div>
             </header>
 
             {mobileOpen && (

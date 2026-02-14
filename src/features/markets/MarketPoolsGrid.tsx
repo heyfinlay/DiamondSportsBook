@@ -21,7 +21,7 @@ export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }: Market
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4">
         {pools.map((pool) => {
           const { favouriteId, bestPayoutId } = getOutcomeRankings(pool.outcomes);
 
@@ -49,9 +49,10 @@ export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }: Market
               status={pool.status}
               totalPool={pool.totalStake}
               commission={pool.rakePercent}
-              outcomes={outcomes}
+              outcomes={outcomes.slice(0, 6)}
               onViewDetails={() => onSelectPool?.(pool.id)}
               actionLabel="View market"
+              subtitle="Leading outcomes"
             />
           );
         })}

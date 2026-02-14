@@ -44,9 +44,9 @@ export function MarketCard({
   subtitle
 }: MarketCardProps) {
   const gridCols =
-    outcomes.length === 2
-      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-2"
-      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+    outcomes.length <= 3
+      ? "grid-cols-1 sm:grid-cols-3"
+      : "grid-cols-2 md:grid-cols-3 lg:grid-cols-6";
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/60 p-4 shadow-[0_0_36px_rgba(2,6,23,0.55)] transition hover:border-gold/30 hover:shadow-[0_0_50px_rgba(245,197,66,0.12)]">
