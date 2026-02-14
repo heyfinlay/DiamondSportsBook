@@ -229,176 +229,210 @@ const AccountPage = () => {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
-        <form
-          onSubmit={handleDeposit}
-          className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white"
-        >
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Add {currencyLabelTitle}</p>
-          <h3 className="mt-2 text-xl font-semibold">Request Deposit</h3>
-          <p className="text-sm text-white/70">
-            Submit for manual approval. Credits appear once racing ops confirms.
-          </p>
-          <input
-            type="number"
-            min="1"
-            step="any"
-            inputMode="decimal"
-            className="mt-4 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white"
-            value={depositAmount}
-            onChange={(event) => setDepositAmount(event.target.value)}
-          />
-          <button
-            type="submit"
-            className="mt-4 w-full rounded-2xl bg-white/90 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black transition hover:bg-white hover:shadow-[0_0_18px_rgba(255,255,255,0.2)] disabled:opacity-40"
-            disabled={depositMutation.isPending}
-          >
-            {depositMutation.isPending ? "Requesting…" : "Request Deposit"}
-          </button>
-        </form>
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white">
+            <p className="text-xs uppercase tracking-[0.35em] text-gold-soft">Wallet Actions</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <form onSubmit={handleDeposit} className="rounded-2xl border border-white/10 bg-black/40 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-white/50">Add {currencyLabelTitle}</p>
+                <h3 className="mt-2 text-lg font-semibold">Request Deposit</h3>
+                <p className="text-sm text-white/70">Manual approval required.</p>
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  inputMode="decimal"
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-2 text-white"
+                  value={depositAmount}
+                  onChange={(event) => setDepositAmount(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="mt-3 w-full rounded-2xl bg-white/90 py-2.5 text-xs font-semibold uppercase tracking-[0.3em] text-black transition hover:bg-white hover:shadow-[0_0_18px_rgba(255,255,255,0.2)] disabled:opacity-40"
+                  disabled={depositMutation.isPending}
+                >
+                  {depositMutation.isPending ? "Requesting…" : "Request Deposit"}
+                </button>
+              </form>
 
-        <form
-          onSubmit={handleWithdrawal}
-          className="rounded-3xl border border-white/10 bg-black/40 p-6 text-white"
-        >
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Cash Out</p>
-          <h3 className="mt-2 text-xl font-semibold">Request Withdrawal</h3>
-          <p className="text-sm text-white/70">Funds are held until administrators complete review.</p>
-          <input
-            type="number"
-            min="1"
-            step="any"
-            inputMode="decimal"
-            className="mt-4 w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-white"
-            value={withdrawAmount}
-            onChange={(event) => setWithdrawAmount(event.target.value)}
-          />
-          <button
-            type="submit"
-            className="mt-4 w-full rounded-2xl bg-brand py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black transition hover:shadow-[0_0_18px_rgba(16,185,129,0.25)] disabled:opacity-40"
-            disabled={withdrawalMutation.isPending}
-          >
-            {withdrawalMutation.isPending ? "Submitting…" : "Request Withdrawal"}
-          </button>
-        </form>
+              <form onSubmit={handleWithdrawal} className="rounded-2xl border border-white/10 bg-black/60 p-4">
+                <p className="text-xs uppercase tracking-[0.3em] text-white/50">Cash Out</p>
+                <h3 className="mt-2 text-lg font-semibold">Request Withdrawal</h3>
+                <p className="text-sm text-white/70">Funds are held until review.</p>
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  inputMode="decimal"
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/70 px-4 py-2 text-white"
+                  value={withdrawAmount}
+                  onChange={(event) => setWithdrawAmount(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="mt-3 w-full rounded-2xl bg-brand py-2.5 text-xs font-semibold uppercase tracking-[0.3em] text-black transition hover:shadow-[0_0_18px_rgba(16,185,129,0.25)] disabled:opacity-40"
+                  disabled={withdrawalMutation.isPending}
+                >
+                  {withdrawalMutation.isPending ? "Submitting…" : "Request Withdrawal"}
+                </button>
+              </form>
+            </div>
+          </div>
 
-        <div className="rounded-3xl border border-dashed border-white/15 bg-transparent p-6 text-sm text-white/70">
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Quick Help</p>
-          <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>Deposits/withdrawals require approval for compliance.</li>
-            <li>Wagers debit {currencyLabel} instantly and appear in the ledger.</li>
-            <li>Need help? Ping race control on the admin channel.</li>
-          </ul>
+          <div className="rounded-3xl border border-dashed border-white/15 bg-transparent p-6 text-sm text-white/70">
+            <p className="text-xs uppercase tracking-[0.35em] text-white/50">Quick Help</p>
+            <ul className="mt-3 list-disc space-y-2 pl-5">
+              <li>Deposits/withdrawals require approval for compliance.</li>
+              <li>Wagers debit {currencyLabel} instantly and appear in the ledger.</li>
+              <li>Need help? Ping race control on the admin channel.</li>
+            </ul>
+          </div>
         </div>
-      </div>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <article className="rounded-3xl border border-white/10 bg-black/30 p-6">
-          <header className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/50">Ledger</p>
-              <h2 className="text-xl font-semibold text-white">Recent Transactions</h2>
-            </div>
-            {transactionsQuery.isLoading && (
-              <span className="text-xs uppercase tracking-[0.3em] text-white/40">Syncing…</span>
-            )}
-          </header>
-          <div className="mt-5 space-y-3">
-            {transactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-semibold capitalize text-white">{tx.kind}</p>
-                  <p className="text-xs text-white/60">
-                    {new Date(tx.created_at).toLocaleString()}
-                  </p>
-                  {renderTransactionNote(tx.meta)}
-                </div>
-                <p className={`text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`}>
-                  {tx.amount > 0 ? "+" : ""}
-                  {`${currencySymbol}${tx.amount.toFixed(2)}`}
-                </p>
+        <div className="space-y-6">
+          <article className="rounded-3xl border border-white/10 bg-black/30 p-6">
+            <header className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/50">Ledger</p>
+                <h2 className="text-xl font-semibold text-white">Recent Transactions</h2>
               </div>
-            ))}
-            {!transactions.length && !transactionsQuery.isLoading && (
-              <p className="text-sm text-white/60">
-                No transactions yet — request a deposit or place a wager to see ledger entries.
-              </p>
-            )}
-          </div>
-        </article>
-
-        <article className="rounded-3xl border border-white/10 bg-black/30 p-6">
-          <header className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-white/50">Activity</p>
-              <h2 className="text-xl font-semibold text-white">My Wagers</h2>
-            </div>
-            {wagersQuery.isLoading && (
-              <span className="text-xs uppercase tracking-[0.3em] text-white/40">Loading…</span>
-            )}
-          </header>
-          <div className="mt-5 space-y-3">
-            {wagers.map((wager) => (
-              <div
-                key={wager.id}
-                className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-white"
-              >
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50">
-                  <span className="capitalize">{wager.market_type.replace(/_/g, " ")}</span>
-                  <span className={`rounded-full px-2 py-0.5 ${
-                    wager.status === "won" ? "bg-emerald-500/20 text-emerald-300" :
-                    wager.status === "lost" ? "bg-red-500/20 text-red-300" :
-                    wager.status === "refunded" ? "bg-yellow-500/20 text-yellow-300" :
-                    "bg-blue-500/20 text-blue-300"
-                  }`}>
-                    {formatStatus(wager.status)}
-                  </span>
-                </div>
-                <p className="mt-2 text-base font-semibold">
-                  {`${currencySymbol}${wager.stake.toFixed(2)}`} on {wager.outcome_label}
-                </p>
-                <p className="text-xs text-white/60">
-                  {wager.event_title}
-                </p>
-                <p className="mt-1 text-xs text-white/60">
-                  {wager.market_name}
-                </p>
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="text-xs text-white/60">
-                    <span>Odds {wager.effective_odds.toFixed(2)}</span>
-                    <span className="mx-1">·</span>
-                    {wager.status === "won" && wager.settled_payout ? (
-                      <span className="font-semibold text-emerald-300">
-                        Final Payout {`${currencySymbol}${wager.settled_payout.toFixed(2)}`}
-                      </span>
-                    ) : wager.status === "void_refund" && wager.settled_payout ? (
-                      <span className="font-semibold text-yellow-300">
-                        Refunded {`${currencySymbol}${wager.settled_payout.toFixed(2)}`}
-                      </span>
-                    ) : (
-                      <span>Potential {`${currencySymbol}${wager.estimated_payout.toFixed(2)}`}</span>
-                    )}
+              {transactionsQuery.isLoading && (
+                <span className="text-xs uppercase tracking-[0.3em] text-white/40">Syncing…</span>
+              )}
+            </header>
+            <div className="mt-5 space-y-3">
+              {transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-semibold capitalize text-white">{tx.kind}</p>
+                    <p className="text-xs text-white/60">
+                      {new Date(tx.created_at).toLocaleString()}
+                    </p>
+                    {renderTransactionNote(tx.meta)}
                   </div>
-                  <a
-                    href={`/market/${wager.market_id}`}
-                    className="text-xs font-semibold uppercase tracking-[0.3em] text-brand transition hover:text-white"
-                  >
-                    View →
-                  </a>
+                  <p className={`text-lg font-semibold ${tx.amount >= 0 ? "text-emerald-300" : "text-white"}`}>
+                    {tx.amount > 0 ? "+" : ""}
+                    {`${currencySymbol}${tx.amount.toFixed(2)}`}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-white/50">
-                  {new Date(wager.created_at).toLocaleString()}
+              ))}
+              {!transactions.length && !transactionsQuery.isLoading && (
+                <p className="text-sm text-white/60">
+                  No transactions yet — request a deposit or place a wager to see ledger entries.
                 </p>
+              )}
+            </div>
+          </article>
+
+          <article className="rounded-3xl border border-white/10 bg-black/30 p-6">
+            <header className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/50">Activity</p>
+                <h2 className="text-xl font-semibold text-white">My Wagers</h2>
               </div>
-            ))}
-            {!wagers.length && !wagersQuery.isLoading && (
-              <p className="text-sm text-white/60">No wagers yet. Select a market to place your first bet.</p>
-            )}
+              {wagersQuery.isLoading && (
+                <span className="text-xs uppercase tracking-[0.3em] text-white/40">Loading…</span>
+              )}
+            </header>
+            <div className="mt-5 space-y-3">
+              {wagers.map((wager) => (
+                <div
+                  key={wager.id}
+                  className="rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-white"
+                >
+                  <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-white/50">
+                    <span className="capitalize">{wager.market_type.replace(/_/g, " ")}</span>
+                    <span className={`rounded-full px-2 py-0.5 ${
+                      wager.status === "won" ? "bg-emerald-500/20 text-emerald-300" :
+                      wager.status === "lost" ? "bg-red-500/20 text-red-300" :
+                      wager.status === "refunded" ? "bg-yellow-500/20 text-yellow-300" :
+                      "bg-blue-500/20 text-blue-300"
+                    }`}>
+                      {formatStatus(wager.status)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-base font-semibold">
+                    {`${currencySymbol}${wager.stake.toFixed(2)}`} on {wager.outcome_label}
+                  </p>
+                  <p className="text-xs text-white/60">
+                    {wager.event_title}
+                  </p>
+                  <p className="mt-1 text-xs text-white/60">
+                    {wager.market_name}
+                  </p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="text-xs text-white/60">
+                      <span>Odds {wager.effective_odds.toFixed(2)}</span>
+                      <span className="mx-1">·</span>
+                      {wager.status === "won" && wager.settled_payout ? (
+                        <span className="font-semibold text-emerald-300">
+                          Final Payout {`${currencySymbol}${wager.settled_payout.toFixed(2)}`}
+                        </span>
+                      ) : wager.status === "void_refund" && wager.settled_payout ? (
+                        <span className="font-semibold text-yellow-300">
+                          Refunded {`${currencySymbol}${wager.settled_payout.toFixed(2)}`}
+                        </span>
+                      ) : (
+                        <span>Potential {`${currencySymbol}${wager.estimated_payout.toFixed(2)}`}</span>
+                      )}
+                    </div>
+                    <a
+                      href={`/market/${wager.market_id}`}
+                      className="text-xs font-semibold uppercase tracking-[0.3em] text-brand transition hover:text-white"
+                    >
+                      View →
+                    </a>
+                  </div>
+                  <p className="mt-1 text-xs text-white/50">
+                    {new Date(wager.created_at).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+              {!wagers.length && !wagersQuery.isLoading && (
+                <p className="text-sm text-white/60">No wagers yet. Select a market to place your first bet.</p>
+              )}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-black/20 p-6">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-gold-soft">Wallet Activity</p>
+            <h2 className="text-xl font-semibold text-white">Recent movement</h2>
           </div>
-        </article>
+          <div className="text-xs text-white/50">Auto-refreshes with live wallet updates.</div>
+        </header>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Last transaction</p>
+            <p className="mt-1 text-sm font-semibold">
+              {transactions[0] ? `${transactions[0].kind}` : "—"}
+            </p>
+            <p className="text-xs text-white/50">
+              {transactions[0] ? new Date(transactions[0].created_at).toLocaleString() : "No activity yet"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Net change</p>
+            <p className="mt-1 text-lg font-semibold">
+              {transactions.length
+                ? `${currencySymbol}${transactions.reduce((sum, tx) => sum + tx.amount, 0).toFixed(2)}`
+                : "—"}
+            </p>
+            <p className="text-xs text-white/50">All time</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Pending requests</p>
+            <p className="mt-1 text-lg font-semibold">{pendingDeposits.length + pendingWithdrawals.length}</p>
+            <p className="text-xs text-white/50">Awaiting approval</p>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-black/20 p-6">
@@ -458,6 +492,12 @@ const RequestList = ({
   }>;
   isLoading: boolean;
 }) => {
+  const statusTone = (status: string) => {
+    if (status.includes("approved") || status.includes("processed")) return "bg-emerald-500/15 text-emerald-300";
+    if (status.includes("rejected") || status.includes("failed")) return "bg-red-500/15 text-red-300";
+    return "bg-gold/20 text-gold-soft";
+  };
+
   return (
     <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
       <div className="flex items-center justify-between">
@@ -466,27 +506,27 @@ const RequestList = ({
           <span className="text-xs uppercase tracking-[0.3em] text-white/40">Loading…</span>
         )}
       </div>
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 space-y-2">
         {entries.map((entry) => (
           <article
             key={entry.id}
-            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white"
+            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-white"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-base font-semibold">{`${currencySymbol}${entry.amount.toFixed(2)}`}</p>
-              <span className="rounded-full border border-white/20 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-white/70">
+              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.2em] ${statusTone(entry.status)}`}>
                 {formatStatus(entry.status)}
               </span>
             </div>
-            <p className="text-xs text-white/60">
-              Requested {new Date(entry.requested_at).toLocaleString()}
-            </p>
-            {entry.resolved_at && (
-              <p className="text-xs text-emerald-300">
-                Cleared {new Date(entry.resolved_at).toLocaleString()}
-                {entry.resolved_by && <> · by {formatUserId(entry.resolved_by)}</>}
-              </p>
-            )}
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/60">
+              <span>Requested {new Date(entry.requested_at).toLocaleString()}</span>
+              {entry.resolved_at && (
+                <span className="text-emerald-300">
+                  Cleared {new Date(entry.resolved_at).toLocaleString()}
+                  {entry.resolved_by && <> · {formatUserId(entry.resolved_by)}</>}
+                </span>
+              )}
+            </div>
           </article>
         ))}
         {!entries.length && !isLoading && (
