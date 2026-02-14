@@ -38,10 +38,11 @@ export function OutcomeTile({
     <button
       type="button"
       onClick={() => onSelect?.()}
-      className={`group flex h-full min-h-[104px] cursor-pointer flex-col justify-between rounded-lg border px-3 py-2 text-left transition md:min-h-[120px] ${
+      style={{ "--team-color": teamColor ?? "#94a3b8" } as React.CSSProperties}
+      className={`outcome-tile group flex h-full min-h-[112px] cursor-pointer flex-col justify-between rounded-lg border px-4 py-3 text-left transition md:min-h-[128px] ${
         isSelected
           ? "border-gold/70 bg-black/60 shadow-[0_0_0_1px_rgba(245,197,66,0.2)]"
-          : "border-white/10 bg-black/40 hover:-translate-y-0.5 hover:border-gold/40 hover:bg-black/60"
+          : "border-white/10 bg-black/40 hover:-translate-y-0.5 hover:bg-black/60"
       } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-0`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">

@@ -91,3 +91,12 @@ button, input, select, textarea {
   0% { transform: scale(0.4); opacity: 0.8; }
   100% { transform: scale(1.4); opacity: 0; }
 }
+
+.outcome-tile {
+  --team-color: #94a3b8;
+}
+
+.outcome-tile:hover {
+  border-color: color-mix(in srgb, var(--team-color) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--team-color) 45%, transparent);
+}
