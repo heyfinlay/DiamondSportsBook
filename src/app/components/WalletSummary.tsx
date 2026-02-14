@@ -34,7 +34,7 @@ const WalletSummary = () => {
       </div>
       <Link
         to="/account"
-        className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/80 transition hover:border-white/40"
+        className="rounded-full border border-white/20 px-3 py-1 text-xs uppercase tracking-[0.3em] text-white/80 transition hover:border-gold/60 hover:text-white"
       >
         Manage
       </Link>

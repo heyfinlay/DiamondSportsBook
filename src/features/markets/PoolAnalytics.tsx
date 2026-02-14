@@ -106,54 +106,56 @@ function LiveBetsAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
         ))}
       </div>
 
-      <div className="mt-4 space-y-2">
-        {liveBetsForPool.length === 0 ? (
-          <p className="text-sm text-white/60">No live bets yet for this filter.</p>
-        ) : (
-          liveBetsForPool.map((bet) => (
-            <article
-              key={bet.id}
-              className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-sm font-semibold text-white"
-                  style={
-                    bet.teamColor
-                      ? { backgroundColor: bet.teamColor, color: "#050505" }
-                      : { backgroundColor: "rgba(15,23,42,0.6)" }
-                  }
-                >
-                  {getInitials(bet.teamName)}
+      <div className="mt-4 live-bets-stream">
+        <div className="space-y-2">
+          {liveBetsForPool.length === 0 ? (
+            <p className="text-sm text-white/60">No live bets yet for this filter.</p>
+          ) : (
+            liveBetsForPool.map((bet) => (
+              <article
+                key={bet.id}
+                className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-2 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-xs font-semibold text-white"
+                    style={
+                      bet.teamColor
+                        ? { backgroundColor: bet.teamColor, color: "#050505" }
+                        : { backgroundColor: "rgba(15,23,42,0.6)" }
+                    }
+                  >
+                    {getInitials(bet.teamName)}
+                  </div>
+                  <div>
+                    <OutcomeIdentity
+                      teamName={bet.teamName}
+                      driverName={bet.driverName}
+                      teamColor={bet.teamColor}
+                      hideSwatch
+                      primaryClassName="text-xs font-semibold text-white"
+                      secondaryClassName="text-[10px] text-white/60"
+                    />
+                    <p className="text-[10px] text-white/40">
+                      Bet #{bet.id.slice(0, 6)} · {formatRelativeTime(bet.placedAt)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <OutcomeIdentity
-                    teamName={bet.teamName}
-                    driverName={bet.driverName}
-                    teamColor={bet.teamColor}
-                    hideSwatch
-                    primaryClassName="text-sm font-semibold text-white"
-                    secondaryClassName="text-xs text-white/60"
-                  />
-                  <p className="text-[11px] text-white/40">
-                    Bet #{bet.id.slice(0, 8)} · {formatRelativeTime(bet.placedAt)}
-                  </p>
-                </div>
-              </div>
 
-              <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 sm:max-w-xs">
-                <div>
-                  <p className="text-xs text-white/50">Amount</p>
-                  <p className="font-semibold text-white">{formatCurrency(bet.amount)}</p>
+                <div className="grid flex-1 grid-cols-2 gap-3 text-xs text-white/80 sm:max-w-xs">
+                  <div>
+                    <p className="text-xs text-white/50">Amount</p>
+                    <p className="font-semibold text-white">{formatCurrency(bet.amount)}</p>
+                  </div>
+                  <div className="text-right sm:text-left">
+                    <p className="text-xs text-white/50">Odds</p>
+                    <p className="font-semibold text-white">{formatOdds(bet.oddsAtPlacement)}</p>
+                  </div>
                 </div>
-                <div className="text-right sm:text-left">
-                  <p className="text-xs text-white/50">Odds at placement</p>
-                  <p className="font-semibold text-white">{formatOdds(bet.oddsAtPlacement)}</p>
-                </div>
-              </div>
-            </article>
-          ))
-        )}
+              </article>
+            ))
+          )}
+        </div>
       </div>
     </section>
   );
@@ -350,53 +352,55 @@ function LegacyPoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
             ))}
           </div>
 
-          <div className="space-y-2">
-            {liveBetsForPool.length === 0 && (
-              <p className="text-sm text-white/60">No live bets yet for this filter.</p>
-            )}
+          <div className="live-bets-stream">
+            <div className="space-y-2">
+              {liveBetsForPool.length === 0 && (
+                <p className="text-sm text-white/60">No live bets yet for this filter.</p>
+              )}
 
-            {liveBetsForPool.map((bet) => (
-              <div
-                key={bet.id}
-                className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white"
-                    style={
-                      bet.teamColor
-                        ? { backgroundColor: bet.teamColor, color: "#050505" }
-                        : { backgroundColor: "rgba(15,23,42,0.6)" }
-                    }
-                  >
-                    {getInitials(bet.teamName)}
+              {liveBetsForPool.map((bet) => (
+                <div
+                  key={bet.id}
+                  className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white"
+                      style={
+                        bet.teamColor
+                          ? { backgroundColor: bet.teamColor, color: "#050505" }
+                          : { backgroundColor: "rgba(15,23,42,0.6)" }
+                      }
+                    >
+                      {getInitials(bet.teamName)}
+                    </div>
+                    <OutcomeIdentity
+                      teamName={bet.teamName}
+                      driverName={bet.driverName}
+                      teamColor={bet.teamColor}
+                      hideSwatch
+                      primaryClassName="text-xs font-semibold text-white"
+                      secondaryClassName="text-[10px] text-white/60"
+                    />
                   </div>
-                  <OutcomeIdentity
-                    teamName={bet.teamName}
-                    driverName={bet.driverName}
-                    teamColor={bet.teamColor}
-                    hideSwatch
-                    primaryClassName="text-sm font-semibold text-white"
-                    secondaryClassName="text-xs text-white/60"
-                  />
-                </div>
 
-                <div className="grid flex-1 grid-cols-2 gap-3 text-sm text-white/80 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs text-white/50">Amount</p>
-                    <p className="font-semibold text-white">{formatCurrency(bet.amount)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-white/50">Odds at placement</p>
-                    <p className="font-semibold text-white">{formatOdds(bet.oddsAtPlacement)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-white/50">Placed</p>
-                    <p className="font-semibold text-white">{formatRelativeTime(bet.placedAt)}</p>
+                  <div className="grid flex-1 grid-cols-2 gap-3 text-xs text-white/80 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-white/50">Amount</p>
+                      <p className="font-semibold text-white">{formatCurrency(bet.amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/50">Odds</p>
+                      <p className="font-semibold text-white">{formatOdds(bet.oddsAtPlacement)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-white/50">Placed</p>
+                      <p className="font-semibold text-white">{formatRelativeTime(bet.placedAt)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

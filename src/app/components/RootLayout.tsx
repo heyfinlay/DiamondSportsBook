@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import WalletSummary from "./WalletSummary";
@@ -16,6 +17,7 @@ const navItems = [
 ];
 
 const RootLayout = () => {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const profileQuery = useProfile();
   const role = profileQuery.data?.role ?? "spectator";
   const canAdmin = role === "betting_admin" || role === "sportsbook_admin" || role === "super_admin";
@@ -48,7 +50,7 @@ const RootLayout = () => {
   const renderLiveNavItem = () => {
     if (liveSessionQuery.isLoading || liveSessionQuery.isError) {
       return (
-        <span className="rounded-full px-4 py-2 text-white/50">Live</span>
+        <span className="rounded-xl px-4 py-2 text-white/50">Live</span>
       );
     }
 
@@ -59,7 +61,7 @@ const RootLayout = () => {
           to={`/live/${liveSessionQuery.data.id}`}
           className={({ isActive }) =>
             cn(
-              "rounded-full px-4 py-2 transition",
+              "rounded-xl px-4 py-2 transition",
               isActive ? "bg-brand text-black" : "text-white/70 hover:text-white"
             )
           }
@@ -70,19 +72,19 @@ const RootLayout = () => {
     }
 
     return (
-      <span className="rounded-full px-4 py-2 text-white/40 opacity-60">Live</span>
+      <span className="rounded-xl px-4 py-2 text-white/40 opacity-60">Live</span>
     );
   };
 
   return (
     <ToastProvider>
       <div className="min-h-screen bg-neutral-950 text-white">
-        <header className="border-b border-white/10 bg-black/60 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="flex">
+          <aside className="hidden min-h-screen w-64 flex-col border-r border-white/10 bg-black/70 px-5 py-6 lg:flex">
             <div className="text-lg font-semibold tracking-wide">
               DBGP <span className="text-brand">v2</span>
             </div>
-            <nav className="flex flex-wrap items-center gap-3 text-sm font-medium">
+            <div className="mt-6 flex flex-col gap-2 text-sm font-medium">
               {renderLiveNavItem()}
               {filteredNav.map((item) => (
                 <NavLink
@@ -90,7 +92,7 @@ const RootLayout = () => {
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      "rounded-full px-4 py-2 transition",
+                      "rounded-xl px-4 py-2 transition",
                       isActive
                         ? "bg-brand text-black"
                         : "text-white/70 hover:text-white"
@@ -100,13 +102,77 @@ const RootLayout = () => {
                   {item.label}
                 </NavLink>
               ))}
-            </nav>
-            <WalletSummary />
+            </div>
+            <div className="mt-auto">
+              <WalletSummary />
+            </div>
+          </aside>
+
+          <div className="flex-1">
+            <header className="flex items-center justify-between border-b border-white/10 bg-black/60 px-6 py-4 backdrop-blur lg:hidden">
+              <button
+                type="button"
+                className="rounded-full border border-white/10 px-3 py-2 text-xs uppercase tracking-[0.25em] text-white"
+                onClick={() => setMobileOpen(true)}
+              >
+                Menu
+              </button>
+              <div className="text-sm font-semibold tracking-wide">
+                DBGP <span className="text-brand">v2</span>
+              </div>
+              <WalletSummary />
+            </header>
+
+            {mobileOpen && (
+              <div className="fixed inset-0 z-50 bg-black/70 lg:hidden" onClick={() => setMobileOpen(false)} />
+            )}
+            <div
+              className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-white/10 bg-black/90 px-5 py-6 transition lg:hidden ${
+                mobileOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold tracking-wide">
+                  DBGP <span className="text-brand">v2</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-full border border-white/10 px-2 py-1 text-xs"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-6 flex flex-col gap-2 text-sm font-medium">
+                {renderLiveNavItem()}
+                {filteredNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "rounded-xl px-4 py-2 transition",
+                        isActive
+                          ? "bg-brand text-black"
+                          : "text-white/70 hover:text-white"
+                      )
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+              <div className="mt-6">
+                <WalletSummary />
+              </div>
+            </div>
+
+            <main className="mx-auto max-w-6xl px-6 py-8">
+              <Outlet />
+            </main>
           </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-6 py-8">
-          <Outlet />
-        </main>
+        </div>
         <Betslip />
         <CharacterSetupGate />
       </div>

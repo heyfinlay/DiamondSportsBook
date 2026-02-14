@@ -88,13 +88,12 @@ export function MarketCard({
         ))}
       </div>
 
-      <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-        <span>Commission: {commission.toFixed(1)}%</span>
+      <div className="mt-4 flex items-center justify-end text-xs text-slate-400">
         {onViewDetails ? (
           <button
             type="button"
             onClick={() => onViewDetails?.(id)}
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200 transition hover:text-white"
+            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-gold-soft transition hover:text-white"
           >
             {actionLabel} →
           </button>

@@ -9,8 +9,12 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#1e40ff",
-          foreground: "#f5f7ff"
+          DEFAULT: "#10b981",
+          foreground: "#042f1f"
+        },
+        gold: {
+          DEFAULT: "#f5c542",
+          soft: "#f9e7b3"
         },
         neutral: {
           950: "#05060a"

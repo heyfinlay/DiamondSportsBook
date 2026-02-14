@@ -54,3 +54,17 @@ button, input, select, textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.5);
 }
+
+.live-bets-stream {
+  max-height: 320px;
+  overflow: hidden;
+}
+
+.live-bets-stream > div {
+  animation: liveScroll 18s linear infinite;
+}
+
+@keyframes liveScroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-35%); }
+}
