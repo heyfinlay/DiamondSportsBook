@@ -68,3 +68,26 @@ button, input, select, textarea {
   0% { transform: translateY(0); }
   100% { transform: translateY(-35%); }
 }
+
+.live-pulse {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.9);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+}
+
+.live-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  animation: pulseRing 1.8s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 0; }
+}

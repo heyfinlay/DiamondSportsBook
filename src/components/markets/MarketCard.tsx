@@ -63,6 +63,7 @@ export function MarketCard({
             <span
               className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[status]}`}
             >
+              <span className="live-pulse" aria-hidden="true" />
               {status.replace("_", " ")}
             </span>
           ) : null}
