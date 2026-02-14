@@ -161,6 +161,12 @@ const AccountPage = () => {
   const withdrawalEntries = withdrawalsQuery.data ?? [];
   const wagers = wagersQuery.data ?? [];
 
+  const pendingDeposits = depositEntries.filter((entry) => entry.status !== "approved");
+  const pendingWithdrawals = withdrawalEntries.filter((entry) => entry.status !== "processed");
+  const totalWagers = wagers.length;
+  const totalWon = wagers.filter((wager) => wager.status === "won").length;
+  const totalLost = wagers.filter((wager) => wager.status === "lost").length;
+
   const balanceDisplay = useMemo(() => {
     if (isWalletLoading) return "…";
     return `${currencySymbol}${currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -169,15 +175,16 @@ const AccountPage = () => {
   return (
     <div className="space-y-8">
       <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-black/40 p-6 shadow-lg shadow-black/40">
-        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Wallet</p>
+        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Dashboard</p>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-white">Account</h1>
+            <h1 className="text-3xl font-semibold text-white">Account Overview</h1>
+            <p className="text-sm text-white/60">Track your balance, wagers, and requests in one place.</p>
           </div>
           <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
             <Link
               to="/account/settings"
-              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-white/60"
+              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:border-emerald-400/60 hover:text-white"
             >
               Account settings
             </Link>
@@ -203,6 +210,25 @@ const AccountPage = () => {
         </div>
       )}
 
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Pending deposits</p>
+          <p className="mt-1 text-lg font-semibold">{pendingDeposits.length}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Pending withdrawals</p>
+          <p className="mt-1 text-lg font-semibold">{pendingWithdrawals.length}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total wagers</p>
+          <p className="mt-1 text-lg font-semibold">{totalWagers}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">Win / Loss</p>
+          <p className="mt-1 text-lg font-semibold">{totalWon} / {totalLost}</p>
+        </div>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-[repeat(3,minmax(0,1fr))]">
         <form
           onSubmit={handleDeposit}
@@ -224,7 +250,7 @@ const AccountPage = () => {
           />
           <button
             type="submit"
-            className="mt-4 w-full rounded-2xl bg-white/90 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+            className="mt-4 w-full rounded-2xl bg-white/90 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black transition hover:bg-white hover:shadow-[0_0_18px_rgba(255,255,255,0.2)] disabled:opacity-40"
             disabled={depositMutation.isPending}
           >
             {depositMutation.isPending ? "Requesting…" : "Request Deposit"}
@@ -249,7 +275,7 @@ const AccountPage = () => {
           />
           <button
             type="submit"
-            className="mt-4 w-full rounded-2xl bg-brand py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-40"
+            className="mt-4 w-full rounded-2xl bg-brand py-3 text-sm font-semibold uppercase tracking-[0.3em] text-black transition hover:shadow-[0_0_18px_rgba(16,185,129,0.25)] disabled:opacity-40"
             disabled={withdrawalMutation.isPending}
           >
             {withdrawalMutation.isPending ? "Submitting…" : "Request Withdrawal"}
@@ -257,10 +283,10 @@ const AccountPage = () => {
         </form>
 
         <div className="rounded-3xl border border-dashed border-white/15 bg-transparent p-6 text-sm text-white/70">
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Heads up</p>
+          <p className="text-xs uppercase tracking-[0.35em] text-white/50">Quick Help</p>
           <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>Deposits/withdrawals require marshal approval for compliance.</li>
-            <li>Wagers immediately debit {currencyLabel} and appear in the ledger.</li>
+            <li>Deposits/withdrawals require approval for compliance.</li>
+            <li>Wagers debit {currencyLabel} instantly and appear in the ledger.</li>
             <li>Need help? Ping race control on the admin channel.</li>
           </ul>
         </div>

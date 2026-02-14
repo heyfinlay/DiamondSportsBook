@@ -49,7 +49,7 @@ export function MarketCard({
       : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
 
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4 shadow-[0_0_30px_rgba(3,7,18,0.45)]">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4 shadow-[0_0_40px_rgba(2,6,23,0.55)] transition hover:border-emerald-400/30 hover:shadow-[0_0_50px_rgba(16,185,129,0.15)]">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           {subtitle ? (

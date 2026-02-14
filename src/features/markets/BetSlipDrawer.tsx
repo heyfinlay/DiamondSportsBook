@@ -132,14 +132,17 @@ export function BetSlipDrawer({
         <div className="flex h-full flex-col overflow-hidden px-5 py-4 text-slate-50">
           <header className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Bet Slip</p>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Place Wager</p>
               <p className="text-lg font-semibold text-white">{pool.title}</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                Step 1 · Select outcome → Step 2 · Set stake → Step 3 · Confirm
+              </p>
             </div>
             <button
               type="button"
               onClick={onClose}
               ref={closeButtonRef}
-              className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200 transition hover:border-slate-500"
+              className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200 transition hover:border-emerald-400/60 hover:text-white"
             >
               X
             </button>
@@ -188,7 +191,7 @@ export function BetSlipDrawer({
                 </div>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Choose Outcome</p>
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Step 1 · Choose Outcome</p>
                   <div className="mt-2 max-h-52 space-y-2 overflow-y-auto pr-1">
                     {outcomes.map((outcome) => {
                       const isActive = outcome.id === selectedOutcomeId;
@@ -226,7 +229,8 @@ export function BetSlipDrawer({
                 </div>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <div className="flex flex-wrap gap-2">
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Step 2 · Set Stake</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {QUICK_STAKES.map((option) => (
                       <button
                         key={option.label}
@@ -250,11 +254,8 @@ export function BetSlipDrawer({
                         setStakeInput(digits);
                       }}
                       className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none ring-emerald-400/60 focus:border-emerald-400"
-                      placeholder="Enter stake"
+                      placeholder={`Minimum ${formatCurrency(MIN_STAKE)}`}
                     />
-                    <p className="text-[11px] text-slate-500">
-                      Minimum stake is {formatCurrency(MIN_STAKE)}.
-                    </p>
                     {!stakeValid && (
                       <p className="text-[11px] text-rose-300">
                         Minimum stake is {formatCurrency(MIN_STAKE)}.
@@ -264,7 +265,8 @@ export function BetSlipDrawer({
                 </div>
 
                 <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <div className="grid grid-cols-2 gap-3 text-sm text-slate-200">
+                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Step 3 · Review</p>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-200">
                     <div>
                       <p className="text-xs text-slate-400">Your odds</p>
                       <p className="text-lg font-semibold text-white">
@@ -278,7 +280,7 @@ export function BetSlipDrawer({
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-400">Estimated payout if this outcome wins</p>
+                      <p className="text-xs text-slate-400">Estimated payout</p>
                       <p className="text-lg font-semibold text-white">
                         {payoutEstimate ? formatCurrency(payoutEstimate.estimatedPayout) : "—"}
                       </p>
@@ -291,7 +293,7 @@ export function BetSlipDrawer({
                     </div>
                   </div>
                   <p className="mt-2 text-[11px] text-slate-500">
-                    Estimate factors in your stake, projected pool total, and rake. Final payout may change as markets move.
+                    Estimates update as the pool moves. Final payout depends on total pool size and rake.
                   </p>
                 </div>
               </div>
@@ -304,7 +306,7 @@ export function BetSlipDrawer({
           <div className="pt-2">
             <button
               type="button"
-              className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-slate-900 transition hover:bg-emerald-400 hover:shadow-[0_0_18px_rgba(16,185,129,0.35)] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
               disabled={!selectedOutcomeId || !stakeValid || poolClosed || isPlacing}
               onClick={handlePlaceBet}
             >
