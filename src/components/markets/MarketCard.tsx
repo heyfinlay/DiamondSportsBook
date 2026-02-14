@@ -5,9 +5,9 @@ import { OutcomeTile, type OutcomeTileProps } from "./OutcomeTile";
 
 const statusClasses: Record<PoolStatus, string> = {
   open: "bg-emerald-500/15 text-emerald-200 border-emerald-500/40",
-  closing_soon: "bg-amber-500/15 text-amber-100 border-amber-500/40",
+  closing_soon: "bg-gold/15 text-gold-soft border-gold/40",
   closed: "bg-slate-700/60 text-slate-200 border-slate-600/60",
-  settled: "bg-indigo-500/15 text-indigo-100 border-indigo-500/40"
+  settled: "bg-slate-600/60 text-slate-200 border-slate-500/60"
 };
 
 export interface MarketCardOutcome extends OutcomeTileProps {
@@ -49,14 +49,14 @@ export function MarketCard({
       : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
 
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4 shadow-[0_0_40px_rgba(2,6,23,0.55)] transition hover:border-emerald-400/30 hover:shadow-[0_0_50px_rgba(16,185,129,0.15)]">
+    <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/60 p-4 shadow-[0_0_36px_rgba(2,6,23,0.55)] transition hover:border-gold/30 hover:shadow-[0_0_50px_rgba(245,197,66,0.12)]">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           {subtitle ? (
-            <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200/80">{subtitle}</p>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-gold-soft">{subtitle}</p>
           ) : null}
-          <h3 className="truncate text-lg font-semibold leading-tight text-white">{name}</h3>
-          {closeTimeLabel ? <p className="text-xs text-slate-400">{closeTimeLabel}</p> : null}
+          <h3 className="truncate text-base font-semibold leading-tight text-white">{name}</h3>
+          {closeTimeLabel ? <p className="text-[11px] text-white/50">{closeTimeLabel}</p> : null}
         </div>
         <div className="flex flex-col items-end gap-2">
           {status ? (
@@ -66,10 +66,10 @@ export function MarketCard({
               {status.replace("_", " ")}
             </span>
           ) : null}
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-right text-xs font-semibold text-amber-100">
+          <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-right text-xs font-semibold text-gold-soft">
             <span className="leading-tight">
               <span className="block text-sm text-amber-50">{formatCurrency(totalPool)}</span>
-              <span className="block text-[10px] font-normal uppercase tracking-[0.25em] text-amber-200">
+              <span className="block text-[10px] font-normal uppercase tracking-[0.25em] text-gold-soft/80">
                 pool
               </span>
             </span>

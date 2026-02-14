@@ -38,11 +38,11 @@ export function OutcomeTile({
     <button
       type="button"
       onClick={() => onSelect?.()}
-      className={`group flex h-full min-h-[120px] cursor-pointer flex-col justify-between rounded-xl border px-3 py-2 text-left transition ${
+      className={`group flex h-full min-h-[96px] cursor-pointer flex-col justify-between rounded-lg border px-3 py-2 text-left transition ${
         isSelected
-          ? "border-amber-400/70 bg-slate-900 shadow-[0_0_0_1px_rgba(251,191,36,0.2)]"
-          : "border-slate-800/80 bg-slate-950/70 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-slate-900"
-      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0`}
+          ? "border-gold/70 bg-black/60 shadow-[0_0_0_1px_rgba(245,197,66,0.2)]"
+          : "border-white/10 bg-black/40 hover:-translate-y-0.5 hover:border-gold/40 hover:bg-black/60"
+      } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-0`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
@@ -52,11 +52,11 @@ export function OutcomeTile({
             style={{ backgroundColor: teamColor ?? "#94a3b8" }}
           />
           <span
-            className="truncate text-[12px] font-semibold leading-tight text-slate-50"
+            className="truncate text-[11px] font-semibold leading-tight text-white"
             title={teamLine}
           >
-            <span className="uppercase tracking-[0.25em]">{teamCode}</span>
-            <span className="text-slate-300"> • {teamName}</span>
+            <span className="uppercase tracking-[0.25em] text-white/80">{teamCode}</span>
+            <span className="text-white/60"> • {teamName}</span>
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -66,15 +66,15 @@ export function OutcomeTile({
             </span>
           )}
           {isBestPayout && (
-            <span className={`${pillBase} border-blue-400/60 bg-blue-500/10 text-blue-100`}>
-              Best
+            <span className={`${pillBase} border-gold/60 bg-gold/10 text-gold-soft`}>
+              Edge
             </span>
           )}
         </div>
       </div>
 
       <p
-        className="truncate text-[11px] text-slate-400"
+        className="truncate text-[10px] text-white/45"
         style={{
           display: "-webkit-box",
           WebkitLineClamp: 1,
@@ -88,10 +88,10 @@ export function OutcomeTile({
 
       <div className="mt-auto space-y-1.5">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-semibold text-white">{oddsLabel}</span>
-          <span className="text-[11px] text-slate-400">{poolShareLabel}</span>
+          <span className="text-[13px] font-semibold text-white">{oddsLabel}</span>
+          <span className="text-[10px] text-white/45">{poolShareLabel}</span>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/80">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
           <div
             className="h-full rounded-full"
             style={{
