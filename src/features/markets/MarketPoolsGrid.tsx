@@ -15,13 +15,18 @@ export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }: Market
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold leading-tight text-white md:text-3xl">Active Markets</h2>
-        <p className="text-xs text-white/60">
+        <div>
+          <p className="prismatic-kicker text-primary-dim">Live Market Vault</p>
+          <h2 className="mt-2 font-headline text-3xl font-extrabold uppercase tracking-[0.06em] text-white">
+            Prime Markets
+          </h2>
+        </div>
+        <p className="prismatic-kicker">
           {pools.length} pool{pools.length === 1 ? "" : "s"}
         </p>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {pools.map((pool) => {
           const { favouriteId, bestPayoutId } = getOutcomeRankings(pool.outcomes);
 
@@ -49,10 +54,10 @@ export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }: Market
               status={pool.status}
               totalPool={pool.totalStake}
               commission={pool.rakePercent}
-              outcomes={outcomes.slice(0, 6)}
+              outcomes={outcomes.slice(0, 4)}
               onViewDetails={() => onSelectPool?.(pool.id)}
-              actionLabel="View market"
-              subtitle="Leading outcomes"
+              actionLabel="Inspect"
+              subtitle={pool.status === "open" ? "Live Market" : "Vault Window"}
             />
           );
         })}

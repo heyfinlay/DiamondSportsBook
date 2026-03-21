@@ -1,13 +1,14 @@
 import React from "react";
+import { ArrowRight, Wallet2 } from "lucide-react";
 import { formatCurrency } from "../../features/markets/utils/format";
 import type { PoolStatus } from "../../features/markets/types";
 import { OutcomeTile, type OutcomeTileProps } from "./OutcomeTile";
 
 const statusClasses: Record<PoolStatus, string> = {
-  open: "bg-emerald-500/15 text-emerald-200 border-emerald-500/40",
-  closing_soon: "bg-gold/15 text-gold-soft border-gold/40",
-  closed: "bg-slate-700/60 text-slate-200 border-slate-600/60",
-  settled: "bg-slate-600/60 text-slate-200 border-slate-500/60"
+  open: "bg-primary-container text-on-primary border-primary-container/50",
+  closing_soon: "bg-surface-high text-primary-dim border-primary-dim/35",
+  closed: "bg-surface-highest text-on-subtle border-white/10",
+  settled: "bg-white/5 text-white border-white/10"
 };
 
 export interface MarketCardOutcome extends OutcomeTileProps {
@@ -40,65 +41,68 @@ export function MarketCard({
   selectedOutcomeId,
   onSelectOutcome,
   onViewDetails,
-  actionLabel = "View details",
+  actionLabel = "Inspect",
   subtitle
 }: MarketCardProps) {
-  const gridCols =
-    outcomes.length <= 3
-      ? "grid-cols-1 sm:grid-cols-3"
-      : "grid-cols-2 md:grid-cols-3 lg:grid-cols-6";
-
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/60 p-4 shadow-[0_0_36px_rgba(2,6,23,0.55)] transition hover:border-gold/30 hover:shadow-[0_0_50px_rgba(245,197,66,0.12)]">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          {subtitle ? (
-            <p className="text-[11px] uppercase tracking-[0.3em] text-gold-soft">{subtitle}</p>
-          ) : null}
-          <h3 className="truncate text-base font-semibold leading-tight text-white">{name}</h3>
-          {closeTimeLabel ? <p className="text-[11px] text-white/50">{closeTimeLabel}</p> : null}
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          {status ? (
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] ${statusClasses[status]}`}
-            >
-              <span className="live-pulse" aria-hidden="true" />
-              {status.replace("_", " ")}
-            </span>
-          ) : null}
-          <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-right text-xs font-semibold text-gold-soft">
-            <span className="leading-tight">
-              <span className="block text-sm text-amber-50">{formatCurrency(totalPool)}</span>
-              <span className="block text-[10px] font-normal uppercase tracking-[0.25em] text-gold-soft/80">
-                pool
+    <article className="prismatic-card flex h-full flex-col p-5">
+      <div className="relative z-10 flex h-full flex-col">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {subtitle ? <p className="prismatic-kicker text-primary-dim">{subtitle}</p> : null}
+            <h3 className="mt-3 line-clamp-2 font-headline text-[1.65rem] font-extrabold uppercase tracking-[0.04em] text-white">
+              {name}
+            </h3>
+            {closeTimeLabel ? (
+              <p className="mt-2 text-[0.72rem] uppercase tracking-[0.16em] text-on-subtle">{closeTimeLabel}</p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col items-end gap-3">
+            {status ? (
+              <span
+                className={`inline-flex min-h-[2rem] items-center border px-3 text-[0.64rem] font-headline font-bold uppercase tracking-[0.16em] ${statusClasses[status]}`}
+              >
+                {status.replace("_", " ")}
               </span>
-            </span>
-          </span>
+            ) : null}
+            <div className="flex items-center gap-2 border border-white/10 bg-surface px-3 py-2 text-right">
+              <Wallet2 className="h-4 w-4 text-primary-dim" />
+              <div>
+                <p className="text-sm font-semibold text-white">{formatCurrency(totalPool)}</p>
+                <p className="text-[0.6rem] uppercase tracking-[0.16em] text-on-subtle">Pool</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className={`grid flex-1 gap-2 ${gridCols}`}>
-        {outcomes.map((outcome) => (
-          <OutcomeTile
-            key={outcome.id}
-            {...outcome}
-            isSelected={selectedOutcomeId === outcome.outcomeId}
-            onSelect={outcome.onSelect ?? (() => onSelectOutcome?.(outcome.outcomeId))}
-          />
-        ))}
-      </div>
+        <div className="mt-6 grid gap-3">
+          {outcomes.map((outcome) => (
+            <OutcomeTile
+              key={outcome.id}
+              {...outcome}
+              isSelected={selectedOutcomeId === outcome.outcomeId}
+              onSelect={outcome.onSelect ?? (() => onSelectOutcome?.(outcome.outcomeId))}
+            />
+          ))}
+        </div>
 
-      <div className="mt-4 flex items-center justify-end text-xs text-slate-400">
-        {onViewDetails ? (
-          <button
-            type="button"
-            onClick={() => onViewDetails?.(id)}
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-gold-soft transition hover:text-white"
-          >
-            {actionLabel} →
-          </button>
-        ) : null}
+        <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
+          <div>
+            <p className="prismatic-kicker text-[0.58rem]">Commission</p>
+            <p className="mt-1 text-lg font-semibold text-white">{commission.toFixed(1)}%</p>
+          </div>
+          {onViewDetails ? (
+            <button
+              type="button"
+              onClick={() => onViewDetails?.(id)}
+              className="prismatic-button prismatic-button-secondary min-h-[2.6rem] px-4 text-[0.62rem]"
+            >
+              {actionLabel}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
       </div>
     </article>
   );

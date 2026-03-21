@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Activity, BarChart3, BrainCircuit, LifeBuoy, Settings, TimerReset, Trophy } from "lucide-react";
 import { placeWager } from "@domains/betting/api/bettingApi";
 import { useBettingRealtime } from "@domains/betting/hooks/useBettingRealtime";
 import { BetSlipDrawer } from "../../features/markets/BetSlipDrawer";
@@ -16,11 +17,6 @@ import { marketKeys, walletKeys } from "@lib/query/keys";
 import { fetchPoolSettlementLedger } from "@domains/betting/api/settlementAuditApi";
 import { refetchAfterBet } from "@lib/query/refetchers";
 import { LIVE_BETS_POLL_INTERVAL_MS, MARKET_POLL_INTERVAL_MS } from "@config/realtime";
-import { MarketHeroCard } from "../../components/markets/MarketHeroCard";
-
-// Layout baseline restored from commit 9208937 (markets UI v2) while the team metadata/API work from 23eeb03 stays intact.
-
-// v2 Markets detail page: maps v1 pool/outcome totals into the new UI components.
 
 const MarketDetailPage = () => {
   const { marketId } = useParams();
@@ -87,30 +83,16 @@ const MarketDetailPage = () => {
 
   const pool: Pool | null = poolQuery.data ?? null;
 
-  const statusLabel: Record<Pool["status"], string> = {
-    open: "Open",
-    closing_soon: "Closing Soon",
-    closed: "Closed",
-    settled: "Settled"
-  };
-
-  const statusClasses: Record<Pool["status"], string> = {
-    open: "bg-emerald-500/10 text-emerald-200 border-emerald-500/40",
-    closing_soon: "bg-amber-500/10 text-amber-200 border-amber-500/40",
-    closed: "bg-slate-700/60 text-slate-200 border-slate-600/60",
-    settled: "bg-indigo-500/10 text-indigo-200 border-indigo-500/40"
-  };
-
   if (!marketId) {
-    return <p className="text-white/70">Market not found.</p>;
+    return <div className="prismatic-card px-5 py-4 text-on-subtle">Market not found.</div>;
   }
 
   if (poolQuery.isLoading) {
-    return <p className="text-sm text-neutral-400">Loading market…</p>;
+    return <div className="prismatic-card px-5 py-4 text-on-subtle">Loading market…</div>;
   }
 
   if (!pool) {
-    return <p className="text-sm text-neutral-400">Pool not available.</p>;
+    return <div className="prismatic-card px-5 py-4 text-on-subtle">Pool not available.</div>;
   }
 
   const handleOutcomeSelect = (outcomeId: string) => {
@@ -126,23 +108,27 @@ const MarketDetailPage = () => {
   const winnerRows = settlements.filter((row) => row.payout > 0);
   const winningOutcomeName = winnerRows[0]?.outcome_label ?? "Winning outcome";
   const totalPaidOut = winnerRows.reduce((sum, row) => sum + row.payout, 0);
+  const mostActiveOutcome = useMemo(
+    () => [...pool.outcomes].sort((a, b) => b.trendDelta - a.trendDelta)[0],
+    [pool.outcomes]
+  );
+  const whaleAlerts = useMemo(
+    () => [...(liveBetsQuery.data ?? [])].sort((a, b) => b.amount - a.amount).slice(0, 3),
+    [liveBetsQuery.data]
+  );
 
   const renderSettlementsPanel = () => {
     if (!isPoolSettled) return null;
     if (settlementsQuery.isLoading) {
-      return (
-        <div className="rounded-3xl border border-white/10 bg-black/30 p-6 text-sm text-white/70">
-          Loading final settlements…
-        </div>
-      );
+      return <div className="prismatic-card p-6 text-sm text-on-subtle">Loading final settlements…</div>;
     }
     if (settlementsQuery.isError) {
       return (
-        <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-6 text-sm text-red-100">
+        <div className="border border-danger/30 bg-danger/10 p-6 text-sm text-danger">
           <p>We couldn&rsquo;t load the settlement ledger.</p>
           <button
             type="button"
-            className="mt-3 rounded-full border border-red-300/60 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em]"
+            className="prismatic-button prismatic-button-secondary mt-4"
             onClick={() => settlementsQuery.refetch()}
           >
             Retry
@@ -153,25 +139,18 @@ const MarketDetailPage = () => {
 
     return (
       <section className="space-y-5">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Total Pool</p>
-            <p className="mt-1 text-2xl font-semibold text-white">
-              {formatCurrency(pool.totalStake)}
-            </p>
-            <p className="text-xs text-white/50">Combined stakes across all outcomes</p>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="prismatic-metric px-5 py-4">
+            <p className="prismatic-kicker">Total Pool</p>
+            <p className="mt-2 font-headline text-3xl font-extrabold text-white">{formatCurrency(pool.totalStake)}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Winning Outcome</p>
-            <p className="mt-1 text-lg font-semibold text-white">{winningOutcomeName}</p>
-            <p className="text-xs text-white/50">{winnerRows.length} winning bets</p>
+          <div className="prismatic-metric px-5 py-4">
+            <p className="prismatic-kicker">Winning Outcome</p>
+            <p className="mt-2 font-headline text-2xl font-extrabold uppercase tracking-[0.05em] text-white">{winningOutcomeName}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Paid to winners</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-300">
-              {formatCurrency(totalPaidOut)}
-            </p>
-            <p className="text-xs text-white/50">After rake distribution</p>
+          <div className="prismatic-metric px-5 py-4">
+            <p className="prismatic-kicker">Paid To Winners</p>
+            <p className="mt-2 font-headline text-3xl font-extrabold text-primary-dim">{formatCurrency(totalPaidOut)}</p>
           </div>
         </div>
         <FinalSettlementsTable rows={settlements} />
@@ -179,40 +158,166 @@ const MarketDetailPage = () => {
     );
   };
 
+  const openQuickBet = () => {
+    const fallbackOutcomeId = selectedOutcomeId ?? pool.outcomes[0]?.id;
+    if (!fallbackOutcomeId) return;
+    setSelectedOutcomeId(fallbackOutcomeId);
+    setBetSlipOpen(true);
+  };
+
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8">
-      <MarketHeroCard
-        label="Market Detail"
-        title={pool.title}
-        subLabel={pool.timeRemainingLabel}
-        description={
-          <p>
-            Explore every outcome with live odds and pool share. Click a tile to launch the bet slip.
+    <div className="grid gap-8 xl:grid-cols-[17rem_minmax(0,1fr)]">
+      <aside className="prismatic-card hidden h-fit xl:flex xl:flex-col">
+        <div className="border-b border-white/5 px-6 py-6">
+          <p className="font-headline text-sm font-extrabold uppercase tracking-[0.14em] text-white">
+            Intelligence
           </p>
-        }
-        rightMeta={{
-          status: pool.status,
-          statusLabel: statusLabel[pool.status],
-          statusClassName: statusClasses[pool.status],
-          badgeContent: `${formatCurrency(pool.totalStake)} Pool`
-        }}
-      />
-      {!sessionLoading && !user && <AuthCtaBanner />}
+          <p className="mt-1 text-[0.62rem] uppercase tracking-[0.18em] text-primary-dim">
+            High-Frequency Data
+          </p>
+        </div>
+        <div className="py-3">
+          {[
+            { key: "overview", label: "Race Overview", icon: Trophy },
+            { key: "telemetry", label: "Telemetry", icon: Activity, active: true },
+            { key: "strategy", label: "Pool Strategy", icon: BarChart3 },
+            { key: "signals", label: "Predictor", icon: BrainCircuit },
+            { key: "support", label: "Support", icon: LifeBuoy },
+            { key: "settings", label: "Settings", icon: Settings }
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.key}
+                className={`flex min-h-[4rem] items-center gap-4 border-l-2 px-6 font-label text-xs uppercase tracking-[0.15em] ${
+                  item.active
+                    ? "border-primary-container bg-surface text-primary-container"
+                    : "border-transparent text-on-subtle"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-auto border-t border-white/5 p-5">
+          <button type="button" onClick={openQuickBet} className="prismatic-button prismatic-button-primary w-full">
+            Place Quick Bet
+          </button>
+        </div>
+      </aside>
 
-      <section className="flex flex-col gap-6">
-        <PoolDetails
-          pool={pool}
-          liveBets={liveBetsQuery.data ?? []}
-          onOutcomeSelect={handleOutcomeSelect}
-          onOpenBetSlip={handleOpenBetSlip}
-        />
+      <div className="space-y-8">
+        <section className="prismatic-card p-8 md:p-10">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,23,0.96)_0%,rgba(17,20,23,0.84)_45%,rgba(17,20,23,0.35)_100%)]" />
+          <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_right_center,rgba(0,242,255,0.08),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
+          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-4xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="bg-primary-container px-3 py-1 text-[0.64rem] font-headline font-bold uppercase tracking-[0.16em] text-on-primary">
+                  Live Market
+                </span>
+                <span className="text-[0.72rem] uppercase tracking-[0.16em] text-on-subtle">
+                  {pool.timeRemainingLabel}
+                </span>
+              </div>
+              <h1 className="mt-6 font-headline text-4xl font-extrabold uppercase italic tracking-[0.03em] text-white sm:text-5xl lg:text-6xl">
+                {pool.title}
+              </h1>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-on-subtle sm:text-base">
+                Precision pricing for every entrant. Pool share, trend, and live flow update with each new ticket.
+              </p>
+            </div>
 
-        {isPoolSettled ? (
-          renderSettlementsPanel()
-        ) : (
-          <PoolAnalytics pool={pool} liveBets={liveBetsQuery.data ?? []} />
-        )}
-      </section>
+            <div className="min-w-[15rem] text-left lg:text-right">
+              <p className="prismatic-kicker">Total Pool Liquidity</p>
+              <p className="mt-2 font-headline text-4xl font-extrabold tracking-tight text-primary-dim sm:text-5xl">
+                {formatCurrency(pool.totalStake)}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {!sessionLoading && !user ? <AuthCtaBanner /> : null}
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_22rem]">
+          <PoolDetails
+            pool={pool}
+            liveBets={liveBetsQuery.data ?? []}
+            onOutcomeSelect={handleOutcomeSelect}
+            onOpenBetSlip={handleOpenBetSlip}
+          />
+
+          <div className="space-y-6">
+            <section className="prismatic-card p-6">
+              <div className="relative z-10">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-headline text-2xl font-extrabold uppercase tracking-[0.06em] text-white">
+                    Whale Alerts
+                  </h2>
+                  <span className="inline-flex h-3 w-3 bg-primary-container" />
+                </div>
+                <div className="mt-6 space-y-4">
+                  {whaleAlerts.length ? (
+                    whaleAlerts.map((bet) => (
+                      <article key={bet.id} className="border-l-2 border-primary-container bg-surface px-4 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="prismatic-kicker text-primary-dim">Entry: {formatCurrency(bet.amount)}</p>
+                            <p className="mt-2 font-headline text-lg font-extrabold uppercase tracking-[0.05em] text-white">
+                              {bet.driverName ?? bet.teamName}
+                            </p>
+                            <p className="mt-1 text-sm text-on-subtle">
+                              Heavy position into {bet.teamName}
+                            </p>
+                          </div>
+                          <p className="text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle">
+                            {formatRelativeTime(bet.placedAt)}
+                          </p>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="text-sm text-on-subtle">No outsized entries detected yet.</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="prismatic-card p-6">
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-3">
+                  <TimerReset className="h-5 w-5 text-primary-dim" />
+                  <h2 className="font-headline text-2xl font-extrabold uppercase tracking-[0.06em] text-white">
+                    Market Signal
+                  </h2>
+                </div>
+
+                <div className="space-y-4">
+                  <SignalMetric
+                    label="Pool Depth"
+                    value={`${pool.totalBets.toLocaleString()} tickets`}
+                    fill={Math.min(Math.max(pool.totalBets / 2, 20), 96)}
+                  />
+                  <SignalMetric
+                    label="Live Flow"
+                    value={formatCurrency((liveBetsQuery.data ?? []).reduce((sum, bet) => sum + bet.amount, 0))}
+                    fill={Math.min(Math.max(((liveBetsQuery.data ?? []).length * 16), 12), 92)}
+                  />
+                  <SignalMetric
+                    label="Lead Signal"
+                    value={mostActiveOutcome?.driverName ?? "Pending"}
+                    fill={Math.min(Math.max((mostActiveOutcome?.marketShare ?? 0) * 100, 18), 92)}
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        {isPoolSettled ? renderSettlementsPanel() : <PoolAnalytics pool={pool} liveBets={liveBetsQuery.data ?? []} />}
+      </div>
 
       <BetSlipDrawer
         isOpen={betSlipOpen}
@@ -229,5 +334,39 @@ const MarketDetailPage = () => {
     </div>
   );
 };
+
+const formatRelativeTime = (timestamp: string) => {
+  const date = new Date(timestamp);
+  const diffMs = Date.now() - date.getTime();
+  if (Number.isNaN(diffMs)) return "--";
+  const seconds = Math.max(Math.floor(diffMs / 1000), 0);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+};
+
+const SignalMetric = ({
+  label,
+  value,
+  fill
+}: {
+  label: string;
+  value: string;
+  fill: number;
+}) => (
+  <div>
+    <div className="flex items-center justify-between gap-4">
+      <p className="font-headline text-sm font-bold uppercase tracking-[0.08em] text-on-subtle">{label}</p>
+      <p className="text-sm font-semibold text-primary-dim">{value}</p>
+    </div>
+    <div className="mt-3 h-1.5 bg-white/10">
+      <div className="h-full bg-primary-container" style={{ width: `${fill}%` }} />
+    </div>
+  </div>
+);
 
 export default MarketDetailPage;

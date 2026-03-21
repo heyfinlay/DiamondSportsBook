@@ -1,17 +1,46 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { Link, useNavigate } from "react-router-dom";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Activity, BarChart3, Database, Settings, Waves, LifeBuoy } from "lucide-react";
 import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import { fetchUiPools } from "../../features/markets/api";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 import { marketKeys } from "@lib/query/keys";
-import { MarketHeroCard } from "../../components/markets/MarketHeroCard";
 import { useBettingStore } from "@domains/betting/store/bettingStore";
+import PrismaticSideRail from "@app/components/PrismaticSideRail";
 import { formatCurrency } from "../../features/markets/utils/format";
-// This screen keeps the v2 grid layout from commit 9208937 while relying on the team metadata-backed pricing feeds from 23eeb03.
+const statusOptions = [
+    { key: "all", label: "All" },
+    { key: "open", label: "Open" },
+    { key: "closing_soon", label: "Closing Soon" },
+    { key: "closed", label: "Closed" },
+    { key: "settled", label: "Settled" }
+];
+const formatTrend = (value) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+const getPoolTrend = (pool) => {
+    if (!pool.outcomes.length)
+        return 0;
+    return pool.outcomes.reduce((sum, outcome) => sum + outcome.trendDelta, 0) / pool.outcomes.length;
+};
+const getPoolSentiment = (pool) => {
+    const trend = getPoolTrend(pool);
+    if (trend >= 0.8)
+        return { label: "Bullish", className: "text-primary-dim" };
+    if (trend <= -0.8)
+        return { label: "Bearish", className: "text-danger" };
+    return { label: "Balanced", className: "text-on-subtle" };
+};
+const getVaultStatus = (pool) => {
+    if (pool.status === "open")
+        return "Inspect";
+    if (pool.status === "closing_soon")
+        return "Watch";
+    if (pool.status === "closed")
+        return "Locked";
+    return "Settled";
+};
 const MarketsPage = () => {
     const navigate = useNavigate();
     const { user, loading: sessionLoading } = useSession();
@@ -23,25 +52,35 @@ const MarketsPage = () => {
     const pools = poolsQuery.data ?? [];
     const [statusFilter, setStatusFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortKey, setSortKey] = useState("closing");
+    const [sortKey, setSortKey] = useState("pool");
+    const deferredSearchQuery = useDeferredValue(searchQuery);
     const filteredPools = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
-        const byStatus = statusFilter === "all"
-            ? pools
-            : pools.filter((pool) => pool.status === statusFilter);
+        const query = deferredSearchQuery.trim().toLowerCase();
+        const byStatus = statusFilter === "all" ? pools : pools.filter((pool) => pool.status === statusFilter);
         const bySearch = query
             ? byStatus.filter((pool) => pool.title.toLowerCase().includes(query))
             : byStatus;
-        const sorted = [...bySearch].sort((a, b) => {
+        return [...bySearch].sort((a, b) => {
             if (sortKey === "pool")
                 return b.totalStake - a.totalStake;
-            // closing: use timeRemainingMs if available, otherwise keep stable order
             const aTime = a.timeRemainingMs ?? Number.MAX_SAFE_INTEGER;
             const bTime = b.timeRemainingMs ?? Number.MAX_SAFE_INTEGER;
             return aTime - bTime;
         });
-        return sorted;
-    }, [pools, searchQuery, sortKey, statusFilter]);
+    }, [deferredSearchQuery, pools, sortKey, statusFilter]);
+    const featuredPool = filteredPools[0] ?? pools[0] ?? null;
+    const featuredOutcomes = useMemo(() => [...(featuredPool?.outcomes ?? [])]
+        .sort((a, b) => b.marketShare - a.marketShare)
+        .slice(0, 2), [featuredPool]);
+    const settledOrTopPools = useMemo(() => {
+        const settled = pools.filter((pool) => pool.status === "settled");
+        return (settled.length ? settled : pools)
+            .slice()
+            .sort((a, b) => b.totalStake - a.totalStake)
+            .slice(0, 3);
+    }, [pools]);
+    const totalHandle = pools.reduce((sum, pool) => sum + pool.totalStake, 0);
+    const openPools = pools.filter((pool) => pool.status === "open" || pool.status === "closing_soon").length;
     const handleOutcomeSelect = (poolId, poolTitle, outcome) => {
         setBetslipSelection({
             marketId: poolId,
@@ -55,8 +94,20 @@ const MarketsPage = () => {
         });
         navigate(`/market/${poolId}`);
     };
-    return (_jsxs("div", { className: "mx-auto flex max-w-6xl flex-col gap-8", children: [_jsx(MarketHeroCard, { label: "LIVE MARKETS", title: "Diamond Sportsbook", subLabel: null, description: _jsxs("div", { className: "space-y-2 text-white/80", children: [_jsx("p", { children: "Pool-based odds update in real time. The smaller the share, the bigger the payout." }), _jsxs("div", { className: "flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.25em] text-white/50", children: [_jsxs("span", { children: [filteredPools.length, " markets"] }), _jsx("span", { children: "\u00B7" }), _jsx("span", { children: poolsQuery.isLoading ? "Syncing" : "Live" })] })] }) }), _jsxs("section", { className: "grid gap-3 sm:grid-cols-3", children: [_jsxs("div", { className: "rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Live pools" }), _jsx("p", { className: "mt-1 text-lg font-semibold", children: pools.length })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Open now" }), _jsx("p", { className: "mt-1 text-lg font-semibold", children: pools.filter((pool) => pool.status === "open" || pool.status === "closing_soon").length })] }), _jsxs("div", { className: "rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white", children: [_jsx("p", { className: "text-xs uppercase tracking-[0.3em] text-white/50", children: "Total handle" }), _jsx("p", { className: "mt-1 text-lg font-semibold", children: formatCurrency(pools.reduce((sum, pool) => sum + pool.totalStake, 0)) })] })] }), !sessionLoading && !user && _jsx(AuthCtaBanner, {}), poolsQuery.isLoading && (_jsx("p", { className: "text-sm text-neutral-400", children: "Loading live markets\u2026" })), poolsQuery.isError && (_jsx("p", { className: "rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200", children: "Unable to load markets right now. Refresh to try again." })), _jsxs("section", { className: "rounded-3xl border border-white/10 bg-black/30 p-4", children: [_jsxs("div", { className: "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between", children: [_jsx("div", { className: "flex flex-wrap gap-2", children: ["all", "open", "closing_soon", "closed", "settled"].map((status) => (_jsx("button", { type: "button", onClick: () => setStatusFilter(status), className: `rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] transition ${statusFilter === status
-                                        ? "bg-emerald-500 text-slate-950"
-                                        : "border border-white/20 text-white/70 hover:border-white/40"}`, children: status.replace("_", " ") }, status))) }), _jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsxs("div", { className: "relative", children: [_jsx("input", { type: "text", value: searchQuery, onChange: (event) => setSearchQuery(event.target.value), placeholder: "Search markets", className: "w-64 rounded-full border border-white/10 bg-black/50 px-4 py-2 text-xs text-white placeholder:text-white/40" }), _jsx("span", { className: "pointer-events-none absolute right-3 top-2 text-xs text-white/40", children: "\u2315" })] }), _jsxs("select", { value: sortKey, onChange: (event) => setSortKey(event.target.value), className: "rounded-full border border-white/10 bg-black/50 px-3 py-2 text-xs text-white", children: [_jsx("option", { value: "closing", children: "Sort: Closing soon" }), _jsx("option", { value: "pool", children: "Sort: Pool size" })] })] })] }), _jsxs("p", { className: "mt-3 text-xs text-white/50", children: ["Showing ", filteredPools.length, " of ", pools.length, " pools"] })] }), filteredPools.length > 0 ? (_jsx(MarketPoolsGrid, { pools: filteredPools, onSelectPool: (poolId) => navigate(`/market/${poolId}`), onSelectOutcome: handleOutcomeSelect })) : (!poolsQuery.isLoading && (_jsxs("div", { className: "flex flex-wrap items-center gap-3 rounded-3xl border border-dashed border-white/10 bg-[#05070F]/40 p-8 text-sm text-neutral-400", children: [_jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-semibold text-white", children: "Live market board coming online" }), _jsx("p", { children: "Admin tools will seed the first tote shortly. Check back once the next event opens betting." })] }), _jsx(Link, { to: "/account", className: "inline-flex items-center gap-2 rounded-full border border-[#9FF7D3]/40 px-4 py-2 uppercase tracking-[0.35em] text-[#9FF7D3] transition hover:border-[#9FF7D3]/70 hover:text-white", children: "Manage wallet" })] })))] }));
+    return (_jsxs("div", { className: "grid gap-8 xl:grid-cols-[17rem_minmax(0,1fr)]", children: [_jsx(PrismaticSideRail, { title: "Live Intelligence", subtitle: "High-Frequency Data", activeKey: "whale_movements", items: [
+                    { key: "whale_movements", label: "Whale Movements", icon: Waves },
+                    { key: "prismatic_shifts", label: "Prismatic Shifts", icon: Activity },
+                    { key: "market_volume", label: "Market Volume", icon: Database },
+                    { key: "settings", label: "Settings", icon: Settings },
+                    { key: "support", label: "Support", icon: LifeBuoy }
+                ], ctaLabel: "View Global Analytics", ctaTo: "/standings" }), _jsxs("div", { className: "space-y-8", children: [_jsxs("section", { className: "grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_21rem]", children: [_jsxs("div", { className: "prismatic-card min-h-[28rem] p-8 md:p-10", children: [_jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(225,253,255,0.08),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_50%)] opacity-80" }), _jsxs("div", { className: "relative flex h-full flex-col justify-between gap-8", children: [_jsxs("div", { children: [_jsxs("div", { className: "inline-flex items-center gap-2 border border-primary-container/30 bg-primary-container/10 px-3 py-1", children: [_jsx("span", { className: "inline-flex h-2 w-2 bg-primary-container" }), _jsx("span", { className: "prismatic-kicker text-primary-dim", children: "Live Intelligence Active" })] }), _jsxs("div", { className: "mt-8", children: [_jsx("p", { className: "prismatic-kicker", children: "Prime Market" }), _jsx("h1", { className: "mt-3 font-headline text-4xl font-extrabold uppercase tracking-[0.03em] text-white sm:text-5xl lg:text-6xl", children: featuredPool ? featuredPool.title : "Diamond Sportsbook" }), _jsx("p", { className: "mt-3 max-w-3xl text-sm leading-7 text-on-subtle sm:text-base", children: "Pool-based pricing updates in real time. Lower share means higher payout, while volume signals conviction across the vault." }), _jsxs("div", { className: "mt-4 flex flex-wrap items-center gap-4 text-[0.7rem] uppercase tracking-[0.18em] text-on-subtle", children: [_jsx("span", { children: poolsQuery.isLoading ? "Syncing live pools" : `${pools.length} monitored markets` }), _jsx("span", { className: "inline-flex h-1 w-1 bg-primary-container" }), _jsxs("span", { children: [openPools, " open now"] }), featuredPool?.timeRemainingLabel ? (_jsxs(_Fragment, { children: [_jsx("span", { className: "inline-flex h-1 w-1 bg-danger" }), _jsx("span", { children: featuredPool.timeRemainingLabel })] })) : null] })] })] }), _jsxs("div", { className: "flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between", children: [_jsxs("div", { className: "grid gap-4 sm:grid-cols-3", children: [featuredOutcomes.map((outcome) => (_jsxs("div", { className: "border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl", children: [_jsx("p", { className: "prismatic-kicker text-[0.6rem]", children: outcome.teamName }), _jsx("p", { className: "mt-3 font-headline text-4xl font-extrabold text-white", children: outcome.baselineOdds.toFixed(2) }), _jsx("div", { className: "mt-4 h-1 bg-white/10", children: _jsx("div", { className: "h-full bg-primary-container", style: { width: `${Math.min(Math.max(outcome.marketShare * 100, 10), 100)}%` } }) })] }, outcome.id))), _jsx("div", { className: "flex items-end", children: featuredPool ? (_jsx(Link, { to: `/market/${featuredPool.id}`, className: "prismatic-button prismatic-button-primary w-full px-8 py-5", children: "Enter Vault" })) : null })] }), _jsxs("div", { className: "min-w-[15rem] text-left xl:text-right", children: [_jsx("p", { className: "prismatic-kicker", children: "Total Pool Liquidity" }), _jsx("p", { className: "mt-2 font-headline text-4xl font-extrabold tracking-tight text-primary-dim sm:text-5xl", children: formatCurrency(totalHandle) })] })] })] })] }), _jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between px-2", children: [_jsx("h2", { className: "prismatic-kicker text-white", children: pools.some((pool) => pool.status === "settled") ? "Recently Settled" : "Top Volume Pools" }), _jsx(Link, { to: "/wagers", className: "prismatic-kicker text-primary-dim transition hover:text-white", children: "View All" })] }), settledOrTopPools.map((pool) => {
+                                        const trend = getPoolTrend(pool);
+                                        return (_jsxs("button", { type: "button", onClick: () => navigate(`/market/${pool.id}`), className: "prismatic-glass flex w-full items-center justify-between p-5 text-left transition hover:bg-surface-high/85", children: [_jsxs("div", { children: [_jsxs("p", { className: "text-[0.6rem] uppercase tracking-[0.16em] text-on-subtle", children: [pool.status.replace("_", " "), " \u2022 ", pool.timeRemainingLabel] }), _jsx("p", { className: "mt-2 font-headline text-lg font-extrabold uppercase tracking-[0.06em] text-white", children: pool.title })] }), _jsxs("div", { className: "text-right", children: [_jsx("p", { className: `font-headline text-2xl font-extrabold ${trend >= 0 ? "text-primary-dim" : "text-danger"}`, children: formatTrend(trend) }), _jsx("p", { className: "prismatic-kicker text-[0.58rem]", children: pool.status === "settled" ? "Yield" : "Shift" })] })] }, pool.id));
+                                    })] })] }), _jsxs("section", { className: "grid gap-4 md:grid-cols-3", children: [_jsxs("div", { className: "prismatic-metric px-5 py-4", children: [_jsx("p", { className: "prismatic-kicker", children: "Live Pools" }), _jsx("p", { className: "mt-2 font-headline text-3xl font-extrabold text-white", children: pools.length })] }), _jsxs("div", { className: "prismatic-metric px-5 py-4", children: [_jsx("p", { className: "prismatic-kicker", children: "Open Now" }), _jsx("p", { className: "mt-2 font-headline text-3xl font-extrabold text-white", children: openPools })] }), _jsxs("div", { className: "prismatic-metric px-5 py-4", children: [_jsx("p", { className: "prismatic-kicker", children: "Total Handle" }), _jsx("p", { className: "mt-2 font-headline text-3xl font-extrabold text-white", children: formatCurrency(totalHandle) })] })] }), !sessionLoading && !user ? _jsx(AuthCtaBanner, {}) : null, poolsQuery.isLoading ? (_jsx("div", { className: "prismatic-card px-5 py-4 text-sm text-on-subtle", children: "Loading live markets\u2026" })) : null, poolsQuery.isError ? (_jsx("div", { className: "border border-danger/30 bg-danger/10 px-5 py-4 text-sm text-danger", children: "Unable to load markets right now. Refresh to try again." })) : null, _jsx("section", { className: "prismatic-card p-5", children: _jsxs("div", { className: "flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "prismatic-kicker", children: "Prime Markets" }), _jsx("h2", { className: "mt-2 font-headline text-3xl font-extrabold uppercase tracking-[0.06em] text-white", children: "Active Vault Board" })] }), _jsxs("div", { className: "flex flex-col gap-4 xl:items-end", children: [_jsx("div", { className: "flex flex-wrap gap-2", children: statusOptions.map((status) => (_jsx("button", { type: "button", onClick: () => setStatusFilter(status.key), className: "prismatic-chip", "data-active": statusFilter === status.key, children: status.label }, status.key))) }), _jsxs("div", { className: "flex flex-col gap-3 sm:flex-row", children: [_jsx("div", { className: "min-w-[18rem] border border-white/10 bg-surface-low px-4", children: _jsx("input", { type: "text", value: searchQuery, onChange: (event) => setSearchQuery(event.target.value), placeholder: "Search markets", className: "prismatic-input" }) }), _jsxs("div", { className: "border border-white/10 bg-surface-low px-4", children: [_jsx("label", { className: "prismatic-kicker block pt-3 text-[0.56rem]", children: "Sort" }), _jsxs("select", { value: sortKey, onChange: (event) => setSortKey(event.target.value), className: "w-full bg-transparent pb-3 pt-2 text-sm text-white outline-none", children: [_jsx("option", { value: "pool", children: "Highest Pool" }), _jsx("option", { value: "closing", children: "Closing Soon" })] })] })] })] })] }) }), filteredPools.length > 0 ? (_jsx(MarketPoolsGrid, { pools: filteredPools, onSelectPool: (poolId) => navigate(`/market/${poolId}`), onSelectOutcome: handleOutcomeSelect })) : (!poolsQuery.isLoading && (_jsxs("div", { className: "prismatic-card flex flex-wrap items-center gap-4 p-8", children: [_jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-headline text-xl font-extrabold uppercase tracking-[0.08em] text-white", children: "Market board coming online" }), _jsx("p", { className: "mt-2 text-sm text-on-subtle", children: "Admin tools will seed the next tote shortly. Check back when the next event opens betting." })] }), _jsx(Link, { to: "/account", className: "prismatic-button prismatic-button-secondary", children: "Manage Vault" })] }))), _jsxs("section", { className: "prismatic-card p-6", children: [_jsxs("div", { className: "mb-6 flex items-center justify-between gap-4", children: [_jsxs("div", { children: [_jsx("p", { className: "prismatic-kicker text-primary-dim", children: "Active Intelligence Ledger" }), _jsx("h2", { className: "mt-2 font-headline text-2xl font-extrabold uppercase tracking-[0.06em] text-white", children: "Market Identity" })] }), _jsx(BarChart3, { className: "h-5 w-5 text-primary-dim" })] }), _jsx("div", { className: "overflow-x-auto", children: _jsxs("table", { className: "prismatic-table min-w-full", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "px-6 py-4 text-left", children: "Market Identity" }), _jsx("th", { className: "px-6 py-4 text-left", children: "Volume (24h)" }), _jsx("th", { className: "px-6 py-4 text-left", children: "Volatility" }), _jsx("th", { className: "px-6 py-4 text-left", children: "Sentiment Index" }), _jsx("th", { className: "px-6 py-4 text-right", children: "Vault Status" })] }) }), _jsx("tbody", { children: pools.slice(0, 4).map((pool) => {
+                                                const trend = getPoolTrend(pool);
+                                                const sentiment = getPoolSentiment(pool);
+                                                const strongestOutcome = [...pool.outcomes].sort((a, b) => b.marketShare - a.marketShare)[0];
+                                                return (_jsxs("tr", { children: [_jsx("td", { className: "px-6 py-5", children: _jsxs("div", { className: "flex items-start gap-4", children: [_jsx("span", { className: "mt-1 inline-flex h-10 w-1 bg-primary-container" }), _jsxs("div", { children: [_jsx("p", { className: "font-headline text-lg font-extrabold uppercase tracking-[0.05em] text-white", children: pool.title }), _jsxs("p", { className: "mt-1 text-xs uppercase tracking-[0.14em] text-on-subtle", children: [pool.status.replace("_", " "), " \u2022 ", pool.totalBets.toLocaleString(), " bets"] })] })] }) }), _jsx("td", { className: "px-6 py-5 text-xl font-semibold text-white", children: formatCurrency(pool.totalStake) }), _jsx("td", { className: `px-6 py-5 text-lg font-semibold ${trend >= 0 ? "text-primary-dim" : "text-danger"}`, children: formatTrend(trend) }), _jsx("td", { className: "px-6 py-5", children: _jsxs("div", { className: "flex items-center gap-3", children: [_jsx("div", { className: "h-1.5 w-16 bg-surface-highest", children: _jsx("div", { className: "h-full bg-primary-container", style: { width: `${Math.min(Math.max((strongestOutcome?.marketShare ?? 0) * 100, 5), 100)}%` } }) }), _jsx("span", { className: `prismatic-kicker text-[0.62rem] ${sentiment.className}`, children: sentiment.label })] }) }), _jsx("td", { className: "px-6 py-5 text-right", children: _jsx("button", { type: "button", onClick: () => navigate(`/market/${pool.id}`), className: "prismatic-button prismatic-button-secondary min-h-[2.45rem] px-4 text-[0.62rem]", children: getVaultStatus(pool) }) })] }, pool.id));
+                                            }) })] }) })] })] })] }));
 };
 export default MarketsPage;

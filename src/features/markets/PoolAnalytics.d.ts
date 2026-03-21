@@ -3,5 +3,5 @@ interface PoolAnalyticsProps {
     pool: Pool;
     liveBets: LiveBet[];
 }
-export declare function PoolAnalytics(props: PoolAnalyticsProps): import("react/jsx-runtime").JSX.Element;
-export {};
+export declare function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps): import("react/jsx-runtime").JSX.Element;
+export default PoolAnalytics;

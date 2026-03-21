@@ -1,20 +1,46 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
-  font-family: "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  background-color: #05060a;
+  background-color: #111417;
+  --bg-base: #111417;
+  --bg-lowest: #0c0e12;
+  --bg-low: #191c1f;
+  --bg-panel: #1d2023;
+  --bg-high: #282a2e;
+  --bg-highest: #323539;
+  --line: rgba(185, 202, 203, 0.15);
+  --line-soft: rgba(58, 73, 75, 0.22);
+  --text-main: #e1e2e7;
+  --text-muted: #b9cacb;
+  --text-faint: rgba(185, 202, 203, 0.58);
+  --cyan: #00f2ff;
+  --cyan-dim: #00dbe7;
+  --danger: #ffb4ab;
+  --cta: linear-gradient(135deg, #e1fdff 0%, #00f2ff 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg-base);
 }
 
 body {
   margin: 0;
-  color: #e2e8f0;
-  background: radial-gradient(1200px 600px at 20% -10%, rgba(56, 189, 248, 0.08), transparent 70%),
-    radial-gradient(900px 500px at 80% -10%, rgba(16, 185, 129, 0.08), transparent 70%),
-    #05060a;
+  color: var(--text-main);
+  background:
+    radial-gradient(720px 420px at 100% 0%, rgba(0, 242, 255, 0.08), transparent 60%),
+    radial-gradient(680px 380px at 0% 100%, rgba(225, 253, 255, 0.05), transparent 58%),
+    linear-gradient(180deg, #111417 0%, #0c0e12 100%);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -30,29 +56,206 @@ a:hover {
 
 button, input, select, textarea {
   font-family: inherit;
+  border-radius: 0;
 }
 
 :focus-visible {
-  outline: 2px solid rgba(16, 185, 129, 0.6);
+  outline: 2px solid rgba(0, 242, 255, 0.7);
   outline-offset: 2px;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #05060a;
+  background: var(--bg-lowest);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 999px;
+  background: rgba(132, 148, 149, 0.35);
+  border: 2px solid var(--bg-lowest);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(132, 148, 149, 0.5);
+}
+
+::selection {
+  background: rgba(0, 242, 255, 0.9);
+  color: #00363a;
+}
+
+.prismatic-grid {
+  background-image:
+    linear-gradient(rgba(185, 202, 203, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(185, 202, 203, 0.035) 1px, transparent 1px);
+  background-size: 120px 120px;
+  background-position: center;
+}
+
+.prismatic-kicker {
+  font-family: "Manrope", sans-serif;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.prismatic-title {
+  font-family: "Manrope", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.prismatic-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(29, 32, 35, 0.94), rgba(12, 14, 18, 0.96));
+  border: 1px solid var(--line-soft);
+}
+
+.prismatic-card::before {
+  content: "";
+  position: absolute;
+  inset: auto auto 0 0;
+  width: 14rem;
+  height: 14rem;
+  background: radial-gradient(circle, rgba(225, 253, 255, 0.06), transparent 65%);
+  transform: translate(-38%, 38%);
+  pointer-events: none;
+}
+
+.prismatic-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 18rem;
+  height: 18rem;
+  background: radial-gradient(circle, rgba(0, 242, 255, 0.08), transparent 62%);
+  transform: translate(45%, -45%);
+  pointer-events: none;
+}
+
+.prismatic-glass {
+  background: rgba(50, 53, 57, 0.34);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(185, 202, 203, 0.12);
+}
+
+.prismatic-ghost-border {
+  border: 1px solid rgba(185, 202, 203, 0.15);
+}
+
+.prismatic-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 2.85rem;
+  padding: 0 1.15rem;
+  font-family: "Manrope", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.prismatic-button:hover {
+  opacity: 0.94;
+}
+
+.prismatic-button:active {
+  transform: translateY(1px);
+}
+
+.prismatic-button-primary {
+  background: var(--cta);
+  color: #00363a;
+}
+
+.prismatic-button-secondary {
+  border: 1px solid rgba(185, 202, 203, 0.22);
+  color: var(--text-main);
+  background: rgba(29, 32, 35, 0.5);
+}
+
+.prismatic-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(185, 202, 203, 0.2);
+  background: transparent;
+  color: var(--text-main);
+  padding: 0.95rem 0.15rem 0.8rem;
+}
+
+.prismatic-input::placeholder {
+  color: rgba(185, 202, 203, 0.45);
+}
+
+.prismatic-input:focus {
+  outline: none;
+  border-bottom-color: var(--cyan);
+}
+
+.prismatic-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.3rem;
+  padding: 0 0.95rem;
+  background: rgba(25, 28, 31, 0.85);
+  color: var(--text-muted);
+  border: 1px solid rgba(185, 202, 203, 0.14);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.71rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.prismatic-chip[data-active="true"] {
+  background: var(--cyan);
+  border-color: rgba(0, 242, 255, 0.55);
+  color: #00363a;
+}
+
+.prismatic-metric {
+  background: rgba(29, 32, 35, 0.92);
+  border: 1px solid rgba(58, 73, 75, 0.22);
+}
+
+.prismatic-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.prismatic-table thead th {
+  background: rgba(25, 28, 31, 0.68);
+  color: var(--text-muted);
+  font-family: "Manrope", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.prismatic-table tbody tr {
+  background: rgba(12, 14, 18, 0.84);
+}
+
+.prismatic-table tbody tr + tr td {
+  border-top: 0.7rem solid transparent;
+}
+
+.prismatic-table td {
+  color: var(--text-main);
 }
 
 .live-bets-stream {
