@@ -161,9 +161,10 @@ const MarketDetailPage = () => {
   return (
     <div className="space-y-8">
         <section className="prismatic-card p-8 md:p-10">
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,20,23,0.96)_0%,rgba(17,20,23,0.84)_45%,rgba(17,20,23,0.35)_100%)]" />
-          <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_right_center,rgba(0,242,255,0.08),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.05),transparent_42%)]" />
-          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="absolute inset-0 bg-[linear-gradient(98deg,rgba(13,16,20,0.98)_0%,rgba(14,18,24,0.92)_42%,rgba(10,16,20,0.46)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,242,255,0.22),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(225,253,255,0.08),transparent_26%)] opacity-95" />
+          <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-[linear-gradient(135deg,rgba(0,242,255,0.18),rgba(0,242,255,0.02)_62%)] lg:block" />
+          <div className="relative flex flex-col gap-8 xl:grid xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-end">
             <div className="max-w-4xl">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="bg-primary-container px-3 py-1 text-[0.64rem] font-headline font-bold uppercase tracking-[0.16em] text-on-primary">
@@ -181,10 +182,13 @@ const MarketDetailPage = () => {
               </p>
             </div>
 
-            <div className="min-w-[15rem] text-left lg:text-right">
-              <p className="prismatic-kicker">Total Pool Liquidity</p>
-              <p className="mt-2 font-headline text-4xl font-extrabold tracking-tight text-primary-dim sm:text-5xl">
+            <div className="border border-primary-container/30 bg-[linear-gradient(135deg,rgba(225,253,255,0.16),rgba(0,242,255,0.14))] px-6 py-6 text-left shadow-[0_0_36px_rgba(0,242,255,0.12)] xl:justify-self-end">
+              <p className="prismatic-kicker text-on-primary/80">Total Pool Liquidity</p>
+              <p className="mt-3 font-headline text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
                 {formatCurrency(pool.totalStake)}
+              </p>
+              <p className="mt-3 text-[0.7rem] uppercase tracking-[0.14em] text-on-primary/80">
+                {pool.totalBets.toLocaleString()} active tickets across the market
               </p>
             </div>
           </div>

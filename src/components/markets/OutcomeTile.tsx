@@ -36,7 +36,7 @@ export function OutcomeTile({
       type="button"
       onClick={() => onSelect?.()}
       style={{ "--team-color": teamColor ?? "#94a3b8" } as React.CSSProperties}
-      className={`outcome-tile group flex min-h-[7.75rem] cursor-pointer flex-col justify-between border p-4 text-left transition ${
+      className={`outcome-tile group flex min-h-[7.1rem] cursor-pointer flex-col justify-between border p-4 text-left transition ${
         isSelected
           ? "border-primary-container/50 bg-surface-high text-white"
           : "border-white/10 bg-surface-low/70 text-white hover:bg-surface"
@@ -57,10 +57,10 @@ export function OutcomeTile({
               {teamCode}
             </span>
           </div>
-          <p className="mt-3 font-headline text-lg font-extrabold uppercase tracking-[0.05em] text-white">
+          <p className="mt-3 line-clamp-2 min-h-[3.2rem] font-headline text-base font-extrabold uppercase tracking-[0.05em] text-white sm:text-lg">
             {driverName}
           </p>
-          <p className="mt-1 text-[0.7rem] uppercase tracking-[0.14em] text-on-subtle">
+          <p className="mt-1 line-clamp-2 min-h-[2rem] text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle">
             {teamName}
           </p>
         </div>
@@ -73,8 +73,8 @@ export function OutcomeTile({
 
       <div className="mt-4">
         <div className="flex items-end justify-between gap-3">
-          <span className="font-headline text-2xl font-extrabold text-white">{oddsLabel}</span>
-          <span className="text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle">{poolShareLabel}</span>
+          <span className="font-headline text-[1.75rem] font-extrabold text-white">{oddsLabel}</span>
+          <span className="text-right text-[0.66rem] uppercase tracking-[0.14em] text-on-subtle">{poolShareLabel}</span>
         </div>
         <div className="mt-3 h-1 bg-white/10">
           <div

@@ -4,7 +4,7 @@ import { getTeamCode } from "./teamCodes";
 import { formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }) {
-    return (_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "prismatic-kicker text-primary-dim", children: "Live Market Vault" }), _jsx("h2", { className: "mt-2 font-headline text-3xl font-extrabold uppercase tracking-[0.06em] text-white", children: "Prime Markets" })] }), _jsxs("p", { className: "prismatic-kicker", children: [pools.length, " pool", pools.length === 1 ? "" : "s"] })] }), _jsx("div", { className: "grid gap-4 md:grid-cols-2 2xl:grid-cols-4", children: pools.map((pool) => {
+    return (_jsxs("section", { className: "space-y-6", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "prismatic-kicker text-primary-dim", children: "Live Market Vault" }), _jsx("h2", { className: "mt-2 font-headline text-3xl font-extrabold uppercase tracking-[0.06em] text-white", children: "Prime Markets" })] }), _jsxs("p", { className: "prismatic-kicker", children: [pools.length, " pool", pools.length === 1 ? "" : "s"] })] }), _jsx("div", { className: "grid gap-4", children: pools.map((pool) => {
                     const { favouriteId, bestPayoutId } = getOutcomeRankings(pool.outcomes);
                     const outcomes = pool.outcomes.map((outcome) => ({
                         id: outcome.id,

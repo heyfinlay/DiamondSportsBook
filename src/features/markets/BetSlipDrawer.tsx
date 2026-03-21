@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Wallet2 } from "lucide-react";
 import { currencyLabel } from "@lib/currency";
 import {
   formatCurrency,
@@ -51,7 +52,7 @@ export function BetSlipDrawer({
   }, [isOpen]);
 
   const selectedOutcome = useMemo(
-    () => outcomes.find((o) => o.id === selectedOutcomeId) ?? null,
+    () => outcomes.find((outcome) => outcome.id === selectedOutcomeId) ?? null,
     [outcomes, selectedOutcomeId]
   );
 
@@ -60,7 +61,7 @@ export function BetSlipDrawer({
   const poolClosed = pool?.status === "closed" || pool?.status === "settled";
 
   const payoutEstimate = useMemo(() => {
-    if (!selectedOutcome || stakeValue <= 0) return null;
+    if (!pool || !selectedOutcome || stakeValue <= 0) return null;
 
     const existingPoolTotal = Math.max(pool.totalStake ?? 0, 0);
     const existingOutcomeHandle = Math.max(selectedOutcome.diamondsStaked ?? 0, 0);
@@ -82,7 +83,7 @@ export function BetSlipDrawer({
       estimatedPayout,
       userShareOfOutcome
     };
-  }, [pool.rakePercent, pool.totalStake, selectedOutcome, stakeValue]);
+  }, [pool, selectedOutcome, stakeValue]);
 
   const handlePlaceBet = () => {
     if (!pool || !selectedOutcomeId || !stakeValid || poolClosed) return;
@@ -93,7 +94,7 @@ export function BetSlipDrawer({
     });
   };
 
-  const drawerClasses = `fixed inset-y-0 right-0 z-50 w-full max-w-md transform border-l border-white/10 bg-[#05070F] shadow-[0_0_35px_rgba(0,0,0,0.65)] transition-transform duration-300 ${
+  const drawerClasses = `fixed inset-y-0 right-0 z-50 w-full max-w-[30rem] transform border-l border-white/10 bg-surface-lowest shadow-[0_0_45px_rgba(0,0,0,0.65)] transition-transform duration-300 ${
     isOpen ? "translate-x-0" : "translate-x-full"
   }`;
 
@@ -115,13 +116,13 @@ export function BetSlipDrawer({
 
   return (
     <>
-      {isOpen && (
+      {isOpen ? (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
           onClick={onClose}
           aria-hidden="true"
         />
-      )}
+      ) : null}
 
       <aside
         className={drawerClasses}
@@ -129,189 +130,217 @@ export function BetSlipDrawer({
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex h-full flex-col overflow-hidden px-5 py-4 text-slate-50">
-          <header className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Place Wager</p>
-              <p className="text-lg font-semibold text-white">{pool.title}</p>
-              <p className="mt-1 text-[11px] uppercase tracking-[0.25em] text-slate-500">
-                Step 1 · Select outcome → Step 2 · Set stake → Step 3 · Confirm
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              ref={closeButtonRef}
-              className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200 transition hover:border-emerald-400/60 hover:text-white"
-            >
-              X
-            </button>
-          </header>
+        <div className="relative flex h-full flex-col overflow-hidden text-white">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,242,255,0.12),transparent_28%),linear-gradient(180deg,rgba(18,21,25,0.98),rgba(7,9,13,0.98))]" />
 
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {selectedOutcome ? (
-              <div className="space-y-3">
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span>Pool Size</span>
-                    <span className="font-semibold text-white">{formatCurrency(pool.totalStake)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-slate-300">
-                    <span>Closes</span>
-                    <span className="font-semibold text-white">{pool.timeRemainingLabel}</span>
-                  </div>
-                  <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Selected Outcome</p>
-                    <OutcomeIdentity
-                      teamName={selectedOutcome.teamName}
-                      driverName={selectedOutcome.driverName}
-                      teamColor={selectedOutcome.teamColor}
-                      className="mt-1"
-                      primaryClassName="text-base font-semibold leading-tight text-white"
-                      secondaryClassName="text-xs text-slate-400"
-                    />
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-slate-200">
-                      <div>
-                        <p className="text-xs text-slate-400">Odds</p>
-                        <p className="font-semibold text-white">
-                          {formatOdds(selectedOutcome.baselineOdds)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-slate-400">Pool Share</p>
-                        <p className="font-semibold text-white">
-                          {formatPercent(selectedOutcome.marketShare)}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Implied probability: {impliedProbabilityFromOdds(selectedOutcome.baselineOdds)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Step 1 · Choose Outcome</p>
-                  <div className="mt-2 max-h-52 space-y-2 overflow-y-auto pr-1">
-                    {outcomes.map((outcome) => {
-                      const isActive = outcome.id === selectedOutcomeId;
-                      return (
-                        <button
-                          key={outcome.id}
-                          type="button"
-                          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
-                            isActive
-                              ? "border-emerald-400/70 bg-emerald-500/10 text-white"
-                              : "border-slate-800 bg-slate-900/60 text-slate-200 hover:border-slate-700"
-                          }`}
-                          onClick={() => onSelectOutcome(outcome.id)}
-                        >
-                          <OutcomeIdentity
-                            teamName={outcome.teamName}
-                            driverName={outcome.driverName}
-                            teamColor={outcome.teamColor}
-                            primaryClassName="font-semibold"
-                            secondaryClassName="text-[11px] text-slate-400"
-                          />
-                          <div className="text-right">
-                            <p className="text-xs text-slate-400">Odds</p>
-                            <p className="font-semibold text-white">
-                              {formatOdds(outcome.baselineOdds)}
-                            </p>
-                            <p className="text-[11px] text-slate-400">
-                              Share {formatPercent(outcome.marketShare)}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Step 2 · Set Stake</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {QUICK_STAKES.map((option) => (
-                      <button
-                        key={option.label}
-                        type="button"
-                        className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:border-emerald-400 hover:text-emerald-200"
-                        onClick={() => setStakeInput(option.value.toString())}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 space-y-1">
-                    <label className="text-xs uppercase tracking-[0.25em] text-slate-400">Stake ({currencyLabel})</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={stakeInput}
-                      onChange={(event) => {
-                        const digits = event.target.value.replace(/[^\d]/g, "");
-                        setStakeInput(digits);
-                      }}
-                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none ring-emerald-400/60 focus:border-emerald-400"
-                      placeholder={`Minimum ${formatCurrency(MIN_STAKE)}`}
-                    />
-                    {!stakeValid && (
-                      <p className="text-[11px] text-rose-300">
-                        Minimum stake is {formatCurrency(MIN_STAKE)}.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Step 3 · Review</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-200">
-                    <div>
-                      <p className="text-xs text-slate-400">Your odds</p>
-                      <p className="text-lg font-semibold text-white">
-                        {formatOdds(selectedOutcome.baselineOdds)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-400">Probability</p>
-                      <p className="font-semibold text-white">
-                        {impliedProbabilityFromOdds(selectedOutcome.baselineOdds)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400">Estimated payout</p>
-                      <p className="text-lg font-semibold text-white">
-                        {payoutEstimate ? formatCurrency(payoutEstimate.estimatedPayout) : "—"}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-400">Your share after bet</p>
-                      <p className="font-semibold text-white">
-                        {payoutEstimate ? formatPercent(payoutEstimate.userShareOfOutcome) : "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Estimates update as the pool moves. Final payout depends on total pool size and rake.
+          <div className="relative flex h-full flex-col overflow-hidden px-5 py-5">
+            <header className="border-b border-white/8 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="prismatic-kicker text-primary-dim">Place Wager</p>
+                  <p className="mt-3 font-headline text-2xl font-extrabold uppercase tracking-[0.06em] text-white">
+                    {pool.title}
+                  </p>
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-on-subtle">
+                    Step 1 · Select outcome → Step 2 · Set stake → Step 3 · Confirm
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  ref={closeButtonRef}
+                  className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-3 text-[0.6rem]"
+                >
+                  Close
+                </button>
               </div>
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 p-6 text-center text-sm text-slate-400">
-                Select an outcome to start a wager.
-              </div>
-            )}
-          </div>
-          <div className="pt-2">
-            <button
-              type="button"
-              className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-slate-900 transition hover:bg-emerald-400 hover:shadow-[0_0_18px_rgba(16,185,129,0.35)] disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-              disabled={!selectedOutcomeId || !stakeValid || poolClosed || isPlacing}
-              onClick={handlePlaceBet}
-            >
-              {isPlacing ? "Placing…" : "Place Wager"}
-            </button>
+            </header>
+
+            <div className="flex-1 space-y-4 overflow-y-auto py-4 pr-1">
+              {selectedOutcome ? (
+                <div className="space-y-4">
+                  <section className="prismatic-card p-4">
+                    <div className="relative z-10">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="border border-white/10 bg-surface px-4 py-3">
+                          <p className="prismatic-kicker text-[0.56rem]">Pool Size</p>
+                          <p className="mt-2 text-lg font-semibold text-white">{formatCurrency(pool.totalStake)}</p>
+                        </div>
+                        <div className="border border-white/10 bg-surface px-4 py-3">
+                          <p className="prismatic-kicker text-[0.56rem]">Closes</p>
+                          <p className="mt-2 text-lg font-semibold text-white">{pool.timeRemainingLabel}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border border-primary-container/25 bg-surface-high px-4 py-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="prismatic-kicker text-primary-dim">Selected Outcome</p>
+                            <OutcomeIdentity
+                              teamName={selectedOutcome.teamName}
+                              driverName={selectedOutcome.driverName}
+                              teamColor={selectedOutcome.teamColor}
+                              className="mt-2"
+                              primaryClassName="font-headline text-lg font-extrabold uppercase tracking-[0.04em] text-white"
+                              secondaryClassName="text-[0.7rem] uppercase tracking-[0.14em] text-on-subtle"
+                            />
+                          </div>
+                          <div className="border border-white/10 bg-surface px-3 py-2 text-right">
+                            <p className="prismatic-kicker text-[0.56rem]">Odds</p>
+                            <p className="mt-1 font-headline text-2xl font-extrabold text-primary-dim">
+                              {formatOdds(selectedOutcome.baselineOdds)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="prismatic-kicker text-[0.56rem]">Pool Share</p>
+                            <p className="mt-1 text-base font-semibold text-white">
+                              {formatPercent(selectedOutcome.marketShare)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="prismatic-kicker text-[0.56rem]">Probability</p>
+                            <p className="mt-1 text-base font-semibold text-white">
+                              {impliedProbabilityFromOdds(selectedOutcome.baselineOdds)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="prismatic-card p-4">
+                    <div className="relative z-10">
+                      <p className="prismatic-kicker text-primary-dim">Step 1 · Choose Outcome</p>
+                      <div className="mt-4 max-h-60 space-y-2 overflow-y-auto pr-1">
+                        {outcomes.map((outcome) => {
+                          const isActive = outcome.id === selectedOutcomeId;
+                          return (
+                            <button
+                              key={outcome.id}
+                              type="button"
+                              className={`w-full border px-4 py-3 text-left transition ${
+                                isActive
+                                  ? "border-primary-container/45 bg-surface-high text-white"
+                                  : "border-white/10 bg-surface-low/70 text-white hover:bg-surface"
+                              }`}
+                              onClick={() => onSelectOutcome(outcome.id)}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <OutcomeIdentity
+                                  teamName={outcome.teamName}
+                                  driverName={outcome.driverName}
+                                  teamColor={outcome.teamColor}
+                                  primaryClassName="font-headline text-base font-extrabold uppercase tracking-[0.04em] text-white"
+                                  secondaryClassName="text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle"
+                                />
+                                <div className="shrink-0 text-right">
+                                  <p className="prismatic-kicker text-[0.56rem]">Odds</p>
+                                  <p className="mt-1 text-lg font-semibold text-white">
+                                    {formatOdds(outcome.baselineOdds)}
+                                  </p>
+                                  <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-on-subtle">
+                                    Share {formatPercent(outcome.marketShare)}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="prismatic-card p-4">
+                    <div className="relative z-10">
+                      <p className="prismatic-kicker text-primary-dim">Step 2 · Set Stake</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {QUICK_STAKES.map((option) => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            className="prismatic-chip"
+                            data-active={stakeValue === option.value}
+                            onClick={() => setStakeInput(option.value.toString())}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 border border-white/10 bg-surface-low px-4">
+                        <label className="prismatic-kicker block pt-3 text-[0.56rem]">
+                          Stake ({currencyLabel})
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={stakeInput}
+                          onChange={(event) => {
+                            const digits = event.target.value.replace(/[^\d]/g, "");
+                            setStakeInput(digits);
+                          }}
+                          className="prismatic-input"
+                          placeholder={`Minimum ${formatCurrency(MIN_STAKE)}`}
+                        />
+                      </div>
+
+                      {!stakeValid ? (
+                        <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-danger">
+                          Minimum stake is {formatCurrency(MIN_STAKE)}.
+                        </p>
+                      ) : null}
+                    </div>
+                  </section>
+
+                  <section className="prismatic-card p-4">
+                    <div className="relative z-10">
+                      <p className="prismatic-kicker text-primary-dim">Step 3 · Review</p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="border border-white/10 bg-surface px-4 py-3">
+                          <p className="prismatic-kicker text-[0.56rem]">Estimated Payout</p>
+                          <p className="mt-2 font-headline text-2xl font-extrabold text-white">
+                            {payoutEstimate ? formatCurrency(payoutEstimate.estimatedPayout) : "—"}
+                          </p>
+                        </div>
+                        <div className="border border-white/10 bg-surface px-4 py-3">
+                          <p className="prismatic-kicker text-[0.56rem]">Your Share After Bet</p>
+                          <p className="mt-2 font-headline text-2xl font-extrabold text-primary-dim">
+                            {payoutEstimate ? formatPercent(payoutEstimate.userShareOfOutcome) : "—"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-start gap-3 border border-white/10 bg-surface-low px-4 py-3">
+                        <Wallet2 className="mt-0.5 h-4 w-4 text-primary-dim" />
+                        <p className="text-xs leading-6 text-on-subtle">
+                          Estimates update as the pool moves. Final payout depends on total pool size and rake.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center border border-dashed border-white/10 bg-surface-low/50 p-6 text-center text-sm text-on-subtle">
+                  Select an outcome to start a wager.
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-white/8 pt-4">
+              <button
+                type="button"
+                className="prismatic-button prismatic-button-primary min-h-[3.2rem] w-full px-4 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!selectedOutcomeId || !stakeValid || poolClosed || isPlacing}
+                onClick={handlePlaceBet}
+              >
+                {isPlacing ? "Placing…" : "Place Wager"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>

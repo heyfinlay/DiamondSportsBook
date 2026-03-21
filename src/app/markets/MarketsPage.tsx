@@ -2,6 +2,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, BarChart3, Database, Settings, Waves, LifeBuoy } from "lucide-react";
+import { fetchChampionshipSeasons } from "@domains/championship/api/championshipApi";
+import { useDriverStandings } from "@domains/standings/api/standingsApi";
 import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import { fetchUiPools } from "../../features/markets/api";
 import { useSession } from "@lib/auth/SessionProvider";
@@ -83,13 +85,16 @@ const MarketsPage = () => {
     [featuredPool]
   );
 
-  const settledOrTopPools = useMemo(() => {
-    const settled = pools.filter((pool) => pool.status === "settled");
-    return (settled.length ? settled : pools)
-      .slice()
-      .sort((a, b) => b.totalStake - a.totalStake)
-      .slice(0, 3);
-  }, [pools]);
+  const seasonsQuery = useQuery({
+    queryKey: ["championship-seasons"],
+    queryFn: fetchChampionshipSeasons
+  });
+  const activeSeasonId = useMemo(() => {
+    const seasons = seasonsQuery.data ?? [];
+    return seasons.find((season) => season.status === "active")?.id ?? seasons[0]?.id;
+  }, [seasonsQuery.data]);
+  const standingsQuery = useDriverStandings(activeSeasonId);
+  const featuredStandings = (standingsQuery.data ?? []).slice(0, 4);
 
   const totalHandle = pools.reduce((sum, pool) => sum + pool.totalStake, 0);
   const openPools = pools.filter((pool) => pool.status === "open" || pool.status === "closing_soon").length;
@@ -129,6 +134,7 @@ const MarketsPage = () => {
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_21rem]">
           <div className="prismatic-card min-h-[28rem] p-8 md:p-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(225,253,255,0.08),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_50%)] opacity-80" />
+            <div className="absolute right-0 top-0 h-full w-[42%] bg-[radial-gradient(circle_at_top,rgba(0,242,255,0.2),transparent_55%),linear-gradient(180deg,rgba(0,242,255,0.06),transparent_65%)] opacity-90" />
             <div className="relative flex h-full flex-col justify-between gap-8">
               <div>
                 <div className="inline-flex items-center gap-2 border border-primary-container/30 bg-primary-container/10 px-3 py-1">
@@ -158,8 +164,8 @@ const MarketsPage = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                <div className="grid gap-4 sm:grid-cols-2 xl:min-w-[38rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem]">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-end">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem]">
                   {featuredOutcomes.map((outcome) => (
                     <div key={outcome.id} className="flex min-h-[10.5rem] flex-col justify-between border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl">
                       <div className="min-w-0">
@@ -191,10 +197,13 @@ const MarketsPage = () => {
                   </div>
                 </div>
 
-                <div className="min-w-[15rem] text-left xl:text-right">
-                  <p className="prismatic-kicker">Total Pool Liquidity</p>
-                  <p className="mt-2 font-headline text-4xl font-extrabold tracking-tight text-primary-dim sm:text-5xl">
+                <div className="border border-primary-container/30 bg-[linear-gradient(135deg,rgba(225,253,255,0.16),rgba(0,242,255,0.14))] px-6 py-6 text-left shadow-[0_0_36px_rgba(0,242,255,0.12)]">
+                  <p className="prismatic-kicker text-on-primary/80">Total Pool Liquidity</p>
+                  <p className="mt-3 font-headline text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
                     {formatCurrency(totalHandle)}
+                  </p>
+                  <p className="mt-3 text-[0.7rem] uppercase tracking-[0.14em] text-on-primary/80">
+                    {featuredPool ? `${featuredPool.totalBets.toLocaleString()} active tickets in focus` : "Waiting for active pool data"}
                   </p>
                 </div>
               </div>
@@ -203,39 +212,40 @@ const MarketsPage = () => {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
-              <h2 className="prismatic-kicker text-white">
-                {pools.some((pool) => pool.status === "settled") ? "Recently Settled" : "Top Volume Pools"}
-              </h2>
+              <h2 className="prismatic-kicker text-white">Current Standings</h2>
               <Link to="/wagers" className="prismatic-kicker text-primary-dim transition hover:text-white">
-                View All
+                Live Board
               </Link>
             </div>
-            {settledOrTopPools.map((pool) => {
-              const trend = getPoolTrend(pool);
-              return (
-                <button
-                  key={pool.id}
-                  type="button"
-                  onClick={() => navigate(`/market/${pool.id}`)}
-                  className="prismatic-glass flex w-full items-center justify-between p-5 text-left transition hover:bg-surface-high/85"
-                >
-                  <div>
-                    <p className="text-[0.6rem] uppercase tracking-[0.16em] text-on-subtle">
-                      {pool.status.replace("_", " ")} • {pool.timeRemainingLabel}
-                    </p>
-                    <p className="mt-2 font-headline text-lg font-extrabold uppercase tracking-[0.06em] text-white">
-                      {pool.title}
-                    </p>
+            {featuredStandings.length ? (
+              featuredStandings.map((driver) => (
+                <div key={driver.driver_id} className="prismatic-glass flex items-center justify-between gap-4 p-4">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center bg-surface-highest font-headline text-xl font-extrabold text-white">
+                      {String(driver.position).padStart(2, "0")}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[0.6rem] uppercase tracking-[0.16em] text-on-subtle">
+                        {driver.team_name}
+                      </p>
+                      <p className="mt-1 truncate font-headline text-lg font-extrabold uppercase tracking-[0.05em] text-white">
+                        {driver.driver_name}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-headline text-2xl font-extrabold ${trend >= 0 ? "text-primary-dim" : "text-danger"}`}>
-                      {formatTrend(trend)}
+                    <p className="font-headline text-2xl font-extrabold text-primary-dim">
+                      {driver.points.toFixed(0)}
                     </p>
-                    <p className="prismatic-kicker text-[0.58rem]">{pool.status === "settled" ? "Yield" : "Shift"}</p>
+                    <p className="prismatic-kicker text-[0.58rem]">Pts</p>
                   </div>
-                </button>
-              );
-            })}
+                </div>
+              ))
+            ) : (
+              <div className="prismatic-glass p-5 text-sm text-on-subtle">
+                {standingsQuery.isLoading ? "Loading standings…" : "Standings data will appear here once the active season is available."}
+              </div>
+            )}
           </div>
         </section>
 
