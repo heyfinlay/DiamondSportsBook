@@ -159,11 +159,21 @@ const MarketsPage = () => {
               </div>
 
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 xl:min-w-[38rem] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem]">
                   {featuredOutcomes.map((outcome) => (
-                    <div key={outcome.id} className="border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl">
-                      <p className="prismatic-kicker text-[0.6rem]">{outcome.teamName}</p>
-                      <p className="mt-3 font-headline text-4xl font-extrabold text-white">{outcome.baselineOdds.toFixed(2)}</p>
+                    <div key={outcome.id} className="flex min-h-[10.5rem] flex-col justify-between border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl">
+                      <div className="min-w-0">
+                        <p className="prismatic-kicker text-[0.58rem]">{outcome.teamName}</p>
+                        <p className="mt-2 line-clamp-2 min-h-[3.5rem] font-headline text-lg font-extrabold uppercase tracking-[0.04em] text-white sm:text-xl">
+                          {outcome.driverName}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-headline text-3xl font-extrabold text-white sm:text-4xl">{outcome.baselineOdds.toFixed(2)}</p>
+                        <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-on-subtle">
+                          {Math.round(outcome.marketShare * 100)}% share
+                        </p>
+                      </div>
                       <div className="mt-4 h-1 bg-white/10">
                         <div
                           className="h-full bg-primary-container"
@@ -172,7 +182,7 @@ const MarketsPage = () => {
                       </div>
                     </div>
                   ))}
-                  <div className="flex items-end">
+                  <div className="flex min-h-[10.5rem] items-end">
                     {featuredPool ? (
                       <Link to={`/market/${featuredPool.id}`} className="prismatic-button prismatic-button-primary w-full px-8 py-5">
                         Enter Vault
