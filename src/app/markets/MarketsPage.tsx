@@ -131,10 +131,10 @@ const MarketsPage = () => {
       />
 
       <div className="space-y-8">
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_21rem]">
+        <section className="grid gap-6 2xl:grid-cols-[minmax(0,1.6fr)_21rem]">
           <div className="prismatic-card min-h-[28rem] p-8 md:p-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(225,253,255,0.08),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_50%)] opacity-80" />
-            <div className="absolute right-0 top-0 h-full w-[42%] bg-[radial-gradient(circle_at_top,rgba(0,242,255,0.2),transparent_55%),linear-gradient(180deg,rgba(0,242,255,0.06),transparent_65%)] opacity-90" />
+            <div className="absolute inset-0 bg-[linear-gradient(102deg,rgba(20,23,26,0.98)_0%,rgba(20,23,26,0.94)_48%,rgba(14,22,27,0.88)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(225,253,255,0.08),transparent_24%),radial-gradient(circle_at_84%_14%,rgba(0,242,255,0.22),transparent_34%),radial-gradient(circle_at_72%_84%,rgba(0,242,255,0.08),transparent_26%)] opacity-95" />
             <div className="relative flex h-full flex-col justify-between gap-8">
               <div>
                 <div className="inline-flex items-center gap-2 border border-primary-container/30 bg-primary-container/10 px-3 py-1">
@@ -144,7 +144,7 @@ const MarketsPage = () => {
 
                 <div className="mt-8">
                   <p className="prismatic-kicker">Prime Market</p>
-                  <h1 className="mt-3 font-headline text-4xl font-extrabold uppercase tracking-[0.03em] text-white sm:text-5xl lg:text-6xl">
+                  <h1 className="mt-3 font-headline text-4xl font-extrabold uppercase tracking-[0.03em] text-white sm:text-5xl lg:text-[4.5rem]">
                     {featuredPool ? featuredPool.title : "Diamond Sportsbook"}
                   </h1>
                   <p className="mt-3 max-w-3xl text-sm leading-7 text-on-subtle sm:text-base">
@@ -164,13 +164,13 @@ const MarketsPage = () => {
                 </div>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-end">
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem]">
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:items-end">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem]">
                   {featuredOutcomes.map((outcome) => (
-                    <div key={outcome.id} className="flex min-h-[10.5rem] flex-col justify-between border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl">
+                    <div key={outcome.id} className="flex min-h-[11rem] min-w-0 flex-col justify-between border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl">
                       <div className="min-w-0">
                         <p className="prismatic-kicker text-[0.58rem]">{outcome.teamName}</p>
-                        <p className="mt-2 line-clamp-2 min-h-[3.5rem] font-headline text-lg font-extrabold uppercase tracking-[0.04em] text-white sm:text-xl">
+                        <p className="mt-2 line-clamp-3 min-h-[4.5rem] font-headline text-lg font-extrabold uppercase tracking-[0.04em] text-white sm:text-xl">
                           {outcome.driverName}
                         </p>
                       </div>
@@ -188,7 +188,7 @@ const MarketsPage = () => {
                       </div>
                     </div>
                   ))}
-                  <div className="flex min-h-[10.5rem] items-end">
+                  <div className="flex min-h-[11rem] items-end">
                     {featuredPool ? (
                       <Link to={`/market/${featuredPool.id}`} className="prismatic-button prismatic-button-primary w-full px-8 py-5">
                         Enter Vault
@@ -197,7 +197,7 @@ const MarketsPage = () => {
                   </div>
                 </div>
 
-                <div className="border border-primary-container/30 bg-[linear-gradient(135deg,rgba(225,253,255,0.16),rgba(0,242,255,0.14))] px-6 py-6 text-left shadow-[0_0_36px_rgba(0,242,255,0.12)]">
+                <div className="min-w-0 border border-primary-container/30 bg-[linear-gradient(135deg,rgba(225,253,255,0.14),rgba(0,242,255,0.15))] px-6 py-6 text-left shadow-[0_0_36px_rgba(0,242,255,0.12)]">
                   <p className="prismatic-kicker text-on-primary/80">Total Pool Liquidity</p>
                   <p className="mt-3 font-headline text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
                     {formatCurrency(totalHandle)}

@@ -82,6 +82,18 @@ const MarketDetailPage = () => {
   });
 
   const pool: Pool | null = poolQuery.data ?? null;
+  const settlements = settlementsQuery.data ?? [];
+  const winnerRows = settlements.filter((row) => row.payout > 0);
+  const totalPaidOut = winnerRows.reduce((sum, row) => sum + row.payout, 0);
+  const winningOutcomeName = winnerRows[0]?.outcome_label ?? "Winning outcome";
+  const mostActiveOutcome = useMemo(
+    () => [...(pool?.outcomes ?? [])].sort((a, b) => b.trendDelta - a.trendDelta)[0],
+    [pool?.outcomes]
+  );
+  const whaleAlerts = useMemo(
+    () => [...(liveBetsQuery.data ?? [])].sort((a, b) => b.amount - a.amount).slice(0, 3),
+    [liveBetsQuery.data]
+  );
 
   if (!marketId) {
     return <div className="prismatic-card px-5 py-4 text-on-subtle">Market not found.</div>;
@@ -103,19 +115,6 @@ const MarketDetailPage = () => {
     setSelectedOutcomeId(outcomeId);
     setBetSlipOpen(true);
   };
-
-  const settlements = settlementsQuery.data ?? [];
-  const winnerRows = settlements.filter((row) => row.payout > 0);
-  const winningOutcomeName = winnerRows[0]?.outcome_label ?? "Winning outcome";
-  const totalPaidOut = winnerRows.reduce((sum, row) => sum + row.payout, 0);
-  const mostActiveOutcome = useMemo(
-    () => [...pool.outcomes].sort((a, b) => b.trendDelta - a.trendDelta)[0],
-    [pool.outcomes]
-  );
-  const whaleAlerts = useMemo(
-    () => [...(liveBetsQuery.data ?? [])].sort((a, b) => b.amount - a.amount).slice(0, 3),
-    [liveBetsQuery.data]
-  );
 
   const renderSettlementsPanel = () => {
     if (!isPoolSettled) return null;
