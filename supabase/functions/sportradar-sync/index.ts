@@ -117,6 +117,7 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 const SPORT_CODES: SportCode[] = ["f1", "nrl", "afl", "mma", "soccer"];
+const DEFAULT_SYNC_SPORTS: SportCode[] = ["f1", "nrl"];
 
 const asObject = (value: unknown): JsonObject =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as JsonObject) : {};
@@ -1077,7 +1078,7 @@ Deno.serve(async (request) => {
     }
 
     const mode = payload.mode ?? "full";
-    const requestedSports = (payload.sports?.length ? payload.sports : SPORT_CODES).filter((sport) => {
+    const requestedSports = (payload.sports?.length ? payload.sports : DEFAULT_SYNC_SPORTS).filter((sport) => {
       const configEntry = provider.config.sports?.[sport];
       return configEntry?.enabled !== false;
     });

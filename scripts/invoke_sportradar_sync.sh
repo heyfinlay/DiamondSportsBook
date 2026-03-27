@@ -23,7 +23,7 @@ if [[ -z "${SHARED_SECRET}" ]]; then
 fi
 
 if [[ -z "${BODY}" ]]; then
-  BODY="{\"mode\":\"${MODE}\"}"
+  BODY="{\"mode\":\"${MODE}\",\"sports\":[\"f1\",\"nrl\"]}"
 fi
 
 curl --fail-with-body --silent --show-error \

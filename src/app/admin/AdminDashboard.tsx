@@ -181,20 +181,20 @@ const AdminDashboard = () => {
           <button
             type="button"
             className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]"
-            onClick={() => syncSportsMutation.mutate({ mode: "schedule" })}
+            onClick={() => syncSportsMutation.mutate({ mode: "schedule", sports: ["f1", "nrl"] })}
             disabled={syncSportsMutation.isPending}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncSportsMutation.isPending ? "animate-spin" : ""}`} />
-            Sync Schedule
+            Sync F1 + NRL
           </button>
           <button
             type="button"
             className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]"
-            onClick={() => syncSportsMutation.mutate({ mode: "live" })}
+            onClick={() => syncSportsMutation.mutate({ mode: "live", sports: ["f1", "nrl"] })}
             disabled={syncSportsMutation.isPending}
           >
             <Radio className="h-3.5 w-3.5" />
-            Sync Live
+            Sync Live F1 + NRL
           </button>
           <Link to="/admin/settlements" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
             Settlement Audit
@@ -233,7 +233,7 @@ const AdminDashboard = () => {
             <div className="mt-6 space-y-4">
               {syncSportsMutation.isPending ? (
                 <div className="border border-primary-container/20 bg-primary-container/8 px-4 py-3 text-[0.68rem] uppercase tracking-[0.16em] text-primary-container">
-                  Sportradar sync in progress. Budget-aware schedule and live jobs are running through the edge function.
+                  Sportradar sync in progress. Budget-aware Formula 1 and Rugby League jobs are running through the edge function.
                 </div>
               ) : null}
               {feedHealth.length ? (

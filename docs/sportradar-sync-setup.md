@@ -22,11 +22,11 @@ Supabase-hosted Edge Functions already receive these by default:
 
 ## Current behavior
 
-- Team sports and MMA use daily summaries plus live summaries.
+- Rugby League uses daily summaries plus live summaries.
 - Formula 1 uses seasons, stage schedule, and stage summary.
 - Auto-generated markets are single-winner only.
 - `f1_podium_finish` is intentionally disabled because the current settlement engine supports one winning outcome only.
-- Draw outcomes are generated for NRL, AFL, and soccer match-winner pools.
+- Draw outcomes are generated for NRL match-winner pools.
 
 ## Recommended trial-plan usage
 
@@ -34,8 +34,8 @@ For a 1000-call trial budget, keep the initial rollout conservative:
 
 - Run `schedule` sync once per day.
 - Run `live` sync only around active event windows.
-- Keep soccer disabled until you set specific competition filters.
-- Start with `f1`, `nrl`, `afl`, and `mma`.
+- Keep AFL, MMA, and soccer disabled for now.
+- Start with `f1` and `nrl` only.
 
 Suggested schedule:
 
@@ -72,7 +72,7 @@ Important keys:
 - `sports.<sport>.schedule_days_ahead`
 - `sports.<sport>.schedule_days_back`
 
-Before enabling soccer in production, set `sports.soccer.allowed_competition_names` to the exact leagues you want to ingest.
+Before enabling any additional sport in production, set `allowed_competition_names` tightly and increase request caps only if observed usage supports it.
 
 ## Admin trigger
 
