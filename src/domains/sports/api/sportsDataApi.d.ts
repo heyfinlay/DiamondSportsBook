@@ -62,11 +62,14 @@ export interface SportsBoardEvent {
     description: string | null;
     status: string;
     startsAt: string | null;
+    takeout: number;
     sourceType: string | null;
     sportCode: SportCode | null;
     marketTemplateKey: string | null;
     externalStatus: string | null;
     autoCreated: boolean;
+    published: boolean;
+    publishedAt: string | null;
     sportsEvent: {
         id: string;
         title: string;
@@ -123,7 +126,16 @@ export interface SportsSyncResponse {
     remainingAfterRun: number;
     sports: Record<string, unknown>;
 }
-export declare const fetchSportsBoardEvents: (limit?: number) => Promise<SportsBoardEvent[]>;
-export declare const fetchSportsEventDetail: (eventId: string) => Promise<SportsBoardEvent | null>;
+export interface FetchSportsBoardOptions {
+    limit?: number;
+    sportCode?: SportCode | null;
+    includeUnpublished?: boolean;
+}
+export declare const fetchSportsBoardEvents: (options?: number | FetchSportsBoardOptions) => Promise<SportsBoardEvent[]>;
+export declare const fetchSportsEventDetail: (eventId: string, options?: {
+    includeUnpublished?: boolean;
+}) => Promise<SportsBoardEvent | null>;
 export declare const fetchSportsProviderHealth: () => Promise<SportsProviderHealthRow[]>;
 export declare const triggerSportsSync: (request: SportsSyncRequest) => Promise<SportsSyncResponse>;
+export declare const publishSportsEvent: (eventId: string) => Promise<any>;
+export declare const unpublishSportsEvent: (eventId: string) => Promise<any>;

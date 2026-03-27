@@ -1,6 +1,7 @@
 export declare const walletKeys: {
     balance: (userId?: string | null) => readonly ["wallet-balance", string];
     transactions: (userId?: string | null) => readonly ["wallet-transactions", string];
+    adminAccounts: () => readonly ["wallet-admin-accounts"];
 };
 export declare const marketKeys: {
     pools: () => readonly ["markets:v2-pools"];
@@ -20,7 +21,8 @@ export declare const standingsKeys: {
     raceResults: (seasonId?: string | null) => readonly ["standings:race-results", string];
 };
 export declare const sportsKeys: {
-    board: () => readonly ["sports:board"];
-    event: (eventId?: string | null) => readonly ["sports:event", string];
+    board: (sportCode?: string | null) => readonly ["sports:board", string];
+    adminBoard: (sportCode?: string | null) => readonly ["sports:admin-board", string];
+    event: (eventId?: string | null, scope?: "public" | "admin") => readonly ["sports:event", string, "public" | "admin"];
     providerHealth: () => readonly ["sports:provider-health"];
 };

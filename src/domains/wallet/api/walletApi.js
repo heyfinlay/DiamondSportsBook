@@ -51,6 +51,56 @@ export const fetchAllWalletTransactions = async (limit = 50) => {
         };
     }) ?? []);
 };
+export const fetchAdminWalletAccounts = async (limit = 100) => {
+    const { data, error } = await supabase
+        .from("wallet_admin_accounts")
+        .select("account_id, user_id, balance, transaction_count, created_at, last_transaction_at")
+        .order("balance", { ascending: false })
+        .limit(limit);
+    if (error)
+        throw error;
+    const userIds = (data ?? [])
+        .map((row) => row.user_id)
+        .filter((value) => Boolean(value));
+    let profilesById = {};
+    if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, display_name, username, ic_number")
+            .in("id", userIds);
+        if (profilesError)
+            throw profilesError;
+        profilesById = Object.fromEntries((profiles ?? []).map((profile) => [
+            profile.id,
+            {
+                id: profile.id ?? null,
+                display_name: profile.display_name ?? null,
+                username: profile.username ?? null,
+                ic_number: profile.ic_number ?? null
+            }
+        ]));
+    }
+    return (data?.map((row) => ({
+        account_id: row.account_id,
+        user_id: row.user_id,
+        balance: Number(row.balance ?? 0),
+        transaction_count: Number(row.transaction_count ?? 0),
+        created_at: row.created_at,
+        last_transaction_at: row.last_transaction_at ?? null,
+        profile: profilesById[row.user_id] ?? null
+    })) ?? []);
+};
+export const adminAdjustWalletBalance = async (input) => {
+    const { data, error } = await supabase.rpc("wallet_admin_adjust_balance", {
+        p_user_id: input.userId,
+        p_amount: input.amount,
+        p_reason: input.reason,
+        p_note: input.note ?? null
+    });
+    if (error)
+        throw error;
+    return data;
+};
 export const requestDeposit = async (amount) => {
     const { data, error } = await supabase.rpc("wallet_request_deposit", {
         p_amount: amount

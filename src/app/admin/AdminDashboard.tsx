@@ -47,8 +47,8 @@ const AdminDashboard = () => {
   });
 
   const boardEventsQuery = useQuery({
-    queryKey: ["admin-sports-board"],
-    queryFn: () => fetchSportsBoardEvents(12)
+    queryKey: sportsKeys.adminBoard(),
+    queryFn: () => fetchSportsBoardEvents({ limit: 12, includeUnpublished: true })
   });
 
   const approveDepositMutation = useMutation({
@@ -120,7 +120,7 @@ const AdminDashboard = () => {
         description: `${result.requestCount} provider calls used in this run.`
       });
       queryClient.invalidateQueries({ queryKey: sportsKeys.providerHealth() });
-      queryClient.invalidateQueries({ queryKey: ["admin-sports-board"] });
+      queryClient.invalidateQueries({ queryKey: sportsKeys.adminBoard() });
       queryClient.invalidateQueries({ queryKey: sportsKeys.board() });
     },
     onError: (error: Error) => {
@@ -135,6 +135,8 @@ const AdminDashboard = () => {
   const feedHealth = feedHealthQuery.data ?? [];
   const boardEvents = boardEventsQuery.data ?? [];
   const walletAudit = walletAuditQuery.data ?? [];
+  const publishedEvents = boardEvents.filter((event) => event.published).length;
+  const reviewEvents = boardEvents.filter((event) => !event.published).length;
   const totalLiquidity = boardEvents.reduce(
     (sum, event) => sum + event.markets.reduce((marketSum, market) => marketSum + market.totalPool, 0),
     0
@@ -199,6 +201,12 @@ const AdminDashboard = () => {
           <Link to="/admin/settlements" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
             Settlement Audit
           </Link>
+          <Link to="/admin/sports" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
+            Event Review
+          </Link>
+          <Link to="/admin/wallets" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
+            Wallet Control
+          </Link>
           <Link to="/dashboard/admin/markets" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
             Market Management
           </Link>
@@ -211,7 +219,7 @@ const AdminDashboard = () => {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Global Liquidity" value={`${currencySymbol}${totalLiquidity.toFixed(0)}`} accent="text-primary-container" />
         <MetricCard label="Active Pools" value={String(activePools)} accent="text-primary-fixed" />
-        <MetricCard label="Provider Health" value={`${feedHealth.filter((row) => row.status === "completed" || row.status === "running").length}/${feedHealth.length || 1}`} accent="text-cyan-300" />
+        <MetricCard label="Review Queue" value={`${reviewEvents}/${boardEvents.length || 1}`} accent="text-cyan-300" />
         <MetricCard label="Tx Throughput" value={walletAudit.length ? "Stable" : "Idle"} accent="text-white" />
       </section>
 
@@ -289,7 +297,7 @@ const AdminDashboard = () => {
                   <div>
                     <p className="text-sm font-semibold text-white">{event.title}</p>
                     <p className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
-                      {getSportLabel(event.sportCode)} • {event.markets.length} pools
+                      {getSportLabel(event.sportCode)} • {event.markets.length} pools • {event.published ? "live" : "review"}
                     </p>
                   </div>
                   <div className="text-left md:text-right">
@@ -301,13 +309,18 @@ const AdminDashboard = () => {
                   </div>
                   <div className="text-left md:text-right">
                     <p className="text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">Status</p>
-                    <p className="font-semibold uppercase text-white">{event.status}</p>
+                    <p className="font-semibold uppercase text-white">{event.published ? "published" : "draft"}</p>
                   </div>
                 </div>
               ))}
               {!boardEvents.length ? (
                 <div className="text-sm text-on-subtle">
                   No external events have been generated into betting containers yet.
+                </div>
+              ) : null}
+              {publishedEvents > 0 ? (
+                <div className="pt-2 text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                  {publishedEvents} event{publishedEvents === 1 ? "" : "s"} currently live, {reviewEvents} awaiting admin review
                 </div>
               ) : null}
             </div>

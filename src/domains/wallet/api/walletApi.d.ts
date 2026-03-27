@@ -23,6 +23,27 @@ export declare const fetchAllWalletTransactions: (limit?: number) => Promise<{
     created_at: any;
     user_id: string;
 }[]>;
+export interface AdminWalletAccount {
+    account_id: string;
+    user_id: string;
+    balance: number;
+    transaction_count: number;
+    created_at: string;
+    last_transaction_at: string | null;
+    profile: {
+        id: string | null;
+        display_name: string | null;
+        username: string | null;
+        ic_number: string | null;
+    } | null;
+}
+export declare const fetchAdminWalletAccounts: (limit?: number) => Promise<AdminWalletAccount[]>;
+export declare const adminAdjustWalletBalance: (input: {
+    userId: string;
+    amount: number;
+    reason: string;
+    note?: string;
+}) => Promise<any>;
 export declare const requestDeposit: (amount: number) => Promise<void>;
 export declare const requestWithdrawal: (amount: number) => Promise<void>;
 export interface PendingDeposit {

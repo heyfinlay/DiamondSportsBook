@@ -10,6 +10,8 @@ import AccountPage from "./account/AccountPage";
 import AccountSettingsPage from "./account/AccountSettingsPage";
 import AdminDashboard from "./admin/AdminDashboard";
 import AdminChampionshipPage from "./admin/ChampionshipPage";
+import SportsEventsPage from "./admin/SportsEventsPage";
+import WalletAccountsPage from "./admin/WalletAccountsPage";
 import MarketManagementPage from "./admin/markets/MarketManagementPage";
 import MarketDetailAdminPage from "./admin/markets/MarketDetailAdminPage";
 import SessionSetupPage from "./admin/SessionSetupPage";
@@ -36,6 +38,10 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
       },
       {
         path: "active-markets",
+        element: <MarketsPage />
+      },
+      {
+        path: "sports/:sportCode",
         element: <MarketsPage />
       },
       {
@@ -110,6 +116,14 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           {
             path: "admin/championship",
             element: <AdminChampionshipPage />
+          },
+          {
+            path: "admin/sports",
+            element: <SportsEventsPage />
+          },
+          {
+            path: "admin/wallets",
+            element: <WalletAccountsPage />
           },
           {
             path: "dashboard/admin/markets",

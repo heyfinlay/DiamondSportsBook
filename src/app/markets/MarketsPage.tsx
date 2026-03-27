@@ -1,15 +1,24 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, ArrowRight, Radio, SlidersHorizontal } from "lucide-react";
-import { fetchUiPools } from "../../features/markets/api";
 import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import type { Pool, PoolStatus } from "../../features/markets/types";
 import { formatCurrency } from "../../features/markets/utils/format";
 import { useBettingStore } from "@domains/betting/store/bettingStore";
+import type {
+  FetchSportsBoardOptions,
+  SportCode,
+  SportsBoardEvent
+} from "@domains/sports/api/sportsDataApi";
 import { fetchSportsBoardEvents } from "@domains/sports/api/sportsDataApi";
-import { getSportAccentClass, getSportLabel, getSportSurfaceClass, getSportWatermark } from "@domains/sports/utils/sportsUi";
-import { marketKeys, sportsKeys } from "@lib/query/keys";
+import {
+  getSportAccentClass,
+  getSportLabel,
+  getSportSurfaceClass,
+  getSportWatermark
+} from "@domains/sports/utils/sportsUi";
+import { sportsKeys } from "@lib/query/keys";
 import { useSession } from "@lib/auth/SessionProvider";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 
@@ -21,26 +30,132 @@ const statusOptions: Array<{ key: "all" | PoolStatus; label: string }> = [
   { key: "settled", label: "Settled" }
 ];
 
+const SUPPORTED_SPORT_CODES = new Set<SportCode>(["f1", "nrl", "afl", "mma", "soccer"]);
+const SUPPORTED_POOL_STATUSES = new Set<PoolStatus>(["open", "closing_soon", "closed", "settled"]);
+
+const normalizeSportCode = (value?: string): SportCode | null => {
+  if (!value) return null;
+  const normalized = value.toLowerCase();
+  return SUPPORTED_SPORT_CODES.has(normalized as SportCode)
+    ? (normalized as SportCode)
+    : null;
+};
+
+const isPoolStatus = (value: string): value is PoolStatus =>
+  SUPPORTED_POOL_STATUSES.has(value as PoolStatus);
+
+const formatTimeRemainingLabel = (closeAt?: string | null, status?: string) => {
+  if (!closeAt) {
+    return status === "settled" ? "Settled" : "Awaiting close time";
+  }
+
+  const diffMs = new Date(closeAt).getTime() - Date.now();
+  if (Number.isNaN(diffMs)) return "Awaiting close time";
+
+  if (diffMs <= 0) {
+    return status === "settled" ? "Settled" : "Closed";
+  }
+
+  const totalMinutes = Math.ceil(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0
+    ? `Closes in ${hours}h ${String(minutes).padStart(2, "0")}m`
+    : `Closes in ${minutes}m`;
+};
+
+const flattenBoardMarkets = (events: SportsBoardEvent[]): Pool[] =>
+  events.flatMap((event) =>
+    event.markets
+      .filter((market) => !market.archived && isPoolStatus(market.status))
+      .map((market) => {
+        const poolStatus = market.status as PoolStatus;
+        const totalPool = Number(market.totalPool ?? 0);
+        return {
+          id: market.id,
+          title: market.name,
+          eventTitle: event.title,
+          categoryLabel: getSportLabel(event.sportCode),
+          sportCode: event.sportCode,
+          status: poolStatus,
+          totalStake: totalPool,
+          totalBets: market.outcomes.reduce((sum, outcome) => sum + (outcome.pool > 0 ? 1 : 0), 0),
+          closeAt: market.closeTime,
+          timeRemainingLabel: formatTimeRemainingLabel(market.closeTime, poolStatus),
+          rakePercent: event.takeout,
+          lastUpdatedLabel: event.publishedAt
+            ? new Date(event.publishedAt).toLocaleString()
+            : "Awaiting publish",
+          outcomes: market.outcomes.map((outcome) => {
+            const stake = Number(outcome.pool ?? 0);
+            const marketShare = totalPool > 0 ? stake / totalPool : 0;
+            return {
+              id: outcome.id,
+              label: outcome.label,
+              primaryLabel: outcome.label,
+              secondaryLabel: outcome.participantType
+                ? outcome.participantType.replace(/_/g, " ")
+                : undefined,
+              accentColor: outcome.color ?? undefined,
+              shortLabel: outcome.label.slice(0, 3).toUpperCase(),
+              participantType: outcome.participantType ?? undefined,
+              marketShare,
+              baselineOdds:
+                stake > 0 ? Math.max((totalPool * (1 - event.takeout)) / stake, 1) : 0,
+              numBets: stake > 0 ? 1 : 0,
+              diamondsStaked: stake,
+              trendDelta: marketShare
+            };
+          })
+        } satisfies Pool;
+      })
+  );
+
+const getPageCopy = (sportCode: SportCode | null) => {
+  if (!sportCode) {
+    return {
+      title: "Live Markets",
+      description:
+        "A multi-sport command surface for published parimutuel pools, event context, and tactical liquidity flow."
+    };
+  }
+
+  return {
+    title: `${getSportLabel(sportCode)} Markets`,
+    description:
+      sportCode === "nrl"
+        ? "Published Rugby League fixtures, live pool depth, and operator-approved match boards."
+        : sportCode === "f1"
+          ? "Published Formula 1 sessions, race boards, and automated pools sourced from the live feed."
+          : `Published ${getSportLabel(sportCode)} event boards and market liquidity.`
+  };
+};
+
 const MarketsPage = () => {
   const navigate = useNavigate();
+  const { sportCode: sportCodeParam } = useParams();
+  const selectedSportCode = normalizeSportCode(sportCodeParam);
   const { user, loading: sessionLoading } = useSession();
   const setBetslipSelection = useBettingStore((state) => state.setBetslipSelection);
   const [statusFilter, setStatusFilter] = useState<"all" | PoolStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
-  const poolsQuery = useQuery({
-    queryKey: marketKeys.pools(),
-    queryFn: fetchUiPools
-  });
+  const boardQueryOptions = useMemo<FetchSportsBoardOptions>(
+    () => ({
+      limit: 24,
+      sportCode: selectedSportCode
+    }),
+    [selectedSportCode]
+  );
 
   const sportsEventsQuery = useQuery({
-    queryKey: sportsKeys.board(),
-    queryFn: () => fetchSportsBoardEvents(18)
+    queryKey: sportsKeys.board(selectedSportCode),
+    queryFn: () => fetchSportsBoardEvents(boardQueryOptions)
   });
 
-  const pools = poolsQuery.data ?? [];
   const boardEvents = sportsEventsQuery.data ?? [];
+  const pools = useMemo(() => flattenBoardMarkets(boardEvents), [boardEvents]);
 
   const filteredPools = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
@@ -60,22 +175,33 @@ const MarketsPage = () => {
   const secondaryEvent = boardEvents[1] ?? null;
   const featuredPools = filteredPools.slice(0, 6);
   const totalHandle = filteredPools.reduce((sum, pool) => sum + pool.totalStake, 0);
-  const openPools = filteredPools.filter((pool) => pool.status === "open" || pool.status === "closing_soon").length;
+  const openPools = filteredPools.filter(
+    (pool) => pool.status === "open" || pool.status === "closing_soon"
+  ).length;
+  const pageCopy = getPageCopy(selectedSportCode);
+
   const intelligenceFeed = useMemo(() => {
     if (!boardEvents.length) {
       return [
-        "Sports sync pipeline ready. Connect provider jobs to populate tactical updates.",
-        "Pool automation will appear here once external feed events are linked to market templates.",
-        "Settlement signals will surface after official result states arrive from the provider."
+        selectedSportCode
+          ? `${getSportLabel(selectedSportCode)} sync is connected, but no published event boards are live yet.`
+          : "Sports sync pipeline is ready. Published boards will populate once admin review is complete.",
+        "Auto-generated market templates stay in draft until an admin publishes the event.",
+        "Settlement signals surface automatically after official provider results are written."
       ];
     }
 
     return boardEvents.slice(0, 3).map((event) => {
-      const venue = event.sportsEvent?.venueName ?? event.sportsEvent?.competition?.name ?? "Live board";
+      const venue =
+        event.sportsEvent?.venueName ??
+        event.sportsEvent?.competition?.name ??
+        "Live board";
       const marketCount = event.markets.filter((market) => !market.archived).length;
-      return `${event.title} • ${venue} • ${marketCount} active pool${marketCount === 1 ? "" : "s"}`;
+      return `${event.title} • ${venue} • ${marketCount} published pool${
+        marketCount === 1 ? "" : "s"
+      }`;
     });
-  }, [boardEvents]);
+  }, [boardEvents, selectedSportCode]);
 
   const handleOutcomeSelect = (
     poolId: string,
@@ -103,7 +229,7 @@ const MarketsPage = () => {
         <div className="space-y-6">
           <header className="space-y-5">
             <div className="flex flex-wrap items-center gap-4 text-[0.68rem] uppercase tracking-[0.18em] text-on-subtle">
-              <span className="inline-flex items-center gap-2 text-primary-container">
+              <span className={`inline-flex items-center gap-2 ${getSportAccentClass(selectedSportCode)}`}>
                 <Radio className="h-3.5 w-3.5" />
                 Active Streams: {boardEvents.length || 0}
               </span>
@@ -112,10 +238,10 @@ const MarketsPage = () => {
             <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <h1 className="font-headline text-5xl font-black uppercase tracking-tight text-white sm:text-6xl lg:text-7xl">
-                  Live Markets
+                  {pageCopy.title}
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm leading-7 text-on-subtle sm:text-base">
-                  A multi-sport command surface for live parimutuel pools, event context, and tactical liquidity flow.
+                  {pageCopy.description}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -132,11 +258,22 @@ const MarketsPage = () => {
                 ))}
               </div>
             </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={`Search ${selectedSportCode ? getSportLabel(selectedSportCode) : "live"} events and pools`}
+                className="min-h-[3rem] flex-1 border border-outline-variant/15 bg-surface-lowest px-4 text-sm text-white outline-none transition placeholder:text-on-subtle focus:border-primary-container/35"
+              />
+            </div>
           </header>
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
             <section
-              className={`prismatic-card min-h-[24rem] bg-gradient-to-br ${getSportSurfaceClass(featuredEvent?.sportCode)} p-6 sm:p-8`}
+              className={`prismatic-card min-h-[24rem] bg-gradient-to-br ${getSportSurfaceClass(
+                featuredEvent?.sportCode ?? selectedSportCode
+              )} p-6 sm:p-8`}
             >
               <div className="relative z-10 flex h-full flex-col justify-between">
                 <div className="flex items-start justify-between gap-6">
@@ -145,17 +282,17 @@ const MarketsPage = () => {
                       <span className="border border-primary-container/20 bg-primary-container/10 px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-primary-container">
                         Featured
                       </span>
-                      <span className={getSportAccentClass(featuredEvent?.sportCode)}>
-                        {getSportLabel(featuredEvent?.sportCode)}
+                      <span className={getSportAccentClass(featuredEvent?.sportCode ?? selectedSportCode)}>
+                        {getSportLabel(featuredEvent?.sportCode ?? selectedSportCode)}
                       </span>
                     </div>
                     <h2 className="mt-4 max-w-3xl font-headline text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
-                      {featuredEvent?.title ?? "Sports Feed Ready"}
+                      {featuredEvent?.title ?? "Awaiting Published Events"}
                     </h2>
                     <p className="mt-3 text-sm uppercase tracking-[0.14em] text-on-subtle">
                       {featuredEvent?.sportsEvent?.venueName ??
                         featuredEvent?.sportsEvent?.competition?.name ??
-                        "Connect a live provider to populate the event board"}
+                        "Sync + admin publish are required before markets are visible here"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -174,7 +311,7 @@ const MarketsPage = () => {
                 <div className="relative mt-10">
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.045]">
                     <span className="font-headline text-[7rem] font-black uppercase tracking-[-0.06em] text-white sm:text-[10rem]">
-                      {getSportWatermark(featuredEvent?.sportCode)}
+                      {getSportWatermark(featuredEvent?.sportCode ?? selectedSportCode)}
                     </span>
                   </div>
 
@@ -234,7 +371,7 @@ const MarketsPage = () => {
                     </div>
                   ) : (
                     <div className="relative border border-outline-variant/15 bg-surface-lowest/80 p-6 text-sm text-on-subtle">
-                      Market templates will appear here after the first sports event is synced and generated.
+                      Auto-generated markets remain in admin review until the event is published.
                     </div>
                   )}
                 </div>
@@ -249,12 +386,12 @@ const MarketsPage = () => {
                     <p className="prismatic-kicker text-white">Trending Event</p>
                   </div>
                   <h3 className="mt-5 font-headline text-2xl font-bold uppercase tracking-tight text-white">
-                    {secondaryEvent?.title ?? "Awaiting schedule sync"}
+                    {secondaryEvent?.title ?? "Awaiting next board"}
                   </h3>
                   <p className="mt-2 text-[0.68rem] uppercase tracking-[0.16em] text-on-subtle">
                     {secondaryEvent
                       ? `${getSportLabel(secondaryEvent.sportCode)} • ${secondaryEvent.markets.length} pools`
-                      : "Secondary event intelligence will appear here"}
+                      : "Operator-published events will appear here"}
                   </p>
 
                   <div className="mt-8 space-y-4">
@@ -277,7 +414,9 @@ const MarketsPage = () => {
                 <div className="mt-8 border-t border-outline-variant/15 pt-5">
                   <div className="flex items-center justify-between">
                     <p className="prismatic-kicker">Open Pools</p>
-                    <p className="font-headline text-2xl font-black text-primary-container">{openPools}</p>
+                    <p className="font-headline text-2xl font-black text-primary-container">
+                      {openPools}
+                    </p>
                   </div>
                   <div className="mt-4 flex items-center justify-between text-[0.68rem] uppercase tracking-[0.16em] text-on-subtle">
                     <span>Filter by liquidity</span>
@@ -296,8 +435,8 @@ const MarketsPage = () => {
             <div className="relative z-10">
               <p className="prismatic-kicker text-primary-dim">Command Metrics</p>
               <div className="mt-6 grid gap-4">
-                <MetricCard label="Live Pools" value={String(pools.length)} />
-                <MetricCard label="Open Now" value={String(openPools)} />
+                <MetricCard label="Published Events" value={String(boardEvents.length)} />
+                <MetricCard label="Open Pools" value={String(openPools)} />
                 <MetricCard label="Total Liquidity" value={formatCurrency(totalHandle)} />
               </div>
             </div>
@@ -308,7 +447,10 @@ const MarketsPage = () => {
               <p className="prismatic-kicker text-white">Tactical Feed</p>
               <div className="mt-5 space-y-3">
                 {intelligenceFeed.map((item, index) => (
-                  <div key={item} className="border-l-2 border-primary-container/40 bg-surface-lowest/80 px-4 py-3">
+                  <div
+                    key={item}
+                    className="border-l-2 border-primary-container/40 bg-surface-lowest/80 px-4 py-3"
+                  >
                     <p className="text-[0.58rem] uppercase tracking-[0.18em] text-primary-container">
                       {index === 0 ? "pool_update" : index === 1 ? "event_info" : "system_msg"}
                     </p>
@@ -325,20 +467,42 @@ const MarketsPage = () => {
         <div>
           <p className="prismatic-kicker text-primary-dim">Prime Markets</p>
           <h2 className="mt-2 font-headline text-3xl font-black uppercase tracking-tight text-white">
-            Active High-Stakes Pools
+            Active Published Pools
           </h2>
         </div>
-        <button type="button" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
-          View All
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        {selectedSportCode ? (
+          <Link
+            to="/"
+            className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]"
+          >
+            All Sports
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]"
+          >
+            Live Board
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </section>
 
-      <MarketPoolsGrid
-        pools={featuredPools}
-        onSelectPool={(poolId) => navigate(`/market/${poolId}`)}
-        onSelectOutcome={handleOutcomeSelect}
-      />
+      {sportsEventsQuery.isLoading ? (
+        <div className="prismatic-card p-6 text-on-subtle">Loading published sports board…</div>
+      ) : featuredPools.length ? (
+        <MarketPoolsGrid
+          pools={featuredPools}
+          onSelectPool={(poolId) => navigate(`/market/${poolId}`)}
+          onSelectOutcome={handleOutcomeSelect}
+        />
+      ) : (
+        <div className="prismatic-card p-6 text-on-subtle">
+          No published pools match the current view yet. Sync the provider and publish the event from
+          admin review first.
+        </div>
+      )}
     </div>
   );
 };

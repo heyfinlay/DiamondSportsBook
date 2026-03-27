@@ -69,11 +69,14 @@ export interface SportsBoardEvent {
   description: string | null;
   status: string;
   startsAt: string | null;
+  takeout: number;
   sourceType: string | null;
   sportCode: SportCode | null;
   marketTemplateKey: string | null;
   externalStatus: string | null;
   autoCreated: boolean;
+  published: boolean;
+  publishedAt: string | null;
   sportsEvent: {
     id: string;
     title: string;
@@ -134,6 +137,12 @@ export interface SportsSyncResponse {
   sports: Record<string, unknown>;
 }
 
+export interface FetchSportsBoardOptions {
+  limit?: number;
+  sportCode?: SportCode | null;
+  includeUnpublished?: boolean;
+}
+
 const SPORT_CODES = new Set<SportCode>(["f1", "nrl", "afl", "mma", "soccer"]);
 
 const extractSingle = <T>(value: T | T[] | null | undefined): T | null => {
@@ -176,11 +185,14 @@ const mapBoardEvent = (row: any): SportsBoardEvent => {
     description: row.description ?? null,
     status: row.status,
     startsAt: row.starts_at ?? null,
+    takeout: Number(row.takeout ?? 0),
     sourceType: row.source_type ?? null,
     sportCode: normalizeSportCode(row.sport_code ?? competition?.sport_code ?? sportsEvent?.sport_code),
     marketTemplateKey: row.market_template_key ?? null,
     externalStatus: row.external_status ?? null,
     autoCreated: Boolean(row.auto_created),
+    published: Boolean(row.published ?? true),
+    publishedAt: row.published_at ?? null,
     sportsEvent: sportsEvent
       ? {
           id: sportsEvent.id,
@@ -278,11 +290,14 @@ const baseSelect = `
   description,
   status,
   starts_at,
+  takeout,
   source_type,
   sport_code,
   market_template_key,
   external_status,
   auto_created,
+  published,
+  published_at,
   sports_event:sports_events(
     id,
     title,
@@ -363,13 +378,28 @@ const baseSelect = `
   )
 `;
 
-export const fetchSportsBoardEvents = async (limit = 24): Promise<SportsBoardEvent[]> => {
-  const { data, error } = await supabase
+export const fetchSportsBoardEvents = async (
+  options: number | FetchSportsBoardOptions = 24
+): Promise<SportsBoardEvent[]> => {
+  const normalizedOptions =
+    typeof options === "number" ? { limit: options } : options;
+
+  let query = supabase
     .from("events")
     .select(baseSelect)
     .eq("source_type", "external_feed")
     .order("starts_at", { ascending: true })
-    .limit(limit);
+    .limit(normalizedOptions.limit ?? 24);
+
+  if (normalizedOptions.sportCode) {
+    query = query.eq("sport_code", normalizedOptions.sportCode);
+  }
+
+  if (!normalizedOptions.includeUnpublished) {
+    query = query.eq("published", true);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     if (isMissingSportsSchemaError(error)) return [];
@@ -380,13 +410,19 @@ export const fetchSportsBoardEvents = async (limit = 24): Promise<SportsBoardEve
 };
 
 export const fetchSportsEventDetail = async (
-  eventId: string
+  eventId: string,
+  options?: { includeUnpublished?: boolean }
 ): Promise<SportsBoardEvent | null> => {
-  const { data, error } = await supabase
+  let query = supabase
     .from("events")
     .select(baseSelect)
-    .eq("id", eventId)
-    .single();
+    .eq("id", eventId);
+
+  if (!options?.includeUnpublished) {
+    query = query.eq("published", true);
+  }
+
+  const { data, error } = await query.single();
 
   if (error) {
     if (error.code === "PGRST116" || isMissingSportsSchemaError(error)) return null;
@@ -438,4 +474,22 @@ export const triggerSportsSync = async (
   }
 
   return data as SportsSyncResponse;
+};
+
+export const publishSportsEvent = async (eventId: string) => {
+  const { data, error } = await supabase.rpc("sports_admin_publish_event", {
+    p_event_id: eventId
+  });
+
+  if (error) throw error;
+  return data;
+};
+
+export const unpublishSportsEvent = async (eventId: string) => {
+  const { data, error } = await supabase.rpc("sports_admin_unpublish_event", {
+    p_event_id: eventId
+  });
+
+  if (error) throw error;
+  return data;
 };

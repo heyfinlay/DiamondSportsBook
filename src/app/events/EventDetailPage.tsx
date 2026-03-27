@@ -5,6 +5,7 @@ import { ArrowRight, Radio, Timer } from "lucide-react";
 import { fetchSportsEventDetail } from "@domains/sports/api/sportsDataApi";
 import { getSportAccentClass, getSportLabel, getSportSurfaceClass, getSportWatermark } from "@domains/sports/utils/sportsUi";
 import { sportsKeys } from "@lib/query/keys";
+import { usePermissions } from "@lib/auth/usePermissions";
 import { formatCurrency } from "../../features/markets/utils/format";
 
 const formatLiveMetricValue = (value: unknown) => {
@@ -16,9 +17,11 @@ const formatLiveMetricValue = (value: unknown) => {
 
 const EventDetailPage = () => {
   const { eventId } = useParams();
+  const { isBettingAdmin, isSuperAdmin } = usePermissions();
+  const includeUnpublished = isBettingAdmin || isSuperAdmin;
   const eventQuery = useQuery({
-    queryKey: sportsKeys.event(eventId),
-    queryFn: () => fetchSportsEventDetail(eventId!),
+    queryKey: sportsKeys.event(eventId, includeUnpublished ? "admin" : "public"),
+    queryFn: () => fetchSportsEventDetail(eventId!, { includeUnpublished }),
     enabled: !!eventId
   });
 
@@ -83,7 +86,7 @@ const EventDetailPage = () => {
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="border border-primary-container/20 bg-primary-container/10 px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-primary-container">
-                  Live Now
+                  {event.published ? "Live Now" : "Admin Preview"}
                 </span>
                 <span className={`text-[0.68rem] uppercase tracking-[0.18em] ${getSportAccentClass(event.sportCode)}`}>
                   {getSportLabel(event.sportCode)}
@@ -98,6 +101,11 @@ const EventDetailPage = () => {
               <p className="mt-4 text-sm leading-7 text-on-subtle">
                 {event.description ?? "Sports context, participant order, and pool access are unified into a single event hub."}
               </p>
+              {!event.published && includeUnpublished ? (
+                <p className="mt-4 border border-primary-container/20 bg-primary-container/10 px-4 py-3 text-[0.68rem] uppercase tracking-[0.16em] text-primary-container">
+                  This event is still in operator review and is not visible on the public board.
+                </p>
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -228,6 +236,7 @@ const EventDetailPage = () => {
               <StateRow label="Source Type" value={event.sourceType ?? "external_feed"} />
               <StateRow label="External Status" value={event.externalStatus ?? event.sportsEvent?.status ?? "standby"} />
               <StateRow label="Competition" value={event.sportsEvent?.competition?.name ?? "Unmapped"} />
+              <StateRow label="Publication" value={event.published ? "Live" : "Draft Review"} />
             </div>
           </div>
         </div>

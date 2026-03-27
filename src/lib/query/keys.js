@@ -1,6 +1,7 @@
 export const walletKeys = {
     balance: (userId) => ["wallet-balance", userId ?? null],
-    transactions: (userId) => ["wallet-transactions", userId ?? null]
+    transactions: (userId) => ["wallet-transactions", userId ?? null],
+    adminAccounts: () => ["wallet-admin-accounts"]
 };
 export const marketKeys = {
     pools: () => ["markets:v2-pools"],
@@ -20,7 +21,8 @@ export const standingsKeys = {
     raceResults: (seasonId) => ["standings:race-results", seasonId ?? null]
 };
 export const sportsKeys = {
-    board: () => ["sports:board"],
-    event: (eventId) => ["sports:event", eventId ?? null],
+    board: (sportCode) => ["sports:board", sportCode ?? null],
+    adminBoard: (sportCode) => ["sports:admin-board", sportCode ?? null],
+    event: (eventId, scope) => ["sports:event", eventId ?? null, scope ?? "public"],
     providerHealth: () => ["sports:provider-health"]
 };

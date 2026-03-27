@@ -19,11 +19,11 @@ const navItems = [
 ];
 
 const sportRailItems = [
-  { key: "f1", label: "F1 Racing", icon: Gauge },
-  { key: "nrl", label: "NRL", icon: Trophy },
-  { key: "afl", label: "AFL", icon: ShieldCheck },
-  { key: "mma", label: "MMA", icon: Crosshair },
-  { key: "soccer", label: "Soccer", icon: CircleDot }
+  { key: "f1", label: "F1 Racing", icon: Gauge, to: "/sports/f1" },
+  { key: "nrl", label: "NRL", icon: Trophy, to: "/sports/nrl" },
+  { key: "afl", label: "AFL", icon: ShieldCheck, to: "/sports/afl" },
+  { key: "mma", label: "MMA", icon: Crosshair, to: "/sports/mma" },
+  { key: "soccer", label: "Soccer", icon: CircleDot, to: "/sports/soccer" }
 ];
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -38,7 +38,13 @@ const RootLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const profileQuery = useProfile();
   const role = profileQuery.data?.role ?? "spectator";
-  const canAdmin = role === "betting_admin" || role === "sportsbook_admin" || role === "super_admin";
+  const permissions = profileQuery.data?.permissions ?? [];
+  const canAdmin =
+    role === "betting_admin" ||
+    role === "sportsbook_admin" ||
+    role === "super_admin" ||
+    permissions.includes("betting_admin") ||
+    permissions.includes("sportsbook_admin");
 
   const liveSessionQuery = useQuery({
     queryKey: ["live-session-shell"],
@@ -157,39 +163,70 @@ const RootLayout = () => {
           <nav className="mt-8 flex flex-1 flex-col gap-1">
             {sportRailItems.map((item, index) => {
               const Icon = item.icon;
-              const isDefault = index === 0;
               return (
-                <button
+                <NavLink
                   key={item.key}
-                  type="button"
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 text-left text-sm font-medium transition-colors",
-                    isDefault
-                      ? "bg-gradient-to-r from-primary-container/10 to-transparent text-primary-container"
-                      : "text-on-subtle hover:bg-surface-low hover:text-white"
-                  )}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-4 py-3 text-left text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-gradient-to-r from-primary-container/10 to-transparent text-primary-container"
+                        : "text-on-subtle hover:bg-surface-low hover:text-white"
+                    )
+                  }
                 >
                   <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
-                </button>
+                </NavLink>
               );
             })}
 
             {canAdmin ? (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  cn(
-                    "mt-4 flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-gradient-to-r from-primary-container/10 to-transparent text-primary-container"
-                      : "text-on-subtle hover:bg-surface-low hover:text-white"
-                  )
-                }
-              >
-                <ShieldCheck className="h-4 w-4" />
-                <span>Operations</span>
-              </NavLink>
+              <>
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) =>
+                    cn(
+                      "mt-4 flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-gradient-to-r from-primary-container/10 to-transparent text-primary-container"
+                        : "text-on-subtle hover:bg-surface-low hover:text-white"
+                    )
+                  }
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Operations</span>
+                </NavLink>
+                <NavLink
+                  to="/admin/sports"
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-gradient-to-r from-primary-container/10 to-transparent text-primary-container"
+                        : "text-on-subtle hover:bg-surface-low hover:text-white"
+                    )
+                  }
+                >
+                  <Gauge className="h-4 w-4" />
+                  <span>Market Review</span>
+                </NavLink>
+                <NavLink
+                  to="/admin/wallets"
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-gradient-to-r from-primary-container/10 to-transparent text-primary-container"
+                        : "text-on-subtle hover:bg-surface-low hover:text-white"
+                    )
+                  }
+                >
+                  <Wallet2 className="h-4 w-4" />
+                  <span>Wallet Control</span>
+                </NavLink>
+              </>
             ) : null}
           </nav>
 
