@@ -3,9 +3,9 @@ import { cn } from "@lib/utils/cn";
 const DEFAULT_SWATCH_COLOR = "#64748b";
 
 interface OutcomeIdentityProps {
-  teamName?: string | null;
-  driverName?: string | null;
-  teamColor?: string | null;
+  primaryLabel?: string | null;
+  secondaryLabel?: string | null;
+  accentColor?: string | null;
   className?: string;
   primaryClassName?: string;
   secondaryClassName?: string;
@@ -14,19 +14,18 @@ interface OutcomeIdentityProps {
 }
 
 export const OutcomeIdentity = ({
-  teamName,
-  driverName,
-  teamColor,
+  primaryLabel,
+  secondaryLabel,
+  accentColor,
   className,
   primaryClassName,
   secondaryClassName,
   hideSwatch = false,
   align = "start"
 }: OutcomeIdentityProps) => {
-  const primary = teamName?.trim() || driverName?.trim() || "—";
-  const normalizedDriver = driverName?.trim();
+  const primary = primaryLabel?.trim() || "—";
   const secondary =
-    normalizedDriver && normalizedDriver !== primary ? normalizedDriver : null;
+    secondaryLabel?.trim() && secondaryLabel.trim() !== primary ? secondaryLabel.trim() : null;
 
   return (
     <div
@@ -39,7 +38,7 @@ export const OutcomeIdentity = ({
       {!hideSwatch && (
         <span
           className="h-2.5 w-2.5 rounded-full border border-white/20"
-          style={{ backgroundColor: teamColor ?? DEFAULT_SWATCH_COLOR }}
+          style={{ backgroundColor: accentColor ?? DEFAULT_SWATCH_COLOR }}
           aria-hidden="true"
         />
       )}

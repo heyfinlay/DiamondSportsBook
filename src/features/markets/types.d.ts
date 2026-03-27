@@ -1,10 +1,12 @@
 export type PoolStatus = "open" | "closing_soon" | "closed" | "settled";
 export interface Outcome {
     id: string;
-    teamName: string;
-    driverName: string;
-    teamColor?: string;
-    teamCode?: string;
+    label: string;
+    primaryLabel: string;
+    secondaryLabel?: string;
+    accentColor?: string;
+    shortLabel?: string;
+    participantType?: string;
     marketShare: number;
     baselineOdds: number;
     numBets: number;
@@ -14,6 +16,9 @@ export interface Outcome {
 export interface Pool {
     id: string;
     title: string;
+    eventTitle?: string | null;
+    categoryLabel?: string | null;
+    sportCode?: string | null;
     status: PoolStatus;
     totalStake: number;
     totalBets: number;
@@ -27,9 +32,11 @@ export interface LiveBet {
     id: string;
     poolId: string;
     outcomeId: string;
-    teamName: string;
-    driverName?: string;
-    teamColor?: string;
+    label: string;
+    primaryLabel: string;
+    secondaryLabel?: string;
+    accentColor?: string;
+    participantType?: string;
     amount: number;
     placedAt: string;
     oddsAtPlacement: number;

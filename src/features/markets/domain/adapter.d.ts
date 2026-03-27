@@ -20,9 +20,10 @@ export interface MarketDetailData {
         id: string;
         label: string;
         pool?: number | null;
-        driverName?: string | null;
-        teamName?: string | null;
-        teamColor?: string | null;
+        primaryLabel?: string | null;
+        secondaryLabel?: string | null;
+        accentColor?: string | null;
+        participantType?: string | null;
         numBets?: number;
         baselineOdds?: number | null;
         color?: string | null;

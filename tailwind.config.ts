@@ -8,46 +8,38 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#111417",
+        background: "#131313",
         surface: {
-          lowest: "#0c0e12",
-          low: "#191c1f",
-          DEFAULT: "#1d2023",
-          high: "#282a2e",
-          highest: "#323539",
-          bright: "#37393d"
+          lowest: "#0e0e0e",
+          low: "#1c1b1b",
+          DEFAULT: "#20201f",
+          high: "#2a2a2a",
+          highest: "#353535",
+          bright: "#393939"
         },
         outline: {
           DEFAULT: "#849495",
-          variant: "#3a494b"
+          variant: "#3b494b"
         },
         primary: {
-          DEFAULT: "#e1fdff",
-          container: "#00f2ff",
-          fixed: "#74f5ff",
-          dim: "#00dbe7"
+          DEFAULT: "#dbfcff",
+          container: "#00f0ff",
+          fixed: "#7df4ff",
+          dim: "#00dbe9"
         },
         on: {
-          surface: "#e1e2e7",
+          surface: "#e5e2e1",
           subtle: "#b9cacb",
           primary: "#00363a"
         },
         danger: "#ffb4ab",
-        brand: {
-          DEFAULT: "#10b981",
-          foreground: "#042f1f"
-        },
-        gold: {
-          DEFAULT: "#f5c542",
-          soft: "#f9e7b3"
-        },
         neutral: {
           950: "#05060a"
         }
       },
       fontFamily: {
         sans: ["'Inter'", "ui-sans-serif", "system-ui"],
-        headline: ["'Manrope'", "ui-sans-serif", "system-ui"],
+        headline: ["'Space Grotesk'", "ui-sans-serif", "system-ui"],
         body: ["'Inter'", "ui-sans-serif", "system-ui"],
         label: ["'Inter'", "ui-sans-serif", "system-ui"]
       }

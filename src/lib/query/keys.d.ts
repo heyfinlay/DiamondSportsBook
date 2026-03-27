@@ -19,3 +19,8 @@ export declare const standingsKeys: {
     teams: (seasonId?: string | null) => readonly ["standings:teams", string];
     raceResults: (seasonId?: string | null) => readonly ["standings:race-results", string];
 };
+export declare const sportsKeys: {
+    board: () => readonly ["sports:board"];
+    event: (eventId?: string | null) => readonly ["sports:event", string];
+    providerHealth: () => readonly ["sports:provider-health"];
+};

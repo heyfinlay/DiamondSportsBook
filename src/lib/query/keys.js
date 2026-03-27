@@ -19,3 +19,8 @@ export const standingsKeys = {
     teams: (seasonId) => ["standings:teams", seasonId ?? null],
     raceResults: (seasonId) => ["standings:race-results", seasonId ?? null]
 };
+export const sportsKeys = {
+    board: () => ["sports:board"],
+    event: (eventId) => ["sports:event", eventId ?? null],
+    providerHealth: () => ["sports:provider-health"]
+};

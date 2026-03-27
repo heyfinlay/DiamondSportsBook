@@ -46,13 +46,13 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
               return (
                 <div key={outcome.id} className="space-y-2">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3">
                       <span
                         className="inline-flex h-2.5 w-2.5"
-                        style={{ backgroundColor: outcome.teamColor ?? "#00f2ff" }}
+                        style={{ backgroundColor: outcome.accentColor ?? "#00f2ff" }}
                       />
                       <p className="font-headline text-sm font-bold uppercase tracking-[0.08em] text-white">
-                        {outcome.driverName}
+                        {outcome.primaryLabel}
                       </p>
                     </div>
                     <span className="font-semibold text-primary-dim">
@@ -67,14 +67,14 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
                         style={{
                           background:
                             index < Math.ceil(clamp(outcome.marketShare * 10, 1, 10))
-                              ? `linear-gradient(180deg, ${outcome.teamColor ?? "#00f2ff"}88 0%, ${outcome.teamColor ?? "#00f2ff"}33 100%)`
+                              ? `linear-gradient(180deg, ${outcome.accentColor ?? "#00f2ff"}88 0%, ${outcome.accentColor ?? "#00f2ff"}33 100%)`
                               : "rgba(40,42,46,0.55)"
                         }}
                       />
                     ))}
                   </div>
                   <div className="h-1 bg-surface-highest">
-                    <div className="h-full" style={{ width, backgroundColor: outcome.teamColor ?? "#00f2ff" }} />
+                    <div className="h-full" style={{ width, backgroundColor: outcome.accentColor ?? "#00f2ff" }} />
                   </div>
                 </div>
               );
@@ -153,7 +153,7 @@ export function PoolAnalytics({ pool, liveBets }: PoolAnalyticsProps) {
             </div>
             <div>
               <p className="font-headline text-xl font-extrabold uppercase tracking-[0.05em] text-white">
-                {topSignal?.driverName ?? "Signal Pending"}
+                {topSignal?.primaryLabel ?? "Signal Pending"}
               </p>
               <p className="mt-2 text-sm font-semibold text-primary-dim">
                 {topSignal ? `${topSignal.trendDelta >= 0 ? "+" : ""}${topSignal.trendDelta.toFixed(1)}% in recent flow` : "Waiting for live flow"}

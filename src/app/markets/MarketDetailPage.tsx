@@ -220,10 +220,10 @@ const MarketDetailPage = () => {
                           <div>
                             <p className="prismatic-kicker text-[0.58rem] text-primary-dim">Entry: {formatCurrency(bet.amount)}</p>
                             <p className="mt-1.5 font-headline text-base font-extrabold uppercase tracking-[0.05em] text-white">
-                              {bet.driverName ?? bet.teamName}
+                              {bet.primaryLabel}
                             </p>
                             <p className="mt-1 text-xs text-on-subtle">
-                              Heavy position into {bet.teamName}
+                              Heavy position into {bet.secondaryLabel ?? bet.primaryLabel}
                             </p>
                           </div>
                           <p className="shrink-0 pt-0.5 text-[0.62rem] uppercase tracking-[0.14em] text-on-subtle">
@@ -261,7 +261,7 @@ const MarketDetailPage = () => {
                   />
                   <SignalMetric
                     label="Lead Signal"
-                    value={mostActiveOutcome?.driverName ?? "Pending"}
+                    value={mostActiveOutcome?.primaryLabel ?? "Pending"}
                     fill={Math.min(Math.max((mostActiveOutcome?.marketShare ?? 0) * 100, 18), 92)}
                   />
                 </div>

@@ -1,16 +1,25 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Download, Radio, RefreshCw } from "lucide-react";
 import {
   approveDeposit,
   approveWithdrawal,
+  fetchAllWalletTransactions,
   fetchPendingDeposits,
   fetchPendingWithdrawals,
-  fetchAllWalletTransactions,
   rejectWithdrawal
 } from "@domains/wallet/api/walletApi";
+import {
+  fetchSportsBoardEvents,
+  fetchSportsProviderHealth,
+  triggerSportsSync
+} from "@domains/sports/api/sportsDataApi";
 import { useSession } from "@lib/auth/SessionProvider";
 import { useToast } from "@app/components/ToastProvider";
 import { currencySymbol } from "@lib/currency";
+import { sportsKeys } from "@lib/query/keys";
+import { getSportLabel } from "@domains/sports/utils/sportsUi";
 
 const AdminDashboard = () => {
   const queryClient = useQueryClient();
@@ -29,7 +38,17 @@ const AdminDashboard = () => {
 
   const walletAuditQuery = useQuery({
     queryKey: ["admin-wallet-audit"],
-    queryFn: () => fetchAllWalletTransactions(25)
+    queryFn: () => fetchAllWalletTransactions(20)
+  });
+
+  const feedHealthQuery = useQuery({
+    queryKey: sportsKeys.providerHealth(),
+    queryFn: fetchSportsProviderHealth
+  });
+
+  const boardEventsQuery = useQuery({
+    queryKey: ["admin-sports-board"],
+    queryFn: () => fetchSportsBoardEvents(12)
   });
 
   const approveDepositMutation = useMutation({
@@ -73,8 +92,7 @@ const AdminDashboard = () => {
   });
 
   const rejectWithdrawalMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      rejectWithdrawal(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectWithdrawal(id, reason),
     onSuccess: () => {
       toast({
         variant: "success",
@@ -93,205 +111,364 @@ const AdminDashboard = () => {
     }
   });
 
+  const syncSportsMutation = useMutation({
+    mutationFn: triggerSportsSync,
+    onSuccess: (result) => {
+      toast({
+        variant: "success",
+        title: "Sports sync completed",
+        description: `${result.requestCount} provider calls used in this run.`
+      });
+      queryClient.invalidateQueries({ queryKey: sportsKeys.providerHealth() });
+      queryClient.invalidateQueries({ queryKey: ["admin-sports-board"] });
+      queryClient.invalidateQueries({ queryKey: sportsKeys.board() });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "error",
+        title: "Sports sync failed",
+        description: error.message
+      });
+    }
+  });
+
+  const feedHealth = feedHealthQuery.data ?? [];
+  const boardEvents = boardEventsQuery.data ?? [];
+  const walletAudit = walletAuditQuery.data ?? [];
+  const totalLiquidity = boardEvents.reduce(
+    (sum, event) => sum + event.markets.reduce((marketSum, market) => marketSum + market.totalPool, 0),
+    0
+  );
+  const activePools = boardEvents.reduce(
+    (sum, event) => sum + event.markets.filter((market) => market.status === "open").length,
+    0
+  );
+  const alerts = useMemo(() => {
+    const items: string[] = [];
+    feedHealth.forEach((row) => {
+      if (row.status === "failed" || row.error_message) {
+        items.push(`${row.display_name} ${row.sport_code ? `• ${row.sport_code.toUpperCase()}` : ""} ${row.error_message ?? "Sync failed"}`);
+      }
+      if (row.status === "rate_limited") {
+        items.push(`${row.display_name} rate limit pressure detected`);
+      }
+    });
+    return items.slice(0, 3);
+  }, [feedHealth]);
+
   if (!user) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
-        Sign in with an admin account to access this dashboard.
+      <div className="prismatic-card p-8 text-center text-on-subtle">
+        Sign in with an admin account to access operations.
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-start justify-between">
+    <div className="space-y-8">
+      <header className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-white/60">Admin</p>
-          <h1 className="text-3xl font-semibold">Control Center</h1>
-          <p className="text-sm text-white/60">
-            Manage pending deposits & withdrawals. Actions require betting_admin
-            permissions enforced via RLS.
+          <p className="prismatic-kicker text-primary-dim">Operations Command</p>
+          <h1 className="mt-3 font-headline text-4xl font-black uppercase tracking-tight text-white">
+            Sportsbook Control
+          </h1>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-on-subtle">
+            Monitor external sports feeds, auto-generated markets, settlement readiness, and wallet approval flow from one operational surface.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row">
-          <Link
-            to="/admin/settlements"
-            className="inline-block rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white hover:border-white/60"
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]"
+            onClick={() => syncSportsMutation.mutate({ mode: "schedule" })}
+            disabled={syncSportsMutation.isPending}
           >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncSportsMutation.isPending ? "animate-spin" : ""}`} />
+            Sync Schedule
+          </button>
+          <button
+            type="button"
+            className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]"
+            onClick={() => syncSportsMutation.mutate({ mode: "live" })}
+            disabled={syncSportsMutation.isPending}
+          >
+            <Radio className="h-3.5 w-3.5" />
+            Sync Live
+          </button>
+          <Link to="/admin/settlements" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
             Settlement Audit
           </Link>
-          <Link
-            to="/admin/championship"
-            className="inline-block rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white hover:border-white/60"
-          >
-            Championship
+          <Link to="/dashboard/admin/markets" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
+            Market Management
           </Link>
-          <Link
-            to="/admin/timing-sessions"
-            className="inline-block rounded-2xl border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-widest text-white hover:border-white/60"
-          >
-            Manage Sessions
-          </Link>
-          <Link
-            to="/admin/session-setup"
-            className="inline-block rounded-2xl bg-brand px-6 py-3 text-sm font-semibold uppercase tracking-widest text-black hover:bg-brand/90"
-          >
-            + Create Session
+          <Link to="/admin/session-setup" className="prismatic-button prismatic-button-primary min-h-[2.35rem] px-4 text-[0.62rem]">
+            Create Session
           </Link>
         </div>
       </header>
 
-      <section className="rounded-3xl border border-white/10 bg-black/40 p-6">
-        <h2 className="text-xl font-semibold">Pending Deposits</h2>
-        {depositsQuery.isLoading && (
-          <p className="text-sm text-white/60">Loading…</p>
-        )}
-        <div className="mt-4 space-y-3">
-          {depositsQuery.data?.map((deposit) => (
-            <article
-              key={deposit.id}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-            >
-              {(() => {
-                const profile = deposit.profile;
-                const characterName =
-                  profile?.display_name ||
-                  profile?.username ||
-                  `User ${deposit.user_id.slice(0, 8)}…`;
-                const icNumber = profile?.ic_number ?? "—";
-                const uuid = profile?.id ?? deposit.user_id;
-                return (
-                  <>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Global Liquidity" value={`${currencySymbol}${totalLiquidity.toFixed(0)}`} accent="text-primary-container" />
+        <MetricCard label="Active Pools" value={String(activePools)} accent="text-primary-fixed" />
+        <MetricCard label="Provider Health" value={`${feedHealth.filter((row) => row.status === "completed" || row.status === "running").length}/${feedHealth.length || 1}`} accent="text-cyan-300" />
+        <MetricCard label="Tx Throughput" value={walletAudit.length ? "Stable" : "Idle"} accent="text-white" />
+      </section>
+
+      <section className="grid gap-8 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1.75fr)]">
+        <div className="prismatic-card p-6">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="prismatic-kicker text-white">Feed Health</p>
+                <h2 className="mt-2 font-headline text-2xl font-black uppercase tracking-tight text-white">
+                  Provider Status
+                </h2>
+              </div>
+              <span className="border border-primary-container/20 bg-primary-container/10 px-2 py-1 text-[0.58rem] uppercase tracking-[0.18em] text-primary-container">
+                {syncSportsMutation.isPending ? "Syncing" : "Operational"}
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {syncSportsMutation.isPending ? (
+                <div className="border border-primary-container/20 bg-primary-container/8 px-4 py-3 text-[0.68rem] uppercase tracking-[0.16em] text-primary-container">
+                  Sportradar sync in progress. Budget-aware schedule and live jobs are running through the edge function.
+                </div>
+              ) : null}
+              {feedHealth.length ? (
+                feedHealth.map((row) => (
+                  <div key={`${row.provider_id}-${row.sport_code ?? "all"}`} className="flex items-center justify-between border-b border-outline-variant/15 pb-4">
                     <div>
-                      <p className="text-sm font-semibold">
-                        {`${currencySymbol}${deposit.amount.toFixed(2)}`}
+                      <p className="text-sm font-semibold text-white">
+                        {row.display_name}
+                        {row.sport_code ? ` • ${getSportLabel(row.sport_code)}` : ""}
                       </p>
-                      <p className="text-xs text-white/60">Character: {characterName}</p>
-                      <p className="text-xs text-white/60">IC #: {icNumber}</p>
-                      <p className="text-xs text-white/40">
-                        UUID: {uuid.slice(0, 8)}… · {new Date(deposit.requested_at).toLocaleString()}
+                      <p className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                        Last sync {row.started_at ? new Date(row.started_at).toLocaleString() : "unknown"}
                       </p>
                     </div>
-                    <button
-                      className="rounded-full bg-brand px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"
-                      onClick={() => approveDepositMutation.mutate(deposit.id)}
-                      disabled={approveDepositMutation.isPending}
-                    >
-                      Approve
-                    </button>
-                  </>
-                );
-              })()}
-            </article>
-          ))}
-          {depositsQuery.data && depositsQuery.data.length === 0 && (
-            <p className="text-sm text-white/60">No pending deposits.</p>
-          )}
+                    <div className="text-right">
+                      <div className="inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.16em] text-primary-container">
+                        <Radio className="h-3.5 w-3.5" />
+                        <span>{row.status ?? "standby"}</span>
+                      </div>
+                      <p className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                        {row.request_count ?? 0} requests
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-on-subtle">
+                  No provider health rows yet. Apply the migration and start sync jobs to populate this panel.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </section>
 
-      <section className="rounded-3xl border border-white/10 bg-black/40 p-6">
-        <h2 className="text-xl font-semibold">Pending Withdrawals</h2>
-        {withdrawalsQuery.isLoading && (
-          <p className="text-sm text-white/60">Loading…</p>
-        )}
-        <div className="mt-4 space-y-3">
-          {withdrawalsQuery.data?.map((withdrawal) => (
-            <article
-              key={withdrawal.id}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-            >
-              {(() => {
-                const profile = withdrawal.profile;
-                const characterName =
-                  profile?.display_name ||
-                  profile?.username ||
-                  `User ${withdrawal.user_id.slice(0, 8)}…`;
-                const icNumber = profile?.ic_number ?? "—";
-                const uuid = profile?.id ?? withdrawal.user_id;
-                return (
+        <div className="prismatic-card p-6">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="prismatic-kicker text-white">Market Management</p>
+                <h2 className="mt-2 font-headline text-2xl font-black uppercase tracking-tight text-white">
+                  External Event Board
+                </h2>
+              </div>
+              <button type="button" className="prismatic-button prismatic-button-secondary min-h-[2.2rem] px-3 text-[0.58rem]">
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {boardEvents.slice(0, 5).map((event) => (
+                <div key={event.id} className="grid gap-4 border-b border-outline-variant/15 pb-4 md:grid-cols-[minmax(0,1.2fr)_8rem_7rem] md:items-center">
                   <div>
-                    <p className="text-sm font-semibold">
-                      {`${currencySymbol}${withdrawal.amount.toFixed(2)}`}
-                    </p>
-                    <p className="text-xs text-white/60">Character: {characterName}</p>
-                    <p className="text-xs text-white/60">IC #: {icNumber}</p>
-                    <p className="text-xs text-white/40">
-                      UUID: {uuid.slice(0, 8)}… · {new Date(withdrawal.requested_at).toLocaleString()}
+                    <p className="text-sm font-semibold text-white">{event.title}</p>
+                    <p className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                      {getSportLabel(event.sportCode)} • {event.markets.length} pools
                     </p>
                   </div>
-                );
-              })()}
-              <div className="flex gap-2">
-                <button
-                  className="rounded-full bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-black disabled:opacity-50"
-                  onClick={() => approveWithdrawalMutation.mutate(withdrawal.id)}
-                  disabled={approveWithdrawalMutation.isPending}
-                >
-                  Approve
-                </button>
-                <button
-                  className="rounded-full border border-red-400/50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-red-300 disabled:opacity-50"
-                  onClick={() => {
-                    const confirmed = window.confirm(
-                      "Reject withdrawal and refund the wallet balance?"
-                    );
-                    if (!confirmed) return;
-                    const reason =
-                      window.prompt("Reason for rejection?", "Manual review") ?? "";
-                    rejectWithdrawalMutation.mutate({
-                      id: withdrawal.id,
-                      reason: reason.trim()
-                    });
-                  }}
-                  disabled={rejectWithdrawalMutation.isPending}
-                >
-                  Reject
-                </button>
-              </div>
-            </article>
-          ))}
-          {withdrawalsQuery.data && withdrawalsQuery.data.length === 0 && (
-            <p className="text-sm text-white/60">No pending withdrawals.</p>
-          )}
+                  <div className="text-left md:text-right">
+                    <p className="text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">Pool Total</p>
+                    <p className="font-semibold text-primary-container">
+                      {currencySymbol}
+                      {event.markets.reduce((sum, market) => sum + market.totalPool, 0).toFixed(0)}
+                    </p>
+                  </div>
+                  <div className="text-left md:text-right">
+                    <p className="text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">Status</p>
+                    <p className="font-semibold uppercase text-white">{event.status}</p>
+                  </div>
+                </div>
+              ))}
+              {!boardEvents.length ? (
+                <div className="text-sm text-on-subtle">
+                  No external events have been generated into betting containers yet.
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-black/40 p-6">
-        <h2 className="text-xl font-semibold">Wallet Audit Trail</h2>
-        <p className="text-sm text-white/60">
-          Latest ledger entries across all users for compliance review.
-        </p>
-        <div className="mt-4 space-y-3">
-          {walletAuditQuery.isLoading && (
-            <p className="text-sm text-white/60">Loading audit log…</p>
-          )}
-          {walletAuditQuery.data?.map((entry) => (
-            <article
-              key={entry.id}
-              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
-            >
-              <div>
-                <p className="font-semibold capitalize">{entry.kind}</p>
-                <p className="text-xs text-white/60">
-                  User {entry.user_id.slice(0, 8)}… ·{" "}
-                  {new Date(entry.created_at).toLocaleString()}
-                </p>
-              </div>
-              <p className="text-lg font-semibold">
-                {entry.amount > 0 ? "+" : ""}
-                {`${currencySymbol}${entry.amount.toFixed(2)}`}
-              </p>
-            </article>
-          ))}
-          {walletAuditQuery.data && walletAuditQuery.data.length === 0 && (
-            <p className="text-sm text-white/60">
-              No ledger entries yet. Requests will populate here.
-            </p>
-          )}
-        </div>
+      {alerts.length ? (
+        <section className="prismatic-card p-6">
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 text-danger">
+              <AlertTriangle className="h-4 w-4" />
+              <p className="prismatic-kicker text-danger">System Alerts</p>
+            </div>
+            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+              {alerts.map((alert) => (
+                <div key={alert} className="border border-danger/20 bg-danger/10 px-4 py-4 text-sm text-on-surface">
+                  {alert}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="grid gap-8 xl:grid-cols-2">
+        <ApprovalPanel
+          title="Pending Deposits"
+          items={depositsQuery.data ?? []}
+          loading={depositsQuery.isLoading}
+          onApprove={(id) => approveDepositMutation.mutate(id)}
+          approveDisabled={approveDepositMutation.isPending}
+        />
+
+        <ApprovalPanel
+          title="Pending Withdrawals"
+          items={withdrawalsQuery.data ?? []}
+          loading={withdrawalsQuery.isLoading}
+          onApprove={(id) => approveWithdrawalMutation.mutate(id)}
+          approveDisabled={approveWithdrawalMutation.isPending}
+          onReject={(id) => {
+            const confirmed = window.confirm("Reject withdrawal and refund the wallet balance?");
+            if (!confirmed) return;
+            const reason = window.prompt("Reason for rejection?", "Manual review") ?? "";
+            rejectWithdrawalMutation.mutate({ id, reason: reason.trim() });
+          }}
+          rejectDisabled={rejectWithdrawalMutation.isPending}
+        />
       </section>
     </div>
   );
 };
+
+const MetricCard = ({
+  label,
+  value,
+  accent
+}: {
+  label: string;
+  value: string;
+  accent: string;
+}) => (
+  <div className="border-l-2 border-primary-container bg-surface-low/85 px-5 py-5">
+    <p className="text-[0.58rem] uppercase tracking-[0.18em] text-on-subtle">{label}</p>
+    <p className={`mt-3 font-headline text-4xl font-black ${accent}`}>{value}</p>
+  </div>
+);
+
+const ApprovalPanel = ({
+  title,
+  items,
+  loading,
+  onApprove,
+  approveDisabled,
+  onReject,
+  rejectDisabled
+}: {
+  title: string;
+  items: Array<{
+    id: string;
+    amount: number;
+    requested_at: string;
+    user_id: string;
+    profile: {
+      id: string | null;
+      display_name: string | null;
+      username: string | null;
+      ic_number: string | null;
+    } | null;
+  }>;
+  loading: boolean;
+  onApprove: (id: string) => void;
+  approveDisabled: boolean;
+  onReject?: (id: string) => void;
+  rejectDisabled?: boolean;
+}) => (
+  <section className="prismatic-card p-6">
+    <div className="relative z-10">
+      <div className="flex items-center justify-between">
+        <h2 className="font-headline text-2xl font-black uppercase tracking-tight text-white">
+          {title}
+        </h2>
+        <span className="text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+          {items.length} pending
+        </span>
+      </div>
+
+      {loading ? <p className="mt-4 text-sm text-on-subtle">Loading…</p> : null}
+
+      <div className="mt-5 space-y-3">
+        {items.map((entry) => {
+          const profile = entry.profile;
+          const characterName =
+            profile?.display_name ||
+            profile?.username ||
+            `User ${entry.user_id.slice(0, 8)}…`;
+
+          return (
+            <article key={entry.id} className="grid gap-4 border border-outline-variant/15 bg-surface-lowest/80 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <div>
+                <p className="text-sm font-semibold text-white">
+                  {currencySymbol}
+                  {entry.amount.toFixed(2)}
+                </p>
+                <p className="mt-1 text-[0.68rem] uppercase tracking-[0.16em] text-on-subtle">
+                  {characterName} • IC {profile?.ic_number ?? "—"}
+                </p>
+                <p className="mt-1 text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                  {new Date(entry.requested_at).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="prismatic-button prismatic-button-primary min-h-[2.2rem] px-4 text-[0.58rem]"
+                  onClick={() => onApprove(entry.id)}
+                  disabled={approveDisabled}
+                >
+                  Approve
+                </button>
+                {onReject ? (
+                  <button
+                    type="button"
+                    className="prismatic-button prismatic-button-secondary min-h-[2.2rem] px-4 text-[0.58rem]"
+                    onClick={() => onReject(entry.id)}
+                    disabled={rejectDisabled}
+                  >
+                    Reject
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+
+        {!loading && items.length === 0 ? (
+          <div className="text-sm text-on-subtle">No pending requests.</div>
+        ) : null}
+      </div>
+    </div>
+  </section>
+);
 
 export default AdminDashboard;

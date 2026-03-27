@@ -3,10 +3,10 @@ import { ArrowUpRight, Gem } from "lucide-react";
 
 export interface OutcomeTileProps {
   outcomeId: string;
-  teamCode: string;
-  teamName: string;
-  teamColor?: string;
-  driverName: string;
+  shortLabel: string;
+  primaryLabel: string;
+  secondaryLabel?: string;
+  accentColor?: string;
   oddsLabel: string;
   poolShareLabel: string;
   poolSharePercent: number;
@@ -17,10 +17,10 @@ export interface OutcomeTileProps {
 }
 
 export function OutcomeTile({
-  teamCode,
-  teamName,
-  teamColor,
-  driverName,
+  shortLabel,
+  primaryLabel,
+  secondaryLabel,
+  accentColor,
   oddsLabel,
   poolShareLabel,
   poolSharePercent,
@@ -29,13 +29,11 @@ export function OutcomeTile({
   isSelected,
   onSelect
 }: OutcomeTileProps) {
-  const teamLine = `${teamCode.toUpperCase()} • ${teamName}`;
-
   return (
     <button
       type="button"
       onClick={() => onSelect?.()}
-      style={{ "--team-color": teamColor ?? "#94a3b8" } as React.CSSProperties}
+      style={{ "--team-color": accentColor ?? "#94a3b8" } as React.CSSProperties}
       className={`outcome-tile group flex min-h-[7.1rem] cursor-pointer flex-col justify-between border p-4 text-left transition ${
         isSelected
           ? "border-primary-container/50 bg-surface-high text-white"
@@ -48,21 +46,25 @@ export function OutcomeTile({
             <span
               aria-hidden
               className="inline-flex h-2 w-2 shrink-0"
-              style={{ backgroundColor: teamColor ?? "#94a3b8" }}
+              style={{ backgroundColor: accentColor ?? "#94a3b8" }}
             />
             <span
               className="truncate font-headline text-[0.74rem] font-bold uppercase tracking-[0.16em] text-on-subtle"
-              title={teamLine}
+              title={shortLabel}
             >
-              {teamCode}
+              {shortLabel}
             </span>
           </div>
           <p className="mt-3 line-clamp-2 min-h-[3.2rem] font-headline text-base font-extrabold uppercase tracking-[0.05em] text-white sm:text-lg">
-            {driverName}
+            {primaryLabel}
           </p>
-          <p className="mt-1 line-clamp-2 min-h-[2rem] text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle">
-            {teamName}
-          </p>
+          {secondaryLabel ? (
+            <p className="mt-1 line-clamp-2 min-h-[2rem] text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle">
+              {secondaryLabel}
+            </p>
+          ) : (
+            <div className="mt-1 min-h-[2rem]" />
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-1 text-primary-dim">
@@ -81,7 +83,7 @@ export function OutcomeTile({
             className="h-full"
             style={{
               width: `${Math.max(0, Math.min(poolSharePercent, 100))}%`,
-              backgroundColor: teamColor ?? "#00f2ff"
+              backgroundColor: accentColor ?? "#00f2ff"
             }}
           />
         </div>

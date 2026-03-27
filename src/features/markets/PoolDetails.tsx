@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
-import { getTeamCode } from "./teamCodes";
 import type { LiveBet, Pool } from "./types";
 
 interface PoolDetailsProps {
@@ -43,10 +42,10 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="font-headline text-3xl font-extrabold uppercase tracking-[0.06em] text-white">
-            Driver Entrants
+            Outcome Intelligence
           </h2>
           <p className="mt-2 text-sm text-on-subtle">
-            Select an entrant to launch the slip. Pool share and live momentum update with each new wager.
+            Select an outcome to launch the slip. Pool share and live momentum update with each new wager.
           </p>
         </div>
 
@@ -90,7 +89,7 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: 
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[0.62rem] font-bold uppercase tracking-[0.14em] text-primary-dim">
-                      {getTeamCode(outcome.teamName)}
+                      {outcome.shortLabel ?? "—"}
                     </span>
                     {favouriteId === outcome.id ? (
                       <span className="text-[0.58rem] uppercase tracking-[0.16em] text-on-subtle">Market Lead</span>
@@ -100,11 +99,13 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: 
                     ) : null}
                   </div>
                   <h3 className="mt-2 break-words font-headline text-xl font-extrabold uppercase tracking-[0.04em] text-white sm:text-[1.35rem]">
-                    {outcome.driverName}
+                    {outcome.primaryLabel}
                   </h3>
-                  <p className="mt-1 text-[0.7rem] uppercase tracking-[0.14em] text-on-subtle">
-                    {outcome.teamName}
-                  </p>
+                  {outcome.secondaryLabel ? (
+                    <p className="mt-1 text-[0.7rem] uppercase tracking-[0.14em] text-on-subtle">
+                      {outcome.secondaryLabel}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="border border-white/10 bg-surface-high px-3 py-3 text-center">
@@ -122,7 +123,7 @@ export function PoolDetails({ pool, liveBets, onOutcomeSelect, onOpenBetSlip }: 
                         style={{
                           backgroundColor:
                             barIndex < Math.round(sharePercent / 10)
-                              ? outcome.teamColor ?? "#00f2ff"
+                              ? outcome.accentColor ?? "#00f2ff"
                               : "rgba(50,53,57,0.45)"
                         }}
                       />

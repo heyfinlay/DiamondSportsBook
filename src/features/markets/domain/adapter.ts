@@ -1,9 +1,9 @@
 import type { EventWithMarkets, PoolPricingRow } from "@domains/betting/api/bettingApi";
 import { getTeamColor } from "../teamColors";
 import { getTeamCode } from "../teamCodes";
-import type { Pool, PoolStatus, Outcome } from "../types";
+import type { Outcome, Pool, PoolStatus } from "../types";
+import { getMarketCloseLabel } from "../utils/closeTime";
 
-// Types that mirror the fetchMarketDetail response. We only rely on the fields we need.
 export interface MarketDetailData {
   market: {
     id: string;
@@ -24,9 +24,10 @@ export interface MarketDetailData {
     id: string;
     label: string;
     pool?: number | null;
-    driverName?: string | null;
-    teamName?: string | null;
-    teamColor?: string | null;
+    primaryLabel?: string | null;
+    secondaryLabel?: string | null;
+    accentColor?: string | null;
+    participantType?: string | null;
     numBets?: number;
     baselineOdds?: number | null;
     color?: string | null;
@@ -43,8 +44,6 @@ const statusMap: Record<string, PoolStatus> = {
   void: "closed",
   suspended: "closed"
 };
-
-import { getMarketCloseLabel } from "../utils/closeTime";
 
 const formatLastUpdated = (updatedAt?: string | null) => {
   if (!updatedAt) return "—";
@@ -74,6 +73,49 @@ const getString = (value: unknown): string | null => {
   return trimmed.length ? trimmed : null;
 };
 
+const getOutcomeIdentity = (
+  outcome: Pick<
+    MarketDetailData["outcomes"][number],
+    "label" | "primaryLabel" | "secondaryLabel" | "accentColor" | "participantType" | "color" | "metadata"
+  >
+) => {
+  const meta = (outcome.metadata ?? {}) as Record<string, unknown>;
+  const primaryLabel =
+    getString(outcome.primaryLabel) ??
+    getString(meta["participant_name"]) ??
+    getString(meta["driver_name"]) ??
+    getString(meta["fighter_name"]) ??
+    getString(meta["team_name"]) ??
+    outcome.label;
+  const derivedSecondary =
+    getString(outcome.secondaryLabel) ??
+    getString(meta["secondary_label"]) ??
+    getString(meta["team_name"]);
+  const secondaryLabel =
+    derivedSecondary && derivedSecondary !== primaryLabel ? derivedSecondary : undefined;
+  const accentColor =
+    getString(outcome.accentColor) ??
+    getString(meta["team_color"]) ??
+    outcome.color ??
+    getTeamColor(secondaryLabel ?? primaryLabel);
+  const shortLabel =
+    getString(meta["short_label"]) ??
+    getTeamCode(secondaryLabel ?? primaryLabel);
+  const participantType =
+    getString(outcome.participantType) ??
+    getString(meta["participant_type"]) ??
+    "custom";
+
+  return {
+    label: outcome.label,
+    primaryLabel,
+    secondaryLabel,
+    accentColor,
+    shortLabel,
+    participantType
+  };
+};
+
 const mapOutcomes = (
   totalStake: number,
   rakeFraction: number,
@@ -82,17 +124,20 @@ const mapOutcomes = (
   outcomes.map((outcome) => {
     const staked = Number(outcome.pool ?? 0);
     const providedOdds = outcome.baselineOdds ?? null;
-    const teamName = outcome.teamName ?? outcome.label;
+    const identity = getOutcomeIdentity(outcome);
     const odds =
       typeof providedOdds === "number" && providedOdds > 0
         ? providedOdds
         : computeOdds(totalStake, staked, rakeFraction);
+
     return {
       id: outcome.id,
-      teamName,
-      driverName: outcome.driverName ?? outcome.label,
-      teamCode: getTeamCode(teamName),
-      teamColor: outcome.teamColor ?? getTeamColor(teamName),
+      label: identity.label,
+      primaryLabel: identity.primaryLabel,
+      secondaryLabel: identity.secondaryLabel,
+      accentColor: identity.accentColor,
+      shortLabel: identity.shortLabel,
+      participantType: identity.participantType,
       marketShare: totalStake > 0 ? staked / totalStake : 0,
       baselineOdds: odds,
       numBets: outcome.numBets ?? 0,
@@ -135,6 +180,9 @@ const buildPool = ({
   return {
     id,
     title: name,
+    eventTitle: null,
+    categoryLabel: null,
+    sportCode: null,
     status: uiStatus,
     totalStake,
     totalBets,
@@ -170,28 +218,30 @@ export const mapEventWithMarketsToUiPools = (events: EventWithMarkets[]): Pool[]
           rakeFraction,
           outcomes:
             market.outcomes?.map((outcome) => {
-              const meta = (outcome.metadata ?? {}) as Record<string, string | undefined>;
-              const metaTeamName = getString(meta["team_name"]);
-              const metaDriverName = getString(meta["driver_name"]);
-              const metaColor = getString(meta["team_color"]);
-              const teamName = metaTeamName ?? null;
-              const driverName = metaDriverName ?? outcome.label;
-              const derivedColor =
-                metaColor ??
-                outcome.color ??
-                (teamName ? getTeamColor(teamName) : getTeamColor(outcome.label));
-
+              const meta = (outcome.metadata ?? {}) as Record<string, unknown>;
               return {
                 id: outcome.id,
-                label: teamName ?? outcome.label,
+                label: outcome.label,
                 pool: Number(outcome.pool ?? 0),
-                teamName,
-                driverName,
-                teamColor: derivedColor,
+                primaryLabel:
+                  getString(meta["participant_name"]) ??
+                  getString(meta["driver_name"]) ??
+                  getString(meta["fighter_name"]) ??
+                  getString(meta["team_name"]) ??
+                  outcome.label,
+                secondaryLabel:
+                  getString(meta["secondary_label"]) ??
+                  getString(meta["team_name"]),
+                accentColor:
+                  getString(meta["team_color"]) ??
+                  outcome.color ??
+                  getTeamColor(getString(meta["team_name"]) ?? outcome.label),
+                participantType: getString(meta["participant_type"]),
                 metadata: outcome.metadata ?? null
               };
             }) ?? []
         });
+        pool.eventTitle = event.title;
         pools.push(pool);
       });
   });
@@ -239,11 +289,12 @@ const groupPricingRows = (rows: PoolPricingRow[]) => {
 
     grouped.get(row.pool_id)!.outcomes.push({
       id: row.outcome_id,
-      label: row.team_name ?? row.outcome_label,
-      teamName: row.team_name ?? row.outcome_label,
+      label: row.outcome_label,
       pool: Number(row.outcome_stake ?? 0),
-      driverName: row.driver_name ?? row.outcome_label,
-      teamColor: row.team_color ?? getTeamColor(row.team_name ?? row.outcome_label),
+      primaryLabel: row.driver_name ?? row.team_name ?? row.outcome_label,
+      secondaryLabel: row.team_name ?? null,
+      accentColor: row.team_color ?? getTeamColor(row.team_name ?? row.outcome_label),
+      participantType: row.driver_name ? "driver" : "team",
       numBets: Number(row.outcome_bets ?? 0),
       baselineOdds: row.baseline_odds ? Number(row.baseline_odds) : null
     });
@@ -301,25 +352,30 @@ export const mapMarketDetailToUiPool = (detail: MarketDetailData | null): Pool |
   const rakeFraction = Number(market.rake_percent ?? market.event?.takeout ?? 0);
   const enrichedOutcomes =
     outcomes?.map((outcome) => {
-      const { metadata, ...rest } = outcome as MarketDetailData["outcomes"][number] & {
-        metadata?: Record<string, unknown> | null;
-      };
-      const meta = (metadata ?? {}) as Record<string, string | undefined>;
-      const teamName = rest.teamName ?? meta["team_name"] ?? rest.label;
-      const driverName = rest.driverName ?? meta["driver_name"] ?? rest.label;
-      const derivedColor =
-        rest.teamColor ??
-        meta["team_color"] ??
-        (teamName ? getTeamColor(teamName) : undefined) ??
-        rest.color ??
-        undefined;
-
+      const meta = (outcome.metadata ?? {}) as Record<string, unknown>;
       return {
-        ...rest,
-        label: teamName,
-        teamName,
-        driverName,
-        teamColor: derivedColor
+        ...outcome,
+        label: outcome.label,
+        primaryLabel:
+          outcome.primaryLabel ??
+          getString(meta["participant_name"]) ??
+          getString(meta["driver_name"]) ??
+          getString(meta["fighter_name"]) ??
+          getString(meta["team_name"]) ??
+          outcome.label,
+        secondaryLabel:
+          outcome.secondaryLabel ??
+          getString(meta["secondary_label"]) ??
+          getString(meta["team_name"]),
+        accentColor:
+          outcome.accentColor ??
+          getString(meta["team_color"]) ??
+          outcome.color ??
+          undefined,
+        participantType:
+          outcome.participantType ??
+          getString(meta["participant_type"]) ??
+          null
       };
     }) ?? [];
 

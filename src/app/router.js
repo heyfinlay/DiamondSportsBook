@@ -5,6 +5,7 @@ import LiveTimingPage from "./live/LiveTimingPage";
 import RaceControlPage from "./control/RaceControlPage";
 import MarketsPage from "./markets/MarketsPage";
 import MarketDetailPage from "./markets/MarketDetailPage";
+import EventDetailPage from "./events/EventDetailPage";
 import StandingsPage from "./standings/page";
 import AccountPage from "./account/AccountPage";
 import AccountSettingsPage from "./account/AccountSettingsPage";
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
             {
                 path: "market/:marketId",
                 element: _jsx(MarketDetailPage, {})
+            },
+            {
+                path: "events/:eventId",
+                element: _jsx(EventDetailPage, {})
             },
             {
                 path: "live/:sessionId",

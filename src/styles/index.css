@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700;800;900&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -8,22 +8,22 @@
   color-scheme: dark;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-  background-color: #111417;
-  --bg-base: #111417;
-  --bg-lowest: #0c0e12;
-  --bg-low: #191c1f;
-  --bg-panel: #1d2023;
-  --bg-high: #282a2e;
-  --bg-highest: #323539;
+  background-color: #131313;
+  --bg-base: #131313;
+  --bg-lowest: #0e0e0e;
+  --bg-low: #1c1b1b;
+  --bg-panel: #20201f;
+  --bg-high: #2a2a2a;
+  --bg-highest: #353535;
   --line: rgba(185, 202, 203, 0.15);
-  --line-soft: rgba(58, 73, 75, 0.22);
-  --text-main: #e1e2e7;
+  --line-soft: rgba(59, 73, 75, 0.22);
+  --text-main: #e5e2e1;
   --text-muted: #b9cacb;
   --text-faint: rgba(185, 202, 203, 0.58);
-  --cyan: #00f2ff;
-  --cyan-dim: #00dbe7;
+  --cyan: #00f0ff;
+  --cyan-dim: #00dbe9;
   --danger: #ffb4ab;
-  --cta: linear-gradient(135deg, #e1fdff 0%, #00f2ff 100%);
+  --cta: linear-gradient(135deg, #dbfcff 0%, #00f0ff 100%);
 }
 
 * {
@@ -38,9 +38,9 @@ body {
   margin: 0;
   color: var(--text-main);
   background:
-    radial-gradient(720px 420px at 100% 0%, rgba(0, 242, 255, 0.08), transparent 60%),
-    radial-gradient(680px 380px at 0% 100%, rgba(225, 253, 255, 0.05), transparent 58%),
-    linear-gradient(180deg, #111417 0%, #0c0e12 100%);
+    radial-gradient(720px 420px at 100% 0%, rgba(0, 240, 255, 0.08), transparent 60%),
+    radial-gradient(680px 380px at 0% 100%, rgba(219, 252, 255, 0.05), transparent 58%),
+    linear-gradient(180deg, #131313 0%, #0e0e0e 100%);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -88,16 +88,15 @@ button, input, select, textarea {
 }
 
 .prismatic-grid {
-  background-image:
-    linear-gradient(rgba(185, 202, 203, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(185, 202, 203, 0.035) 1px, transparent 1px);
-  background-size: 120px 120px;
+  background-image: linear-gradient(rgba(185, 202, 203, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(185, 202, 203, 0.028) 1px, transparent 1px);
+  background-size: 160px 160px;
   background-position: center;
 }
 
 .prismatic-kicker {
-  font-family: "Manrope", sans-serif;
-  font-size: 0.69rem;
+  font-family: "Inter", sans-serif;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -105,7 +104,7 @@ button, input, select, textarea {
 }
 
 .prismatic-title {
-  font-family: "Manrope", sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -114,8 +113,10 @@ button, input, select, textarea {
 .prismatic-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(29, 32, 35, 0.94), rgba(12, 14, 18, 0.96));
-  border: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(42, 42, 42, 0.68), rgba(14, 14, 14, 0.94));
+  border: 1px solid rgba(59, 73, 75, 0.15);
+  backdrop-filter: blur(20px);
+  box-shadow: inset 0 1px 0 rgba(219, 252, 255, 0.05);
 }
 
 .prismatic-card::before {
@@ -141,9 +142,10 @@ button, input, select, textarea {
 }
 
 .prismatic-glass {
-  background: rgba(50, 53, 57, 0.34);
+  background: rgba(53, 53, 53, 0.4);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(185, 202, 203, 0.12);
+  border: 1px solid rgba(59, 73, 75, 0.15);
+  box-shadow: inset 0 1px 0 rgba(219, 252, 255, 0.06);
 }
 
 .prismatic-ghost-border {
@@ -157,7 +159,7 @@ button, input, select, textarea {
   gap: 0.75rem;
   min-height: 2.85rem;
   padding: 0 1.15rem;
-  font-family: "Manrope", sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.2em;
@@ -211,7 +213,7 @@ button, input, select, textarea {
   background: rgba(25, 28, 31, 0.85);
   color: var(--text-muted);
   border: 1px solid rgba(185, 202, 203, 0.14);
-  font-family: "Manrope", sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 0.71rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -239,7 +241,7 @@ button, input, select, textarea {
 .prismatic-table thead th {
   background: rgba(25, 28, 31, 0.68);
   color: var(--text-muted);
-  font-family: "Manrope", sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -247,7 +249,7 @@ button, input, select, textarea {
 }
 
 .prismatic-table tbody tr {
-  background: rgba(12, 14, 18, 0.84);
+  background: rgba(14, 14, 14, 0.82);
 }
 
 .prismatic-table tbody tr + tr td {

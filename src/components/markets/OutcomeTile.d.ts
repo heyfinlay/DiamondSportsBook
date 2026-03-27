@@ -1,9 +1,9 @@
 export interface OutcomeTileProps {
     outcomeId: string;
-    teamCode: string;
-    teamName: string;
-    teamColor?: string;
-    driverName: string;
+    shortLabel: string;
+    primaryLabel: string;
+    secondaryLabel?: string;
+    accentColor?: string;
     oddsLabel: string;
     poolShareLabel: string;
     poolSharePercent: number;
@@ -12,4 +12,4 @@ export interface OutcomeTileProps {
     isSelected?: boolean;
     onSelect?: () => void;
 }
-export declare function OutcomeTile({ teamCode, teamName, teamColor, driverName, oddsLabel, poolShareLabel, poolSharePercent, isFavourite, isBestPayout, isSelected, onSelect }: OutcomeTileProps): import("react/jsx-runtime").JSX.Element;
+export declare function OutcomeTile({ shortLabel, primaryLabel, secondaryLabel, accentColor, oddsLabel, poolShareLabel, poolSharePercent, isFavourite, isBestPayout, isSelected, onSelect }: OutcomeTileProps): import("react/jsx-runtime").JSX.Element;

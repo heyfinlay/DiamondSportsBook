@@ -1,18 +1,17 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, BarChart3, Database, Settings, Waves, LifeBuoy } from "lucide-react";
-import { fetchChampionshipSeasons } from "@domains/championship/api/championshipApi";
-import { useDriverStandings } from "@domains/standings/api/standingsApi";
-import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
+import { Activity, ArrowRight, Radio, SlidersHorizontal } from "lucide-react";
 import { fetchUiPools } from "../../features/markets/api";
-import { useSession } from "@lib/auth/SessionProvider";
-import { AuthCtaBanner } from "./components/AuthCtaBanner";
-import { marketKeys } from "@lib/query/keys";
-import { useBettingStore } from "@domains/betting/store/bettingStore";
-import PrismaticSideRail from "@app/components/PrismaticSideRail";
+import { MarketPoolsGrid } from "../../features/markets/MarketPoolsGrid";
 import type { Pool, PoolStatus } from "../../features/markets/types";
 import { formatCurrency } from "../../features/markets/utils/format";
+import { useBettingStore } from "@domains/betting/store/bettingStore";
+import { fetchSportsBoardEvents } from "@domains/sports/api/sportsDataApi";
+import { getSportAccentClass, getSportLabel, getSportSurfaceClass, getSportWatermark } from "@domains/sports/utils/sportsUi";
+import { marketKeys, sportsKeys } from "@lib/query/keys";
+import { useSession } from "@lib/auth/SessionProvider";
+import { AuthCtaBanner } from "./components/AuthCtaBanner";
 
 const statusOptions: Array<{ key: "all" | PoolStatus; label: string }> = [
   { key: "all", label: "All" },
@@ -22,90 +21,75 @@ const statusOptions: Array<{ key: "all" | PoolStatus; label: string }> = [
   { key: "settled", label: "Settled" }
 ];
 
-const formatTrend = (value: number) => `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
-
-const getPoolTrend = (pool: Pool) => {
-  if (!pool.outcomes.length) return 0;
-  return pool.outcomes.reduce((sum, outcome) => sum + outcome.trendDelta, 0) / pool.outcomes.length;
-};
-
-const getPoolSentiment = (pool: Pool) => {
-  const trend = getPoolTrend(pool);
-  if (trend >= 0.8) return { label: "Bullish", className: "text-primary-dim" };
-  if (trend <= -0.8) return { label: "Bearish", className: "text-danger" };
-  return { label: "Balanced", className: "text-on-subtle" };
-};
-
-const getVaultStatus = (pool: Pool) => {
-  if (pool.status === "open") return "Inspect";
-  if (pool.status === "closing_soon") return "Watch";
-  if (pool.status === "closed") return "Locked";
-  return "Settled";
-};
-
 const MarketsPage = () => {
   const navigate = useNavigate();
   const { user, loading: sessionLoading } = useSession();
   const setBetslipSelection = useBettingStore((state) => state.setBetslipSelection);
+  const [statusFilter, setStatusFilter] = useState<"all" | PoolStatus>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const poolsQuery = useQuery({
     queryKey: marketKeys.pools(),
     queryFn: fetchUiPools
   });
 
+  const sportsEventsQuery = useQuery({
+    queryKey: sportsKeys.board(),
+    queryFn: () => fetchSportsBoardEvents(18)
+  });
+
   const pools = poolsQuery.data ?? [];
-  const [statusFilter, setStatusFilter] = useState<"all" | PoolStatus>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortKey, setSortKey] = useState<"closing" | "pool">("pool");
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const boardEvents = sportsEventsQuery.data ?? [];
 
   const filteredPools = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
     const byStatus =
       statusFilter === "all" ? pools : pools.filter((pool) => pool.status === statusFilter);
 
-    const bySearch = query
-      ? byStatus.filter((pool) => pool.title.toLowerCase().includes(query))
-      : byStatus;
+    if (!query) return byStatus;
 
-    return [...bySearch].sort((a, b) => {
-      if (sortKey === "pool") return b.totalStake - a.totalStake;
-      const aTime = (a as { timeRemainingMs?: number }).timeRemainingMs ?? Number.MAX_SAFE_INTEGER;
-      const bTime = (b as { timeRemainingMs?: number }).timeRemainingMs ?? Number.MAX_SAFE_INTEGER;
-      return aTime - bTime;
+    return byStatus.filter((pool) => {
+      const haystack = `${pool.title} ${pool.eventTitle ?? ""} ${pool.categoryLabel ?? ""}`
+        .toLowerCase();
+      return haystack.includes(query);
     });
-  }, [deferredSearchQuery, pools, sortKey, statusFilter]);
+  }, [deferredSearchQuery, pools, statusFilter]);
 
-  const featuredPool = filteredPools[0] ?? pools[0] ?? null;
-  const featuredOutcomes = useMemo(
-    () =>
-      [...(featuredPool?.outcomes ?? [])]
-        .sort((a, b) => b.marketShare - a.marketShare)
-        .slice(0, 2),
-    [featuredPool]
-  );
+  const featuredEvent = boardEvents[0] ?? null;
+  const secondaryEvent = boardEvents[1] ?? null;
+  const featuredPools = filteredPools.slice(0, 6);
+  const totalHandle = filteredPools.reduce((sum, pool) => sum + pool.totalStake, 0);
+  const openPools = filteredPools.filter((pool) => pool.status === "open" || pool.status === "closing_soon").length;
+  const intelligenceFeed = useMemo(() => {
+    if (!boardEvents.length) {
+      return [
+        "Sports sync pipeline ready. Connect provider jobs to populate tactical updates.",
+        "Pool automation will appear here once external feed events are linked to market templates.",
+        "Settlement signals will surface after official result states arrive from the provider."
+      ];
+    }
 
-  const seasonsQuery = useQuery({
-    queryKey: ["championship-seasons"],
-    queryFn: fetchChampionshipSeasons
-  });
-  const activeSeasonId = useMemo(() => {
-    const seasons = seasonsQuery.data ?? [];
-    return seasons.find((season) => season.status === "active")?.id ?? seasons[0]?.id;
-  }, [seasonsQuery.data]);
-  const standingsQuery = useDriverStandings(activeSeasonId);
-  const featuredStandings = (standingsQuery.data ?? []).slice(0, 4);
+    return boardEvents.slice(0, 3).map((event) => {
+      const venue = event.sportsEvent?.venueName ?? event.sportsEvent?.competition?.name ?? "Live board";
+      const marketCount = event.markets.filter((market) => !market.archived).length;
+      return `${event.title} • ${venue} • ${marketCount} active pool${marketCount === 1 ? "" : "s"}`;
+    });
+  }, [boardEvents]);
 
-  const totalHandle = pools.reduce((sum, pool) => sum + pool.totalStake, 0);
-  const openPools = pools.filter((pool) => pool.status === "open" || pool.status === "closing_soon").length;
-
-  const handleOutcomeSelect = (poolId: string, poolTitle: string, outcome: (typeof pools)[number]["outcomes"][number]) => {
+  const handleOutcomeSelect = (
+    poolId: string,
+    poolTitle: string,
+    outcome: Pool["outcomes"][number]
+  ) => {
     setBetslipSelection({
       marketId: poolId,
       marketName: poolTitle,
       eventTitle: null,
       outcomeId: outcome.id,
-      outcomeLabel: `${outcome.teamName} — ${outcome.driverName}`,
+      outcomeLabel: outcome.secondaryLabel
+        ? `${outcome.primaryLabel} — ${outcome.secondaryLabel}`
+        : outcome.primaryLabel,
       minStake: 0,
       maxStake: 0,
       stake: 0
@@ -114,318 +98,256 @@ const MarketsPage = () => {
   };
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[17rem_minmax(0,1fr)]">
-      <PrismaticSideRail
-        title="Live Intelligence"
-        subtitle="High-Frequency Data"
-        activeKey="whale_movements"
-        items={[
-          { key: "whale_movements", label: "Whale Movements", icon: Waves },
-          { key: "prismatic_shifts", label: "Prismatic Shifts", icon: Activity },
-          { key: "market_volume", label: "Market Volume", icon: Database },
-          { key: "settings", label: "Settings", icon: Settings },
-          { key: "support", label: "Support", icon: LifeBuoy }
-        ]}
-        ctaLabel="View Global Analytics"
-        ctaTo="/standings"
-      />
-
-      <div className="space-y-8">
-        <section className="grid gap-6 2xl:grid-cols-[minmax(0,1.6fr)_21rem]">
-          <div className="prismatic-card min-h-[28rem] p-8 md:p-10">
-            <div className="absolute inset-0 bg-[linear-gradient(102deg,rgba(20,23,26,0.98)_0%,rgba(20,23,26,0.94)_48%,rgba(14,22,27,0.88)_100%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(225,253,255,0.08),transparent_24%),radial-gradient(circle_at_84%_14%,rgba(0,242,255,0.22),transparent_34%),radial-gradient(circle_at_72%_84%,rgba(0,242,255,0.08),transparent_26%)] opacity-95" />
-            <div className="relative flex h-full flex-col justify-between gap-8">
+    <div className="space-y-10">
+      <section className="grid gap-8 xl:grid-cols-[minmax(0,1.75fr)_22rem]">
+        <div className="space-y-6">
+          <header className="space-y-5">
+            <div className="flex flex-wrap items-center gap-4 text-[0.68rem] uppercase tracking-[0.18em] text-on-subtle">
+              <span className="inline-flex items-center gap-2 text-primary-container">
+                <Radio className="h-3.5 w-3.5" />
+                Active Streams: {boardEvents.length || 0}
+              </span>
+              <span>Total Liquidity: {formatCurrency(totalHandle)}</span>
+            </div>
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 border border-primary-container/30 bg-primary-container/10 px-3 py-1">
-                  <span className="inline-flex h-2 w-2 bg-primary-container" />
-                  <span className="prismatic-kicker text-primary-dim">Live Intelligence Active</span>
-                </div>
-
-                <div className="mt-8">
-                  <p className="prismatic-kicker">Prime Market</p>
-                  <h1 className="mt-3 font-headline text-4xl font-extrabold uppercase tracking-[0.03em] text-white sm:text-5xl lg:text-[4.5rem]">
-                    {featuredPool ? featuredPool.title : "Diamond Sportsbook"}
-                  </h1>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-on-subtle sm:text-base">
-                    Pool-based pricing updates in real time. Lower share means higher payout, while volume signals conviction across the vault.
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-4 text-[0.7rem] uppercase tracking-[0.18em] text-on-subtle">
-                    <span>{poolsQuery.isLoading ? "Syncing live pools" : `${pools.length} monitored markets`}</span>
-                    <span className="inline-flex h-1 w-1 bg-primary-container" />
-                    <span>{openPools} open now</span>
-                    {featuredPool?.timeRemainingLabel ? (
-                      <>
-                        <span className="inline-flex h-1 w-1 bg-danger" />
-                        <span>{featuredPool.timeRemainingLabel}</span>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
+                <h1 className="font-headline text-5xl font-black uppercase tracking-tight text-white sm:text-6xl lg:text-7xl">
+                  Live Markets
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-on-subtle sm:text-base">
+                  A multi-sport command surface for live parimutuel pools, event context, and tactical liquidity flow.
+                </p>
               </div>
-
-              <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:items-end">
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem]">
-                  {featuredOutcomes.map((outcome) => (
-                    <div key={outcome.id} className="flex min-h-[11rem] min-w-0 flex-col justify-between border border-white/10 bg-surface-highest/60 px-5 py-5 backdrop-blur-xl">
-                      <div className="min-w-0">
-                        <p className="prismatic-kicker text-[0.58rem]">{outcome.teamName}</p>
-                        <p className="mt-2 line-clamp-3 min-h-[4.5rem] font-headline text-lg font-extrabold uppercase tracking-[0.04em] text-white sm:text-xl">
-                          {outcome.driverName}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="font-headline text-3xl font-extrabold text-white sm:text-4xl">{outcome.baselineOdds.toFixed(2)}</p>
-                        <p className="mt-1 text-[0.66rem] uppercase tracking-[0.14em] text-on-subtle">
-                          {Math.round(outcome.marketShare * 100)}% share
-                        </p>
-                      </div>
-                      <div className="mt-4 h-1 bg-white/10">
-                        <div
-                          className="h-full bg-primary-container"
-                          style={{ width: `${Math.min(Math.max(outcome.marketShare * 100, 10), 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex min-h-[11rem] items-end">
-                    {featuredPool ? (
-                      <Link to={`/market/${featuredPool.id}`} className="prismatic-button prismatic-button-primary w-full px-8 py-5">
-                        Enter Vault
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="min-w-0 border border-primary-container/30 bg-[linear-gradient(135deg,rgba(225,253,255,0.14),rgba(0,242,255,0.15))] px-6 py-6 text-left shadow-[0_0_36px_rgba(0,242,255,0.12)]">
-                  <p className="prismatic-kicker text-on-primary/80">Total Pool Liquidity</p>
-                  <p className="mt-3 font-headline text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-                    {formatCurrency(totalHandle)}
-                  </p>
-                  <p className="mt-3 text-[0.7rem] uppercase tracking-[0.14em] text-on-primary/80">
-                    {featuredPool ? `${featuredPool.totalBets.toLocaleString()} active tickets in focus` : "Waiting for active pool data"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <h2 className="prismatic-kicker text-white">Current Standings</h2>
-              <Link to="/wagers" className="prismatic-kicker text-primary-dim transition hover:text-white">
-                Live Board
-              </Link>
-            </div>
-            {featuredStandings.length ? (
-              featuredStandings.map((driver) => (
-                <div key={driver.driver_id} className="prismatic-glass flex items-center justify-between gap-4 p-4">
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center bg-surface-highest font-headline text-xl font-extrabold text-white">
-                      {String(driver.position).padStart(2, "0")}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[0.6rem] uppercase tracking-[0.16em] text-on-subtle">
-                        {driver.team_name}
-                      </p>
-                      <p className="mt-1 truncate font-headline text-lg font-extrabold uppercase tracking-[0.05em] text-white">
-                        {driver.driver_name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-headline text-2xl font-extrabold text-primary-dim">
-                      {driver.points.toFixed(0)}
-                    </p>
-                    <p className="prismatic-kicker text-[0.58rem]">Pts</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="prismatic-glass p-5 text-sm text-on-subtle">
-                {standingsQuery.isLoading ? "Loading standings…" : "Standings data will appear here once the active season is available."}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="prismatic-metric px-5 py-4">
-            <p className="prismatic-kicker">Live Pools</p>
-            <p className="mt-2 font-headline text-3xl font-extrabold text-white">{pools.length}</p>
-          </div>
-          <div className="prismatic-metric px-5 py-4">
-            <p className="prismatic-kicker">Open Now</p>
-            <p className="mt-2 font-headline text-3xl font-extrabold text-white">{openPools}</p>
-          </div>
-          <div className="prismatic-metric px-5 py-4">
-            <p className="prismatic-kicker">Total Handle</p>
-            <p className="mt-2 font-headline text-3xl font-extrabold text-white">{formatCurrency(totalHandle)}</p>
-          </div>
-        </section>
-
-        {!sessionLoading && !user ? <AuthCtaBanner /> : null}
-
-        {poolsQuery.isLoading ? (
-          <div className="prismatic-card px-5 py-4 text-sm text-on-subtle">Loading live markets…</div>
-        ) : null}
-
-        {poolsQuery.isError ? (
-          <div className="border border-danger/30 bg-danger/10 px-5 py-4 text-sm text-danger">
-            Unable to load markets right now. Refresh to try again.
-          </div>
-        ) : null}
-
-        <section className="prismatic-card p-5">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <p className="prismatic-kicker">Prime Markets</p>
-              <h2 className="mt-2 font-headline text-3xl font-extrabold uppercase tracking-[0.06em] text-white">
-                Active Vault Board
-              </h2>
-            </div>
-
-            <div className="flex flex-col gap-4 xl:items-end">
               <div className="flex flex-wrap gap-2">
-                {statusOptions.map((status) => (
+                {statusOptions.map((option) => (
                   <button
-                    key={status.key}
+                    key={option.key}
                     type="button"
-                    onClick={() => setStatusFilter(status.key)}
+                    onClick={() => setStatusFilter(option.key)}
                     className="prismatic-chip"
-                    data-active={statusFilter === status.key}
+                    data-active={statusFilter === option.key}
                   >
-                    {status.label}
+                    {option.label}
                   </button>
                 ))}
               </div>
+            </div>
+          </header>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <div className="min-w-[18rem] border border-white/10 bg-surface-low px-4">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search markets"
-                    className="prismatic-input"
-                  />
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.75fr)]">
+            <section
+              className={`prismatic-card min-h-[24rem] bg-gradient-to-br ${getSportSurfaceClass(featuredEvent?.sportCode)} p-6 sm:p-8`}
+            >
+              <div className="relative z-10 flex h-full flex-col justify-between">
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="border border-primary-container/20 bg-primary-container/10 px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-primary-container">
+                        Featured
+                      </span>
+                      <span className={getSportAccentClass(featuredEvent?.sportCode)}>
+                        {getSportLabel(featuredEvent?.sportCode)}
+                      </span>
+                    </div>
+                    <h2 className="mt-4 max-w-3xl font-headline text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
+                      {featuredEvent?.title ?? "Sports Feed Ready"}
+                    </h2>
+                    <p className="mt-3 text-sm uppercase tracking-[0.14em] text-on-subtle">
+                      {featuredEvent?.sportsEvent?.venueName ??
+                        featuredEvent?.sportsEvent?.competition?.name ??
+                        "Connect a live provider to populate the event board"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="prismatic-kicker text-primary-dim">Closes In</p>
+                    <p className="mt-2 font-headline text-3xl font-black text-white">
+                      {featuredEvent?.markets[0]?.closeTime
+                        ? new Date(featuredEvent.markets[0].closeTime).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })
+                        : "Standby"}
+                    </p>
+                  </div>
                 </div>
-                <div className="border border-white/10 bg-surface-low px-4">
-                  <label className="prismatic-kicker block pt-3 text-[0.56rem]">Sort</label>
-                  <select
-                    value={sortKey}
-                    onChange={(event) => setSortKey(event.target.value as "closing" | "pool")}
-                    className="w-full bg-transparent pb-3 pt-2 text-sm text-white outline-none"
-                  >
-                    <option value="pool">Highest Pool</option>
-                    <option value="closing">Closing Soon</option>
-                  </select>
+
+                <div className="relative mt-10">
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.045]">
+                    <span className="font-headline text-[7rem] font-black uppercase tracking-[-0.06em] text-white sm:text-[10rem]">
+                      {getSportWatermark(featuredEvent?.sportCode)}
+                    </span>
+                  </div>
+
+                  {featuredEvent?.markets[0] ? (
+                    <div className="relative space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="prismatic-kicker text-white">Live Pool Weights</p>
+                        <p className="text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                          {featuredEvent.markets[0].outcomes.length} outcomes
+                        </p>
+                      </div>
+                      <div className="flex h-16 items-end gap-1">
+                        {featuredEvent.markets[0].outcomes.slice(0, 4).map((outcome) => {
+                          const share =
+                            featuredEvent.markets[0].totalPool > 0
+                              ? (outcome.pool / featuredEvent.markets[0].totalPool) * 100
+                              : 0;
+                          const height = `${Math.max(share, 12)}%`;
+                          return (
+                            <div key={outcome.id} className="flex flex-1 flex-col justify-end gap-2">
+                              <div
+                                className="w-full"
+                                style={{
+                                  height,
+                                  backgroundColor: outcome.color ?? "#00f0ff"
+                                }}
+                              />
+                              <p className="truncate text-[0.58rem] font-bold uppercase tracking-[0.14em] text-on-subtle">
+                                {outcome.label}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="grid gap-4 pt-4 sm:grid-cols-3">
+                        <div>
+                          <p className="prismatic-kicker">Pool Liquidity</p>
+                          <p className="mt-2 font-headline text-2xl font-black text-white">
+                            {formatCurrency(featuredEvent.markets[0].totalPool)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="prismatic-kicker">Status</p>
+                          <p className="mt-2 font-headline text-2xl font-black text-primary-fixed">
+                            {featuredEvent.markets[0].status.toUpperCase()}
+                          </p>
+                        </div>
+                        <div className="flex items-end justify-start sm:justify-end">
+                          <Link
+                            to={`/events/${featuredEvent.id}`}
+                            className="prismatic-button prismatic-button-primary w-full px-6 text-[0.64rem] sm:w-auto"
+                          >
+                            Enter Event
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative border border-outline-variant/15 bg-surface-lowest/80 p-6 text-sm text-on-subtle">
+                      Market templates will appear here after the first sports event is synced and generated.
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        {filteredPools.length > 0 ? (
-          <MarketPoolsGrid
-            pools={filteredPools}
-            onSelectPool={(poolId) => navigate(`/market/${poolId}`)}
-            onSelectOutcome={handleOutcomeSelect}
-          />
-        ) : (
-          !poolsQuery.isLoading && (
-            <div className="prismatic-card flex flex-wrap items-center gap-4 p-8">
-              <div className="flex-1">
-                <p className="font-headline text-xl font-extrabold uppercase tracking-[0.08em] text-white">
-                  Market board coming online
-                </p>
-                <p className="mt-2 text-sm text-on-subtle">
-                  Admin tools will seed the next tote shortly. Check back when the next event opens betting.
-                </p>
+            <section className="prismatic-card p-6">
+              <div className="relative z-10 flex h-full flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary-container" />
+                    <p className="prismatic-kicker text-white">Trending Event</p>
+                  </div>
+                  <h3 className="mt-5 font-headline text-2xl font-bold uppercase tracking-tight text-white">
+                    {secondaryEvent?.title ?? "Awaiting schedule sync"}
+                  </h3>
+                  <p className="mt-2 text-[0.68rem] uppercase tracking-[0.16em] text-on-subtle">
+                    {secondaryEvent
+                      ? `${getSportLabel(secondaryEvent.sportCode)} • ${secondaryEvent.markets.length} pools`
+                      : "Secondary event intelligence will appear here"}
+                  </p>
+
+                  <div className="mt-8 space-y-4">
+                    {(secondaryEvent?.markets.slice(0, 2) ?? []).map((market) => (
+                      <Link
+                        key={market.id}
+                        to={`/market/${market.id}`}
+                        className="block border border-outline-variant/15 bg-surface-lowest/80 p-4 transition hover:border-primary-container/25"
+                      >
+                        <p className="text-sm font-semibold text-white">{market.name}</p>
+                        <div className="mt-3 flex items-center justify-between text-[0.62rem] uppercase tracking-[0.16em] text-on-subtle">
+                          <span>{formatCurrency(market.totalPool)}</span>
+                          <span>{market.status}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-8 border-t border-outline-variant/15 pt-5">
+                  <div className="flex items-center justify-between">
+                    <p className="prismatic-kicker">Open Pools</p>
+                    <p className="font-headline text-2xl font-black text-primary-container">{openPools}</p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between text-[0.68rem] uppercase tracking-[0.16em] text-on-subtle">
+                    <span>Filter by liquidity</span>
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </div>
+                </div>
               </div>
-              <Link to="/account" className="prismatic-button prismatic-button-secondary">
-                Manage Vault
-              </Link>
-            </div>
-          )
-        )}
-
-        <section className="prismatic-card p-6">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <p className="prismatic-kicker text-primary-dim">Active Intelligence Ledger</p>
-              <h2 className="mt-2 font-headline text-2xl font-extrabold uppercase tracking-[0.06em] text-white">
-                Market Identity
-              </h2>
-            </div>
-            <BarChart3 className="h-5 w-5 text-primary-dim" />
+            </section>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="prismatic-table min-w-full">
-              <thead>
-                <tr>
-                  <th className="px-6 py-4 text-left">Market Identity</th>
-                  <th className="px-6 py-4 text-left">Volume (24h)</th>
-                  <th className="px-6 py-4 text-left">Volatility</th>
-                  <th className="px-6 py-4 text-left">Sentiment Index</th>
-                  <th className="px-6 py-4 text-right">Vault Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pools.slice(0, 4).map((pool) => {
-                  const trend = getPoolTrend(pool);
-                  const sentiment = getPoolSentiment(pool);
-                  const strongestOutcome = [...pool.outcomes].sort((a, b) => b.marketShare - a.marketShare)[0];
-                  return (
-                    <tr key={pool.id}>
-                      <td className="px-6 py-5">
-                        <div className="flex items-start gap-4">
-                          <span className="mt-1 inline-flex h-10 w-1 bg-primary-container" />
-                          <div>
-                            <p className="font-headline text-lg font-extrabold uppercase tracking-[0.05em] text-white">
-                              {pool.title}
-                            </p>
-                            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-on-subtle">
-                              {pool.status.replace("_", " ")} • {pool.totalBets.toLocaleString()} bets
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-xl font-semibold text-white">{formatCurrency(pool.totalStake)}</td>
-                      <td className={`px-6 py-5 text-lg font-semibold ${trend >= 0 ? "text-primary-dim" : "text-danger"}`}>
-                        {formatTrend(trend)}
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="h-1.5 w-16 bg-surface-highest">
-                            <div
-                              className="h-full bg-primary-container"
-                              style={{ width: `${Math.min(Math.max((strongestOutcome?.marketShare ?? 0) * 100, 5), 100)}%` }}
-                            />
-                          </div>
-                          <span className={`prismatic-kicker text-[0.62rem] ${sentiment.className}`}>{sentiment.label}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/market/${pool.id}`)}
-                          className="prismatic-button prismatic-button-secondary min-h-[2.45rem] px-4 text-[0.62rem]"
-                        >
-                          {getVaultStatus(pool)}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+          {!sessionLoading && !user ? <AuthCtaBanner /> : null}
+        </div>
+
+        <aside className="space-y-6">
+          <section className="prismatic-card p-6">
+            <div className="relative z-10">
+              <p className="prismatic-kicker text-primary-dim">Command Metrics</p>
+              <div className="mt-6 grid gap-4">
+                <MetricCard label="Live Pools" value={String(pools.length)} />
+                <MetricCard label="Open Now" value={String(openPools)} />
+                <MetricCard label="Total Liquidity" value={formatCurrency(totalHandle)} />
+              </div>
+            </div>
+          </section>
+
+          <section className="prismatic-card p-6">
+            <div className="relative z-10">
+              <p className="prismatic-kicker text-white">Tactical Feed</p>
+              <div className="mt-5 space-y-3">
+                {intelligenceFeed.map((item, index) => (
+                  <div key={item} className="border-l-2 border-primary-container/40 bg-surface-lowest/80 px-4 py-3">
+                    <p className="text-[0.58rem] uppercase tracking-[0.18em] text-primary-container">
+                      {index === 0 ? "pool_update" : index === 1 ? "event_info" : "system_msg"}
+                    </p>
+                    <p className="mt-2 text-sm text-on-surface">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section className="flex items-center justify-between">
+        <div>
+          <p className="prismatic-kicker text-primary-dim">Prime Markets</p>
+          <h2 className="mt-2 font-headline text-3xl font-black uppercase tracking-tight text-white">
+            Active High-Stakes Pools
+          </h2>
+        </div>
+        <button type="button" className="prismatic-button prismatic-button-secondary min-h-[2.35rem] px-4 text-[0.62rem]">
+          View All
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </section>
+
+      <MarketPoolsGrid
+        pools={featuredPools}
+        onSelectPool={(poolId) => navigate(`/market/${poolId}`)}
+        onSelectOutcome={handleOutcomeSelect}
+      />
     </div>
   );
 };
+
+const MetricCard = ({ label, value }: { label: string; value: string }) => (
+  <div className="border-l-2 border-primary-container bg-surface-lowest/85 px-4 py-4">
+    <p className="text-[0.58rem] uppercase tracking-[0.18em] text-on-subtle">{label}</p>
+    <p className="mt-3 font-headline text-3xl font-black text-white">{value}</p>
+  </div>
+);
 
 export default MarketsPage;

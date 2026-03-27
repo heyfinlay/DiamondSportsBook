@@ -1,6 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { MarketCard } from "../../components/markets/MarketCard";
-import { getTeamCode } from "./teamCodes";
 import { formatOdds, formatPercent } from "./utils/format";
 import { getOutcomeRankings } from "./utils/outcomeStats";
 export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }) {
@@ -9,10 +8,10 @@ export function MarketPoolsGrid({ pools, onSelectPool, onSelectOutcome }) {
                     const outcomes = pool.outcomes.map((outcome) => ({
                         id: outcome.id,
                         outcomeId: outcome.id,
-                        teamCode: getTeamCode(outcome.teamName),
-                        teamName: outcome.teamName,
-                        teamColor: outcome.teamColor,
-                        driverName: outcome.driverName,
+                        shortLabel: outcome.shortLabel ?? "—",
+                        primaryLabel: outcome.primaryLabel,
+                        secondaryLabel: outcome.secondaryLabel,
+                        accentColor: outcome.accentColor,
                         oddsLabel: formatOdds(outcome.baselineOdds),
                         poolShareLabel: `${formatPercent(outcome.marketShare)} pool`,
                         poolSharePercent: Math.max(0, Math.min(outcome.marketShare * 100, 100)),

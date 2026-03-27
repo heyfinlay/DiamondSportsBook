@@ -177,9 +177,9 @@ export function BetSlipDrawer({
                           <div className="min-w-0">
                             <p className="prismatic-kicker text-primary-dim">Selected Outcome</p>
                             <OutcomeIdentity
-                              teamName={selectedOutcome.teamName}
-                              driverName={selectedOutcome.driverName}
-                              teamColor={selectedOutcome.teamColor}
+                              primaryLabel={selectedOutcome.primaryLabel}
+                              secondaryLabel={selectedOutcome.secondaryLabel}
+                              accentColor={selectedOutcome.accentColor}
                               className="mt-2"
                               primaryClassName="font-headline text-lg font-extrabold uppercase tracking-[0.04em] text-white"
                               secondaryClassName="text-[0.7rem] uppercase tracking-[0.14em] text-on-subtle"
@@ -230,9 +230,9 @@ export function BetSlipDrawer({
                             >
                               <div className="flex items-start justify-between gap-4">
                                 <OutcomeIdentity
-                                  teamName={outcome.teamName}
-                                  driverName={outcome.driverName}
-                                  teamColor={outcome.teamColor}
+                                  primaryLabel={outcome.primaryLabel}
+                                  secondaryLabel={outcome.secondaryLabel}
+                                  accentColor={outcome.accentColor}
                                   primaryClassName="font-headline text-base font-extrabold uppercase tracking-[0.04em] text-white"
                                   secondaryClassName="text-[0.68rem] uppercase tracking-[0.14em] text-on-subtle"
                                 />
