@@ -13,6 +13,9 @@ ALTER TABLE public.championship_teams
   ADD COLUMN IF NOT EXISTS manual_position integer,
   ADD COLUMN IF NOT EXISTS use_manual_override boolean NOT NULL DEFAULT false;
 
+DROP VIEW IF EXISTS public.team_standings_view;
+DROP VIEW IF EXISTS public.driver_standings_view;
+
 CREATE OR REPLACE VIEW public.driver_standings_view AS
 WITH driver_points AS (
   SELECT

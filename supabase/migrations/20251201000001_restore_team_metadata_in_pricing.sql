@@ -1,4 +1,9 @@
 -- Restore team metadata columns in pricing helpers so UI outcomes can render team/driver details.
+-- These helpers changed row shapes across migrations, so replace them via drop/create.
+DROP FUNCTION IF EXISTS public.get_pools_pricing();
+DROP FUNCTION IF EXISTS public.get_pool_pricing(uuid);
+DROP FUNCTION IF EXISTS public.get_recent_pool_bets(uuid, integer);
+
 CREATE OR REPLACE FUNCTION public.get_pools_pricing()
 RETURNS TABLE (
   pool_id uuid,

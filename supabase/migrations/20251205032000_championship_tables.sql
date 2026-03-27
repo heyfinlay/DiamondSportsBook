@@ -197,6 +197,11 @@ CREATE POLICY championship_results_read
   USING (true);
 
 -- Views
+DROP VIEW IF EXISTS public.championship_lineup_view;
+DROP VIEW IF EXISTS public.race_results_view;
+DROP VIEW IF EXISTS public.team_standings_view;
+DROP VIEW IF EXISTS public.driver_standings_view;
+
 CREATE OR REPLACE VIEW public.driver_standings_view AS
 WITH driver_points AS (
   SELECT

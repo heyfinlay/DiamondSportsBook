@@ -1,5 +1,10 @@
 -- Market pricing + live bets snapshots for UI (parimutuel v2)
 
+-- These helpers changed row shapes across migrations, so replace them via drop/create.
+DROP FUNCTION IF EXISTS public.get_pools_pricing();
+DROP FUNCTION IF EXISTS public.get_pool_pricing(uuid);
+DROP FUNCTION IF EXISTS public.get_recent_pool_bets(uuid, integer);
+
 -- Read-only helper for pool pricing aggregates.
 -- Aggregates wagers to compute total stake, total bets, per-outcome stake/bets, and baseline odds.
 CREATE OR REPLACE FUNCTION public.get_pools_pricing()

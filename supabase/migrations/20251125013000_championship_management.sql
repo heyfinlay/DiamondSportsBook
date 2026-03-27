@@ -25,17 +25,20 @@ CREATE TABLE IF NOT EXISTS public.championship_seasons (
   UNIQUE (name)
 );
 
+DROP TRIGGER IF EXISTS trg_championship_seasons_updated_at ON public.championship_seasons;
 CREATE TRIGGER trg_championship_seasons_updated_at
 BEFORE UPDATE ON public.championship_seasons
 FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
 
 ALTER TABLE public.championship_seasons ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Seasons are readable by everyone" ON public.championship_seasons;
 CREATE POLICY "Seasons are readable by everyone"
   ON public.championship_seasons
   FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Seasons managed by admins" ON public.championship_seasons;
 CREATE POLICY "Seasons managed by admins"
   ON public.championship_seasons
   FOR ALL
@@ -60,17 +63,20 @@ CREATE TABLE IF NOT EXISTS public.championship_teams (
   UNIQUE (season_id, legacy_team_id)
 );
 
+DROP TRIGGER IF EXISTS trg_championship_teams_updated_at ON public.championship_teams;
 CREATE TRIGGER trg_championship_teams_updated_at
 BEFORE UPDATE ON public.championship_teams
 FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
 
 ALTER TABLE public.championship_teams ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Championship teams are readable" ON public.championship_teams;
 CREATE POLICY "Championship teams are readable"
   ON public.championship_teams
   FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Championship teams managed by admins" ON public.championship_teams;
 CREATE POLICY "Championship teams managed by admins"
   ON public.championship_teams
   FOR ALL
@@ -96,17 +102,20 @@ CREATE TABLE IF NOT EXISTS public.championship_drivers (
   UNIQUE (season_id, driver_name)
 );
 
+DROP TRIGGER IF EXISTS trg_championship_drivers_updated_at ON public.championship_drivers;
 CREATE TRIGGER trg_championship_drivers_updated_at
 BEFORE UPDATE ON public.championship_drivers
 FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
 
 ALTER TABLE public.championship_drivers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Championship drivers readable" ON public.championship_drivers;
 CREATE POLICY "Championship drivers readable"
   ON public.championship_drivers
   FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Championship drivers managed by admins" ON public.championship_drivers;
 CREATE POLICY "Championship drivers managed by admins"
   ON public.championship_drivers
   FOR ALL
@@ -129,17 +138,20 @@ CREATE TABLE IF NOT EXISTS public.championship_races (
   UNIQUE (season_id, round_number)
 );
 
+DROP TRIGGER IF EXISTS trg_championship_races_updated_at ON public.championship_races;
 CREATE TRIGGER trg_championship_races_updated_at
 BEFORE UPDATE ON public.championship_races
 FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
 
 ALTER TABLE public.championship_races ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Championship races readable" ON public.championship_races;
 CREATE POLICY "Championship races readable"
   ON public.championship_races
   FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Championship races managed by admins" ON public.championship_races;
 CREATE POLICY "Championship races managed by admins"
   ON public.championship_races
   FOR ALL
@@ -167,17 +179,20 @@ CREATE TABLE IF NOT EXISTS public.championship_results (
   UNIQUE (race_id, driver_id)
 );
 
+DROP TRIGGER IF EXISTS trg_championship_results_updated_at ON public.championship_results;
 CREATE TRIGGER trg_championship_results_updated_at
 BEFORE UPDATE ON public.championship_results
 FOR EACH ROW EXECUTE PROCEDURE public.touch_updated_at();
 
 ALTER TABLE public.championship_results ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Championship results readable" ON public.championship_results;
 CREATE POLICY "Championship results readable"
   ON public.championship_results
   FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Championship results managed by admins" ON public.championship_results;
 CREATE POLICY "Championship results managed by admins"
   ON public.championship_results
   FOR ALL
@@ -192,21 +207,21 @@ CREATE POLICY "Championship results managed by admins"
 -- ============================================================================
 DO $$
 DECLARE
-  season_id uuid;
+  v_season_id uuid;
 BEGIN
-  SELECT id INTO season_id
+  SELECT id INTO v_season_id
   FROM public.championship_seasons
   WHERE name = 'DBGP 2024 Season'
   LIMIT 1;
 
-  IF season_id IS NULL THEN
+  IF v_season_id IS NULL THEN
     INSERT INTO public.championship_seasons (name, year, status, current_round)
     VALUES ('DBGP 2024 Season', 2024, 'active', 1)
-    RETURNING id INTO season_id;
+    RETURNING id INTO v_season_id;
   END IF;
 
   INSERT INTO public.championship_teams (season_id, legacy_team_id, name, short_code, primary_color, secondary_color)
-  SELECT season_id, team_id, name, abbrev, primary_hex, secondary_hex
+  SELECT v_season_id, team_id, name, abbrev, primary_hex, secondary_hex
   FROM public.teams
   ON CONFLICT (season_id, legacy_team_id) DO UPDATE
     SET name = EXCLUDED.name,
@@ -220,6 +235,11 @@ $$;
 -- ============================================================================
 -- VIEWS
 -- ============================================================================
+
+DROP VIEW IF EXISTS public.championship_lineup_view;
+DROP VIEW IF EXISTS public.race_results_view;
+DROP VIEW IF EXISTS public.team_standings_view;
+DROP VIEW IF EXISTS public.driver_standings_view;
 
 CREATE OR REPLACE VIEW public.driver_standings_view AS
 WITH driver_points AS (
