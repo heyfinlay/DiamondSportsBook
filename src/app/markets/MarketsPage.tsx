@@ -20,6 +20,7 @@ import {
 } from "@domains/sports/utils/sportsUi";
 import { sportsKeys } from "@lib/query/keys";
 import { useSession } from "@lib/auth/SessionProvider";
+import { usePermissions } from "@lib/auth/usePermissions";
 import { AuthCtaBanner } from "./components/AuthCtaBanner";
 
 const statusOptions: Array<{ key: "all" | PoolStatus; label: string }> = [
@@ -136,6 +137,8 @@ const MarketsPage = () => {
   const { sportCode: sportCodeParam } = useParams();
   const selectedSportCode = normalizeSportCode(sportCodeParam);
   const { user, loading: sessionLoading } = useSession();
+  const { isBettingAdmin, isSuperAdmin } = usePermissions();
+  const canReviewDrafts = isBettingAdmin || isSuperAdmin;
   const setBetslipSelection = useBettingStore((state) => state.setBetslipSelection);
   const [statusFilter, setStatusFilter] = useState<"all" | PoolStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,18 +147,27 @@ const MarketsPage = () => {
   const boardQueryOptions = useMemo<FetchSportsBoardOptions>(
     () => ({
       limit: 24,
-      sportCode: selectedSportCode
+      sportCode: selectedSportCode,
+      includeUnpublished: canReviewDrafts
     }),
-    [selectedSportCode]
+    [canReviewDrafts, selectedSportCode]
   );
 
   const sportsEventsQuery = useQuery({
-    queryKey: sportsKeys.board(selectedSportCode),
+    queryKey: [...sportsKeys.board(selectedSportCode), canReviewDrafts ? "admin" : "public"],
     queryFn: () => fetchSportsBoardEvents(boardQueryOptions)
   });
 
   const boardEvents = sportsEventsQuery.data ?? [];
-  const pools = useMemo(() => flattenBoardMarkets(boardEvents), [boardEvents]);
+  const liveBoardEvents = useMemo(
+    () => boardEvents.filter((event) => event.published),
+    [boardEvents]
+  );
+  const reviewBoardEvents = useMemo(
+    () => boardEvents.filter((event) => !event.published),
+    [boardEvents]
+  );
+  const pools = useMemo(() => flattenBoardMarkets(liveBoardEvents), [liveBoardEvents]);
 
   const filteredPools = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
@@ -171,8 +183,8 @@ const MarketsPage = () => {
     });
   }, [deferredSearchQuery, pools, statusFilter]);
 
-  const featuredEvent = boardEvents[0] ?? null;
-  const secondaryEvent = boardEvents[1] ?? null;
+  const featuredEvent = liveBoardEvents[0] ?? (canReviewDrafts ? reviewBoardEvents[0] ?? null : null);
+  const secondaryEvent = liveBoardEvents[1] ?? (canReviewDrafts ? reviewBoardEvents[1] ?? null : null);
   const featuredPools = filteredPools.slice(0, 6);
   const totalHandle = filteredPools.reduce((sum, pool) => sum + pool.totalStake, 0);
   const openPools = filteredPools.filter(
@@ -225,6 +237,29 @@ const MarketsPage = () => {
 
   return (
     <div className="space-y-10">
+      {canReviewDrafts && reviewBoardEvents.length ? (
+        <section className="border border-primary-container/20 bg-primary-container/10 px-5 py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[0.62rem] uppercase tracking-[0.16em] text-primary-container">
+                Admin Review Queue
+              </p>
+              <p className="mt-1 text-sm text-white">
+                {reviewBoardEvents.length} synced event
+                {reviewBoardEvents.length === 1 ? "" : "s"} are in draft review and hidden from
+                public betting until published.
+              </p>
+            </div>
+            <Link
+              to="/admin/sports"
+              className="prismatic-button prismatic-button-secondary min-h-[2.2rem] px-4 text-[0.58rem]"
+            >
+              Open Review Queue
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       <section className="grid gap-8 xl:grid-cols-[minmax(0,1.75fr)_22rem]">
         <div className="space-y-6">
           <header className="space-y-5">
@@ -280,7 +315,7 @@ const MarketsPage = () => {
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
                       <span className="border border-primary-container/20 bg-primary-container/10 px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-primary-container">
-                        Featured
+                        {featuredEvent?.published === false ? "In Review" : "Featured"}
                       </span>
                       <span className={getSportAccentClass(featuredEvent?.sportCode ?? selectedSportCode)}>
                         {getSportLabel(featuredEvent?.sportCode ?? selectedSportCode)}
@@ -364,7 +399,7 @@ const MarketsPage = () => {
                             to={`/events/${featuredEvent.id}`}
                             className="prismatic-button prismatic-button-primary w-full px-6 text-[0.64rem] sm:w-auto"
                           >
-                            Enter Event
+                            {featuredEvent.published ? "Enter Event" : "Preview Event"}
                           </Link>
                         </div>
                       </div>

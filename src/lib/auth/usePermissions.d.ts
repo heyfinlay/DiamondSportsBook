@@ -1,6 +1,3 @@
-/**
- * Hook to check user permissions based on roles in the database
- */
 export declare function usePermissions(): {
     roles: string[];
     loading: boolean;
@@ -10,6 +7,7 @@ export declare function usePermissions(): {
     isRaceControl: boolean;
     isMarshal: boolean;
     isBettingAdmin: boolean;
+    isSportsbookAdmin: boolean;
     isSuperAdmin: boolean;
     canManageRace: boolean;
     canLogLaps: boolean;

@@ -1,11 +1,16 @@
 import { Link, useParams } from "react-router-dom";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Radio, Timer } from "lucide-react";
-import { fetchSportsEventDetail } from "@domains/sports/api/sportsDataApi";
+import {
+  fetchSportsEventDetail,
+  publishSportsEvent,
+  unpublishSportsEvent
+} from "@domains/sports/api/sportsDataApi";
 import { getSportAccentClass, getSportLabel, getSportSurfaceClass, getSportWatermark } from "@domains/sports/utils/sportsUi";
 import { sportsKeys } from "@lib/query/keys";
 import { usePermissions } from "@lib/auth/usePermissions";
+import { useToast } from "@app/components/ToastProvider";
 import { formatCurrency } from "../../features/markets/utils/format";
 
 const formatLiveMetricValue = (value: unknown) => {
@@ -17,12 +22,60 @@ const formatLiveMetricValue = (value: unknown) => {
 
 const EventDetailPage = () => {
   const { eventId } = useParams();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { isBettingAdmin, isSuperAdmin } = usePermissions();
   const includeUnpublished = isBettingAdmin || isSuperAdmin;
   const eventQuery = useQuery({
     queryKey: sportsKeys.event(eventId, includeUnpublished ? "admin" : "public"),
     queryFn: () => fetchSportsEventDetail(eventId!, { includeUnpublished }),
     enabled: !!eventId
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: publishSportsEvent,
+    onSuccess: () => {
+      toast({
+        variant: "success",
+        title: "Event published",
+        description: "The generated markets are now live and bettable."
+      });
+      void queryClient.invalidateQueries({ queryKey: sportsKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: sportsKeys.adminBoard() });
+      void queryClient.invalidateQueries({
+        queryKey: sportsKeys.event(eventId, includeUnpublished ? "admin" : "public")
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "error",
+        title: "Publish failed",
+        description: error.message
+      });
+    }
+  });
+
+  const unpublishMutation = useMutation({
+    mutationFn: unpublishSportsEvent,
+    onSuccess: () => {
+      toast({
+        variant: "success",
+        title: "Event returned to review",
+        description: "The markets were removed from public betting."
+      });
+      void queryClient.invalidateQueries({ queryKey: sportsKeys.board() });
+      void queryClient.invalidateQueries({ queryKey: sportsKeys.adminBoard() });
+      void queryClient.invalidateQueries({
+        queryKey: sportsKeys.event(eventId, includeUnpublished ? "admin" : "public")
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "error",
+        title: "Unable to unpublish event",
+        description: error.message
+      });
+    }
   });
 
   const event = eventQuery.data;
@@ -108,13 +161,39 @@ const EventDetailPage = () => {
               ) : null}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="space-y-4">
+              {includeUnpublished ? (
+                <div className="flex flex-wrap justify-end gap-2">
+                  {event.published ? (
+                    <button
+                      type="button"
+                      className="prismatic-button prismatic-button-secondary min-h-[2.2rem] px-4 text-[0.58rem]"
+                      onClick={() => unpublishMutation.mutate(event.id)}
+                      disabled={unpublishMutation.isPending}
+                    >
+                      Pull From Live
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="prismatic-button prismatic-button-primary min-h-[2.2rem] px-4 text-[0.58rem]"
+                      onClick={() => publishMutation.mutate(event.id)}
+                      disabled={publishMutation.isPending}
+                    >
+                      Publish Event
+                    </button>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {liveMetrics.map((metric) => (
                 <div key={metric.label} className="border border-outline-variant/15 bg-surface-lowest/80 px-4 py-4">
                   <p className="text-[0.58rem] uppercase tracking-[0.18em] text-on-subtle">{metric.label}</p>
                   <p className="mt-2 font-headline text-2xl font-black text-white">{metric.value}</p>
                 </div>
               ))}
+              </div>
             </div>
           </div>
 

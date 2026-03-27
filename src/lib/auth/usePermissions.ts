@@ -1,53 +1,82 @@
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@lib/supabaseClient'
-import { useSession } from './SessionProvider'
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@lib/supabaseClient";
+import { useSession } from "./SessionProvider";
 
 interface UserRole {
-  role: string
+  role: string;
 }
 
-/**
- * Hook to check user permissions based on roles in the database
- */
+interface ProfileRolePayload {
+  role: string | null;
+  permissions: string[] | null;
+}
+
 export function usePermissions() {
-  const { user } = useSession()
+  const { user } = useSession();
 
-  const { data: roles = [], isLoading } = useQuery({
-    queryKey: ['user-roles', user?.id],
+  const { data, isLoading } = useQuery({
+    queryKey: ["user-roles", user?.id],
     queryFn: async () => {
-      if (!user?.id) return []
-
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error fetching user roles:', error)
-        return []
+      if (!user?.id) {
+        return {
+          userRoles: [] as UserRole[],
+          profile: null as ProfileRolePayload | null
+        };
       }
 
-      return data as UserRole[]
-    },
-    enabled: !!user?.id,
-  })
+      const [{ data: userRoles, error: userRolesError }, { data: profile, error: profileError }] =
+        await Promise.all([
+          supabase.from("user_roles").select("role").eq("user_id", user.id),
+          supabase.from("profiles").select("role, permissions").eq("id", user.id).maybeSingle()
+        ]);
 
-  const roleSet = new Set(roles.map((r) => r.role))
-  const isSportsbookAdmin = roleSet.has('sportsbook_admin')
-  const isBettingAdmin = roleSet.has('betting_admin') || isSportsbookAdmin
+      if (userRolesError) {
+        console.error("Error fetching user roles:", userRolesError);
+      }
+
+      if (profileError) {
+        console.error("Error fetching profile permissions:", profileError);
+      }
+
+      return {
+        userRoles: (userRoles ?? []) as UserRole[],
+        profile: (profile as ProfileRolePayload | null) ?? null
+      };
+    },
+    enabled: !!user?.id
+  });
+
+  const roleSet = new Set<string>();
+
+  for (const role of data?.userRoles ?? []) {
+    if (role.role) roleSet.add(role.role);
+  }
+
+  if (data?.profile?.role) {
+    roleSet.add(data.profile.role);
+  }
+
+  for (const permission of data?.profile?.permissions ?? []) {
+    if (permission) roleSet.add(permission);
+  }
+
+  const isSportsbookAdmin = roleSet.has("sportsbook_admin");
+  const isBettingAdmin =
+    roleSet.has("betting_admin") || isSportsbookAdmin || roleSet.has("super_admin");
 
   return {
     roles: Array.from(roleSet),
     loading: isLoading,
     hasRole: (role: string) => roleSet.has(role),
-    hasAnyRole: (...checkRoles: string[]) => checkRoles.some((r) => roleSet.has(r)),
-    hasAllRoles: (...checkRoles: string[]) => checkRoles.every((r) => roleSet.has(r)),
-    // Common permission checks
-    isRaceControl: roleSet.has('race_control'),
-    isMarshal: roleSet.has('marshal'),
+    hasAnyRole: (...checkRoles: string[]) => checkRoles.some((role) => roleSet.has(role)),
+    hasAllRoles: (...checkRoles: string[]) => checkRoles.every((role) => roleSet.has(role)),
+    isRaceControl: roleSet.has("race_control"),
+    isMarshal: roleSet.has("marshal"),
     isBettingAdmin,
-    isSuperAdmin: roleSet.has('super_admin'),
-    canManageRace: roleSet.has('race_control') || roleSet.has('super_admin'),
-    canLogLaps: roleSet.has('marshal') || roleSet.has('race_control') || roleSet.has('super_admin'),
-  }
+    isSportsbookAdmin,
+    isSuperAdmin: roleSet.has("super_admin"),
+    canManageRace: roleSet.has("race_control") || roleSet.has("super_admin"),
+    canLogLaps:
+      roleSet.has("marshal") || roleSet.has("race_control") || roleSet.has("super_admin")
+  };
 }
