@@ -7,14 +7,18 @@ This repo now includes a Supabase Edge Function at [supabase/functions/sportrada
 Set these in the Supabase project:
 
 - `SPORTRADAR_API_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_ANON_KEY`
 
 Optional:
 
 - `SPORTRADAR_SYNC_SHARED_SECRET`
 
 Use the shared secret only if you want to trigger the function from a scheduler without a signed-in admin user.
+
+Supabase-hosted Edge Functions already receive these by default:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 ## Current behavior
 
@@ -38,6 +42,20 @@ Suggested schedule:
 1. `schedule` sync once daily in the morning.
 2. `live` sync every 5-10 minutes only while an event is active.
 3. `full` sync manually from the admin dashboard when testing.
+
+## CLI helpers
+
+This repo now includes:
+
+- [deploy_sportradar_sync.sh](/Users/finlaysturzaker/Desktop/DIAMOND/DiamondSportsBook/scripts/deploy_sportradar_sync.sh)
+- [invoke_sportradar_sync.sh](/Users/finlaysturzaker/Desktop/DIAMOND/DiamondSportsBook/scripts/invoke_sportradar_sync.sh)
+- [sportradar-provider-config.sql](/Users/finlaysturzaker/Desktop/DIAMOND/DiamondSportsBook/docs/sportradar-provider-config.sql)
+
+Typical flow:
+
+1. `SUPABASE_PROJECT_REF=... SPORTRADAR_API_KEY=... SPORTRADAR_SYNC_SHARED_SECRET=... bash scripts/deploy_sportradar_sync.sh`
+2. Run the SQL in [sportradar-provider-config.sql](/Users/finlaysturzaker/Desktop/DIAMOND/DiamondSportsBook/docs/sportradar-provider-config.sql)
+3. `SUPABASE_PROJECT_REF=... SPORTRADAR_SYNC_SHARED_SECRET=... bash scripts/invoke_sportradar_sync.sh schedule`
 
 ## Provider config
 
