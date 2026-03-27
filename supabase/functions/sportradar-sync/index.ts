@@ -19,8 +19,11 @@ interface ProviderConfigEntry {
   enabled?: boolean;
   package?: string;
   allowed_competition_names?: string[];
+  current_season_id?: string;
+  resolved_season_id?: string;
   schedule_days_ahead?: number;
   schedule_days_back?: number;
+  schedule_detail_cap?: number;
   live_detail_cap?: number;
 }
 
@@ -96,6 +99,15 @@ interface NormalizedEvent {
   externalPayload: Record<string, unknown>;
 }
 
+interface F1SeasonCandidate {
+  id: string;
+  name: string | null;
+  year: number | null;
+  status: string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
 type JsonObject = Record<string, unknown>;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -143,6 +155,13 @@ const asBoolean = (value: unknown): boolean | null => {
     if (value === "false") return false;
   }
   return null;
+};
+
+const asDate = (value: unknown): Date | null => {
+  const normalized = asString(value);
+  if (!normalized) return null;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
@@ -395,15 +414,176 @@ const finishRun = async (
   if (error) throw error;
 };
 
-const findCurrentF1SeasonId = (payload: JsonObject) => {
-  const seasons = asArray<JsonObject>(payload.seasons);
-  const currentYear = new Date().getUTCFullYear();
-  const current =
-    seasons.find((season) => asNumber(season.year) === currentYear) ??
-    seasons.find((season) => asString(season.name)?.includes(String(currentYear))) ??
-    seasons[0];
+const findCurrentF1Season = (
+  payload: JsonObject,
+  preferredSeasonId?: string | null
+): F1SeasonCandidate | null => {
+  const seasons = asArray<JsonObject>(payload.seasons)
+    .map<F1SeasonCandidate | null>((season) => {
+      const id = asString(season.id);
+      if (!id) return null;
 
-  return asString(current?.id) ?? null;
+      return {
+        id,
+        name: asString(season.name),
+        year: asNumber(season.year),
+        status: asString(season.status)?.toLowerCase() ?? null,
+        startDate: asString(season.start_date),
+        endDate: asString(season.end_date)
+      };
+    })
+    .filter((season): season is F1SeasonCandidate => Boolean(season));
+
+  if (!seasons.length) return null;
+
+  const preferred = preferredSeasonId
+    ? seasons.find((season) => season.id === preferredSeasonId)
+    : null;
+
+  if (preferred) return preferred;
+
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const activeSeasons = seasons
+    .filter((season) => {
+      const startDate = asDate(season.startDate);
+      const endDate = asDate(season.endDate);
+      const status = season.status ?? "";
+
+      if (status.includes("inprogress") || status.includes("active") || status.includes("current")) {
+        return true;
+      }
+
+      if (startDate && endDate) {
+        return startDate <= now && endDate >= now;
+      }
+
+      return season.year === currentYear;
+    })
+    .sort((left, right) => {
+      const rightStart = asDate(right.startDate)?.getTime() ?? 0;
+      const leftStart = asDate(left.startDate)?.getTime() ?? 0;
+      return rightStart - leftStart;
+    });
+
+  if (activeSeasons.length) return activeSeasons[0];
+
+  const scheduledSeasons = seasons
+    .filter((season) => {
+      const startDate = asDate(season.startDate);
+      return (
+        (season.status ?? "").includes("scheduled") ||
+        (startDate !== null && startDate.getTime() >= now.getTime())
+      );
+    })
+    .sort((left, right) => {
+      const leftStart = asDate(left.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const rightStart = asDate(right.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return leftStart - rightStart;
+    });
+
+  if (scheduledSeasons.length) return scheduledSeasons[0];
+
+  const sameYearSeason =
+    seasons.find((season) => season.year === currentYear) ??
+    seasons.find((season) => season.name?.includes(String(currentYear)));
+
+  if (sameYearSeason) return sameYearSeason;
+
+  return [...seasons].sort((left, right) => {
+    const rightEnd = asDate(right.endDate)?.getTime() ?? 0;
+    const leftEnd = asDate(left.endDate)?.getTime() ?? 0;
+    const rightYear = right.year ?? 0;
+    const leftYear = left.year ?? 0;
+    return rightEnd - leftEnd || rightYear - leftYear;
+  })[0];
+};
+
+const persistResolvedF1Season = async (
+  providerId: string,
+  config: ProviderConfig,
+  sportConfig: ProviderConfigEntry,
+  season: F1SeasonCandidate
+) => {
+  try {
+    const nextConfig: ProviderConfig = {
+      ...config,
+      sports: {
+        ...(config.sports ?? {}),
+        f1: {
+          ...sportConfig,
+          resolved_season_id: season.id,
+          current_season_id: sportConfig.current_season_id ?? season.id
+        }
+      }
+    };
+
+    await admin
+      .from("sports_providers")
+      .update({ config: nextConfig as unknown as JsonObject })
+      .eq("id", providerId);
+  } catch (error) {
+    console.error("Unable to persist resolved F1 season", error);
+  }
+};
+
+const hydrateF1ScheduleWithSummaries = async (
+  events: NormalizedEvent[],
+  config: ProviderConfig,
+  sportConfig: ProviderConfigEntry,
+  tracker: RequestTracker
+) => {
+  const detailCap =
+    sportConfig.schedule_detail_cap ??
+    sportConfig.live_detail_cap ??
+    config.request_budget?.live_detail_cap ??
+    1;
+
+  if (detailCap <= 0) return events;
+
+  const now = Date.now();
+  const detailCandidates = events
+    .filter((event) => {
+      const startTime = event.scheduledStart ? new Date(event.scheduledStart).getTime() : null;
+      return startTime === null || startTime >= now - 48 * 60 * 60 * 1000;
+    })
+    .sort((left, right) => {
+      const leftTime = left.scheduledStart ? new Date(left.scheduledStart).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightTime = right.scheduledStart ? new Date(right.scheduledStart).getTime() : Number.MAX_SAFE_INTEGER;
+      return leftTime - rightTime;
+    })
+    .slice(0, detailCap);
+
+  if (!detailCandidates.length) return events;
+
+  const detailedById = new Map<string, NormalizedEvent>();
+
+  for (const event of detailCandidates) {
+    try {
+      const summaryPayload = await tracker.fetchJson(buildF1StageSummaryUrl(config, event.providerEventId));
+      const detailedEvent = mapF1Summary(summaryPayload);
+      if (!detailedEvent) continue;
+
+      detailedById.set(event.providerEventId, {
+        ...event,
+        ...detailedEvent,
+        title: detailedEvent.title || event.title,
+        scheduledStart: detailedEvent.scheduledStart ?? event.scheduledStart,
+        venueName: detailedEvent.venueName ?? event.venueName,
+        roundLabel: detailedEvent.roundLabel ?? event.roundLabel,
+        participants: detailedEvent.participants.length ? detailedEvent.participants : event.participants,
+        results: detailedEvent.results.length ? detailedEvent.results : event.results,
+        externalPayload: {
+          ...event.externalPayload,
+          summary: detailedEvent.externalPayload
+        }
+      });
+    } catch (error) {
+      console.error(`Unable to enrich F1 stage ${event.providerEventId}`, error);
+    }
+  }
+
+  return events.map((event) => detailedById.get(event.providerEventId) ?? event);
 };
 
 const mapTeamSummary = (sport: Exclude<SportCode, "f1">, entryValue: unknown): NormalizedEvent | null => {
@@ -897,11 +1077,20 @@ const runScheduleSync = async (
   try {
     if (sport === "f1") {
       const seasonsPayload = await tracker.fetchJson(buildF1SeasonsUrl(config));
-      const seasonId = findCurrentF1SeasonId(seasonsPayload);
+      const preferredSeasonId =
+        sportConfig.current_season_id ??
+        sportConfig.resolved_season_id ??
+        null;
+      const resolvedSeason = findCurrentF1Season(seasonsPayload, preferredSeasonId);
+      const seasonId = resolvedSeason?.id ?? null;
 
       if (!seasonId) {
         await finishRun(runId, "partial", tracker.count - requestStart, written, "No Formula 1 season id found");
         return { written };
+      }
+
+      if (!dryRun && resolvedSeason) {
+        await persistResolvedF1Season(providerId, config, sportConfig, resolvedSeason);
       }
 
       const schedulePayload = await tracker.fetchJson(buildF1StageScheduleUrl(config, seasonId));
@@ -911,7 +1100,14 @@ const runScheduleSync = async (
         collectF1ScheduleNodes(root, normalizedEvents, {});
       }
 
-      for (const normalized of normalizedEvents) {
+      const hydratedEvents = await hydrateF1ScheduleWithSummaries(
+        normalizedEvents,
+        config,
+        sportConfig,
+        tracker
+      );
+
+      for (const normalized of hydratedEvents) {
         const result = await ingestEvent(providerId, sport, normalized, sportConfig, dryRun, "schedule");
         if (!result.skipped) written += 1;
       }

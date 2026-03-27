@@ -23,7 +23,7 @@ Supabase-hosted Edge Functions already receive these by default:
 ## Current behavior
 
 - Rugby League uses daily summaries plus live summaries.
-- Formula 1 uses seasons, stage schedule, and stage summary.
+- Formula 1 uses seasons, stage schedule, and a capped stage-summary enrichment pass for the next upcoming races.
 - Auto-generated markets are single-winner only.
 - `f1_podium_finish` is intentionally disabled because the current settlement engine supports one winning outcome only.
 - Draw outcomes are generated for NRL match-winner pools.
@@ -69,8 +69,10 @@ Important keys:
 - `request_budget.per_run_request_cap`
 - `sports.<sport>.enabled`
 - `sports.<sport>.allowed_competition_names`
+- `sports.f1.current_season_id`
 - `sports.<sport>.schedule_days_ahead`
 - `sports.<sport>.schedule_days_back`
+- `sports.<sport>.schedule_detail_cap`
 
 Before enabling any additional sport in production, set `allowed_competition_names` tightly and increase request caps only if observed usage supports it.
 

@@ -18,8 +18,10 @@ SET config = jsonb_build_object(
     'f1', jsonb_build_object(
       'enabled', true,
       'allowed_competition_names', jsonb_build_array('Formula 1'),
+      'current_season_id', null,
       'schedule_days_ahead', 14,
       'schedule_days_back', 2,
+      'schedule_detail_cap', 1,
       'live_detail_cap', 2
     ),
     'nrl', jsonb_build_object(
@@ -58,3 +60,4 @@ WHERE provider_key = 'sportradar';
 -- 1. flip `enabled` to true for AFL, MMA, or soccer
 -- 2. keep `allowed_competition_names` tight
 -- 3. consider raising `per_run_request_cap` only after observing usage
+-- 4. if F1 season auto-discovery ever chooses the wrong season, set `current_season_id` explicitly

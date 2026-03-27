@@ -222,6 +222,11 @@ const SportsEventsPage = () => {
                           {currencySymbol}
                           {liquidity.toFixed(0)}
                         </p>
+                        {event.markets.slice(0, 2).map((market) => (
+                          <p key={market.id} className="text-[0.68rem] text-on-subtle">
+                            {market.name}
+                          </p>
+                        ))}
                       </div>
                     </td>
                     <td className="px-6 py-5">
