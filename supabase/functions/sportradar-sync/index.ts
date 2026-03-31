@@ -992,16 +992,23 @@ const persistSnapshot = async (eventId: string, snapshotKind: string, rawPayload
   if (error) throw error;
 };
 
+const runAdminRpc = async (fn: string, args: Record<string, unknown>) => {
+  const { error } = await admin.rpc(fn, args);
+  if (error) {
+    throw new Error(`${fn} failed for ${JSON.stringify(args)}: ${error.message}`);
+  }
+};
+
 const finalizeEvent = async (eventId: string, normalized: NormalizedEvent, dryRun: boolean) => {
   if (dryRun) return;
 
   if (normalized.participants.length > 0) {
-    await admin.rpc("sports_generate_markets_for_event", { p_sports_event_id: eventId });
+    await runAdminRpc("sports_generate_markets_for_event", { p_sports_event_id: eventId });
   }
-  await admin.rpc("sports_refresh_event_market_state", { p_sports_event_id: eventId });
+  await runAdminRpc("sports_refresh_event_market_state", { p_sports_event_id: eventId });
 
   if (["official", "cancelled"].includes(normalized.status)) {
-    await admin.rpc("sports_settle_event_markets", { p_sports_event_id: eventId });
+    await runAdminRpc("sports_settle_event_markets", { p_sports_event_id: eventId });
   }
 };
 
@@ -1232,7 +1239,7 @@ const runSettlementSweep = async (providerId: string, sport: SportCode) => {
     for (const row of events ?? []) {
       const eventId = asString(row.id);
       if (!eventId) continue;
-      await admin.rpc("sports_settle_event_markets", { p_sports_event_id: eventId });
+      await runAdminRpc("sports_settle_event_markets", { p_sports_event_id: eventId });
       written += 1;
     }
 
