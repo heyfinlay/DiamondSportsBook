@@ -61,6 +61,10 @@ export interface MarketContainer {
   id: string;
   title: string;
   description: string | null;
+  source_type: "manual_timing" | "external_feed";
+  sport_code: string | null;
+  auto_created: boolean;
+  external_status: string | null;
   market_type: MarketType;
   scope: MarketScope;
   config: Record<string, unknown>;
@@ -70,14 +74,23 @@ export interface MarketContainer {
   session: {
     id: string;
     name: string;
-    track_name: string | null;
-    mode: string | null;
-    starts_at: string | null;
+      track_name: string | null;
+      mode: string | null;
+      starts_at: string | null;
+  } | null;
+  competition: {
+    name: string | null;
+  } | null;
+  sports_event: {
+    venue_name: string | null;
+    round_label: string | null;
   } | null;
   markets: MarketPool[];
 }
 
 const sessionSelect = `session:timing_sessions(id, name, track_name, mode, starts_at)`;
+const competitionSelect = `competition:sports_competitions(name)`;
+const sportsEventSelect = `sports_event:sports_events(venue_name, round_label)`;
 const outcomeSelect = `outcomes(id, label, pool, color, driver_id, metadata, participant_type, participant_id)`;
 const pendingSelect = `pending_settlement:pending_settlements(pool_id, status, winning_outcome_id, summary)`;
 
@@ -98,12 +111,18 @@ export const fetchAdminMarkets = async () => {
         title,
         description,
         status,
+        source_type,
+        sport_code,
+        auto_created,
+        external_status,
         market_type,
         scope,
         config,
         starts_at,
         takeout,
         ${sessionSelect},
+        ${competitionSelect},
+        ${sportsEventSelect},
         markets:markets(
           id,
           name,
@@ -132,6 +151,10 @@ export const fetchAdminMarkets = async () => {
       id: row.id,
       title: row.title,
       description: row.description ?? null,
+      source_type: (row.source_type ?? "manual_timing") as MarketContainer["source_type"],
+      sport_code: row.sport_code ?? null,
+      auto_created: Boolean(row.auto_created),
+      external_status: row.external_status ?? null,
       market_type: (row.market_type ?? "WINNER_FULL_FIELD") as MarketType,
       scope: (row.scope ?? "race") as MarketScope,
       config: row.config ?? {},
@@ -147,6 +170,23 @@ export const fetchAdminMarkets = async () => {
               track_name: sessionRow.track_name ?? null,
               mode: sessionRow.mode ?? null,
               starts_at: sessionRow.starts_at ?? null
+            }
+          : null;
+      })(),
+      competition: (() => {
+        const competitionRow = unwrapSingle((row as any).competition);
+        return competitionRow
+          ? {
+              name: competitionRow.name ?? null
+            }
+          : null;
+      })(),
+      sports_event: (() => {
+        const sportsEventRow = unwrapSingle((row as any).sports_event);
+        return sportsEventRow
+          ? {
+              venue_name: sportsEventRow.venue_name ?? null,
+              round_label: sportsEventRow.round_label ?? null
             }
           : null;
       })(),
@@ -182,12 +222,18 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
         title,
         description,
         status,
+        source_type,
+        sport_code,
+        auto_created,
+        external_status,
         market_type,
         scope,
         config,
         starts_at,
         takeout,
         ${sessionSelect},
+        ${competitionSelect},
+        ${sportsEventSelect},
         markets:markets(
           id,
           name,
@@ -219,6 +265,10 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
     id: data.id,
     title: data.title,
     description: data.description ?? null,
+    source_type: (data.source_type ?? "manual_timing") as MarketContainer["source_type"],
+    sport_code: data.sport_code ?? null,
+    auto_created: Boolean(data.auto_created),
+    external_status: data.external_status ?? null,
     market_type: (data.market_type ?? "WINNER_FULL_FIELD") as MarketType,
     scope: (data.scope ?? "race") as MarketScope,
     config: data.config ?? {},
@@ -234,6 +284,23 @@ export const fetchAdminMarketDetail = async (marketId: string): Promise<MarketCo
             track_name: sessionRow.track_name ?? null,
             mode: sessionRow.mode ?? null,
             starts_at: sessionRow.starts_at ?? null
+          }
+        : null;
+    })(),
+    competition: (() => {
+      const competitionRow = unwrapSingle((data as any).competition);
+      return competitionRow
+        ? {
+            name: competitionRow.name ?? null
+          }
+        : null;
+    })(),
+    sports_event: (() => {
+      const sportsEventRow = unwrapSingle((data as any).sports_event);
+      return sportsEventRow
+        ? {
+            venue_name: sportsEventRow.venue_name ?? null,
+            round_label: sportsEventRow.round_label ?? null
           }
         : null;
     })(),

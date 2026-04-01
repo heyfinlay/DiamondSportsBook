@@ -42,6 +42,10 @@ export interface MarketContainer {
     id: string;
     title: string;
     description: string | null;
+    source_type: "manual_timing" | "external_feed";
+    sport_code: string | null;
+    auto_created: boolean;
+    external_status: string | null;
     market_type: MarketType;
     scope: MarketScope;
     config: Record<string, unknown>;
@@ -54,6 +58,13 @@ export interface MarketContainer {
         track_name: string | null;
         mode: string | null;
         starts_at: string | null;
+    } | null;
+    competition: {
+        name: string | null;
+    } | null;
+    sports_event: {
+        venue_name: string | null;
+        round_label: string | null;
     } | null;
     markets: MarketPool[];
 }

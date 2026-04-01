@@ -27,7 +27,8 @@ SET config = jsonb_build_object(
     'nrl', jsonb_build_object(
       'enabled', true,
       'package', 'league',
-      'allowed_competition_names', jsonb_build_array('NRL', 'National Rugby League'),
+      'allowed_competition_names', jsonb_build_array('NRL', 'National Rugby League', 'NRL Premiership'),
+      'allowed_competition_ids', jsonb_build_array('sr:competition:294'),
       'schedule_days_ahead', 7,
       'schedule_days_back', 1
     ),

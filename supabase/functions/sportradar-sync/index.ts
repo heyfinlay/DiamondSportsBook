@@ -19,6 +19,7 @@ interface ProviderConfigEntry {
   enabled?: boolean;
   package?: string;
   allowed_competition_names?: string[];
+  allowed_competition_ids?: string[];
   current_season_id?: string;
   resolved_season_id?: string;
   schedule_days_ahead?: number;
@@ -243,12 +244,36 @@ const buildF1StageScheduleUrl = (config: ProviderConfig, seasonId: string) =>
 const buildF1StageSummaryUrl = (config: ProviderConfig, stageId: string) =>
   `https://api.sportradar.com/formula1/${config.access_level ?? "trial"}/v2/${config.language_code ?? "en"}/sport_events/${stageId}/summary.json`;
 
-const competitionAllowed = (competitionName: string | null, sportConfig: ProviderConfigEntry) => {
-  const allowed = sportConfig.allowed_competition_names ?? [];
-  if (!allowed.length) return true;
-  if (!competitionName) return false;
-  const normalized = competitionName.toLowerCase();
-  return allowed.some((name) => normalized.includes(name.toLowerCase()));
+const uniqueStrings = (values: Array<string | null | undefined>) =>
+  Array.from(new Set(values.map((value) => asString(value)).filter((value): value is string => Boolean(value))));
+
+const competitionAllowed = (
+  candidates: {
+    ids?: Array<string | null | undefined>;
+    names?: Array<string | null | undefined>;
+  },
+  sportConfig: ProviderConfigEntry
+) => {
+  const allowedIds = uniqueStrings(sportConfig.allowed_competition_ids ?? []);
+  const allowedNames = uniqueStrings(sportConfig.allowed_competition_names ?? []);
+
+  if (!allowedIds.length && !allowedNames.length) return true;
+
+  const candidateIds = uniqueStrings(candidates.ids ?? []);
+  const candidateNames = uniqueStrings(candidates.names ?? []).map((value) => value.toLowerCase());
+
+  if (allowedIds.length && candidateIds.some((value) => allowedIds.includes(value))) {
+    return true;
+  }
+
+  if (allowedNames.length) {
+    return allowedNames.some((allowedName) => {
+      const normalized = allowedName.toLowerCase();
+      return candidateNames.some((candidate) => candidate.includes(normalized));
+    });
+  }
+
+  return false;
 };
 
 const getPayload = async (request: Request): Promise<SyncPayload> => {
@@ -589,11 +614,12 @@ const hydrateF1ScheduleWithSummaries = async (
 const mapTeamSummary = (sport: Exclude<SportCode, "f1">, entryValue: unknown): NormalizedEvent | null => {
   const entry = asObject(entryValue);
   const sportEvent = asObject(entry.sport_event);
-  const context = asObject(entry.sport_event_context);
+  const context = asObject(sportEvent.sport_event_context ?? entry.sport_event_context);
   const competition = asObject(context.competition);
   const season = asObject(context.season);
   const round = asObject(context.round);
   const stageContext = asObject(context.stage);
+  const groups = asArray<JsonObject>(context.groups);
   const status = asObject(entry.sport_event_status);
   const venue = asObject(sportEvent.venue);
   const competitors = asArray<JsonObject>(sportEvent.competitors);
@@ -635,6 +661,28 @@ const mapTeamSummary = (sport: Exclude<SportCode, "f1">, entryValue: unknown): N
 
   const winnerId = asString(status.winner_id ?? status.winner);
   const results: NormalizedResult[] = [];
+  const competitionId = asString(competition.id) ?? asString(season.competition_id) ?? asString(groups[0]?.id);
+  const competitionName =
+    asString(competition.name) ??
+    asString(season.name) ??
+    asString(groups[0]?.name);
+  const competitionNames = uniqueStrings([
+    competition.name,
+    season.name,
+    ...groups.map((group) => asString(group.name))
+  ]);
+  const competitionIds = uniqueStrings([
+    competition.id,
+    season.competition_id,
+    ...groups.map((group) => asString(group.id))
+  ]);
+  const participantTitle =
+    participants.length >= 2
+      ? `${participants[0]?.displayName ?? "Home"} vs ${participants[1]?.displayName ?? "Away"}`
+      : participants[0]?.displayName ?? null;
+  const roundLabel =
+    asString(round.name ?? stageContext.name) ??
+    (asNumber(round.number) !== null ? `Round ${asNumber(round.number)}` : null);
 
   if (winnerId) {
     results.push({
@@ -661,29 +709,40 @@ const mapTeamSummary = (sport: Exclude<SportCode, "f1">, entryValue: unknown): N
     title: asString(sportEvent.start_date) && sport === "mma"
       ? `${asString(competition.name) ?? "MMA"} • ${asString(sportEvent.start_date)}`
       : asString(sportEvent.name) ??
+        participantTitle ??
         asString(sportEvent.start_time) ??
-        `${asString(competition.name) ?? sport.toUpperCase()} Event`,
+        `${competitionName ?? sport.toUpperCase()} Event`,
     sportCode: sport,
     eventType: sport === "mma" ? "fight" : "match",
     status: normalizedStatus,
     scheduledStart: asString(sportEvent.start_time ?? sportEvent.scheduled),
     venueName: asString(venue.name),
-    roundLabel: asString(round.name ?? stageContext.name),
+    roundLabel,
     liveClock: asString(status.clock ?? status.match_clock),
     liveState: {
       status: asString(status.status ?? status.match_status),
       home_score: homeScore,
       away_score: awayScore
     },
-    competition: competitionAllowed(asString(competition.name), {
-      allowed_competition_names: []
-    })
+    competition: competitionAllowed(
+      {
+        ids: competitionIds,
+        names: competitionNames
+      },
+      {
+        allowed_competition_names: []
+      }
+    )
       ? {
-          providerCompetitionId: asString(competition.id) ?? `${sport}-${asString(competition.name) ?? "default"}`,
-          name: asString(competition.name) ?? `${sport.toUpperCase()} Competition`,
+          providerCompetitionId: competitionId ?? `${sport}-${competitionName ?? "default"}`,
+          name: competitionName ?? `${sport.toUpperCase()} Competition`,
           shortName: asString(competition.alternative_name),
           countryCode: asString(competition.country_code),
-          metadata: { gender: asString(competition.gender) }
+          metadata: {
+            gender: asString(competition.gender),
+            season_name: asString(season.name),
+            group_names: competitionNames
+          }
         }
       : null,
     season: asString(season.id) || asString(season.name)
@@ -1020,7 +1079,16 @@ const ingestEvent = async (
   dryRun: boolean,
   snapshotKind: string
 ) => {
-  if (!competitionAllowed(normalized.competition?.name ?? null, sportConfig)) {
+  if (!competitionAllowed(
+    {
+      ids: [normalized.competition?.providerCompetitionId],
+      names: [
+        normalized.competition?.name,
+        normalized.season?.name
+      ]
+    },
+    sportConfig
+  )) {
     return { skipped: true };
   }
 
