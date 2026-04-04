@@ -175,8 +175,23 @@ const addDays = (date: Date, days: number) => {
 
 const normalizeStatus = (rawValue: unknown, fallback: SportsEventStatus = "scheduled"): SportsEventStatus => {
   const value = (asString(rawValue) ?? "").toLowerCase();
+  const compact = value.replace(/[\s-]+/g, "_");
 
   if (!value) return fallback;
+  if (
+    [
+      "not_started",
+      "notstarted",
+      "scheduled",
+      "created",
+      "fixture",
+      "time_tbd",
+      "time_unknown",
+      "tbd"
+    ].includes(compact)
+  ) {
+    return "scheduled";
+  }
   if (["cancelled", "canceled", "abandoned", "postponed"].some((token) => value.includes(token))) {
     return "cancelled";
   }
@@ -186,7 +201,19 @@ const normalizeStatus = (rawValue: unknown, fallback: SportsEventStatus = "sched
   if (["interrupted", "paused", "delayed", "suspended"].some((token) => value.includes(token))) {
     return "paused";
   }
-  if (["live", "inprogress", "running", "started", "halftime", "period"].some((token) => value.includes(token))) {
+  if (
+    [
+      "live",
+      "inprogress",
+      "in_progress",
+      "running",
+      "started",
+      "halftime",
+      "half_time"
+    ].includes(compact) ||
+    compact.startsWith("period_") ||
+    compact === "period"
+  ) {
     return "live";
   }
 
